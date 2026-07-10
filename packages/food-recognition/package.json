@@ -1,0 +1,13 @@
+{
+  "name": "@nutrilens/food-recognition",
+  "version": "1.0.0",
+  "description": "In-browser food recognition: fine-tuned Food-101 classifier fused with an open-vocabulary CLIP zero-shot head, on ONNX Runtime (web or node)",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "dependencies": {
+    "@nutrilens/image-preprocess": "1.0.0"
+  },
+  "keywords": ["food", "classification", "onnx", "clip", "zero-shot", "browser"]
+}

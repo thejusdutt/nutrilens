@@ -1,0 +1,10 @@
+{
+  "name": "@nutrilens/image-preprocess",
+  "version": "1.0.0",
+  "description": "Dependency-free image decoding, resizing, normalization and classic CV primitives for ML preprocessing — identical results in browser and Node",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "keywords": ["image", "preprocessing", "tensor", "resize", "sobel", "browser", "ml"]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@nutrilens/app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node ../tools/copy-ort-assets.mjs",
+    "prebuild": "node ../tools/copy-ort-assets.mjs",
+    "dev": "vite",
+    "build": "vite build && node ../tools/postbuild.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@nutrilens/food-recognition": "1.0.0",
+    "@nutrilens/food-segmentation": "1.0.0",
+    "@nutrilens/image-preprocess": "1.0.0",
+    "@nutrilens/nutrition-engine": "1.0.0",
+    "@nutrilens/portion-estimator": "1.0.0",
+    "onnxruntime-web": "1.27.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}

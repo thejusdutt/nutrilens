@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>NutriLens — offline food & nutrition scanner</title>
+  <meta name="description" content="Point your camera at food. Get calories, macros and micronutrients — fully offline, on-device AI." />
+  <meta name="theme-color" content="#101418" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="12" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55"/>
+        <path d="M12 8.6a3.4 3.4 0 1 0 .01 6.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <h1>NutriLens</h1>
+    </div>
+    <div class="topbar-actions">
+      <span id="offline-badge" class="badge" hidden>offline</span>
+      <button id="btn-history" class="icon-btn" title="History" aria-label="History">🕘</button>
+      <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
+      <button id="btn-theme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <main id="view-root">
+    <!-- Home / capture -->
+    <section id="view-home" class="view">
+      <div id="drop-zone" class="drop-zone" tabindex="0" role="button"
+           aria-label="Add a food photo: drop, paste, browse or use the camera">
+        <div class="drop-inner">
+          <div class="drop-emoji">🍽️</div>
+          <p class="drop-title">Snap or drop a food photo</p>
+          <p class="drop-sub">Everything runs on this device — no photo ever leaves it.</p>
+          <div class="drop-actions">
+            <button id="btn-camera" class="primary">📷 Camera</button>
+            <button id="btn-browse">🖼️ Browse</button>
+          </div>
+        </div>
+        <input id="file-input" type="file" accept="image/*" hidden />
+      </div>
+      <div id="model-status" class="model-status" hidden></div>
+      <section id="recent" class="recent" hidden>
+        <h2>Recent</h2>
+        <div id="recent-list" class="recent-list"></div>
+      </section>
+    </section>
+
+    <!-- Camera -->
+    <section id="view-camera" class="view" hidden>
+      <div class="camera-wrap">
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div class="camera-controls">
+          <button id="btn-cam-cancel" class="icon-btn big" aria-label="Cancel">✕</button>
+          <button id="btn-shutter" class="shutter" aria-label="Take photo"></button>
+          <button id="btn-cam-flip" class="icon-btn big" aria-label="Flip camera">🔄</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analysis -->
+    <section id="view-analyze" class="view" hidden>
+      <button id="btn-back" class="back-btn">← New photo</button>
+      <div class="analyze-grid">
+        <div class="photo-pane">
+          <div class="photo-stack">
+            <canvas id="photo-canvas"></canvas>
+            <canvas id="overlay-canvas"></canvas>
+            <div id="analyze-spinner" class="spinner-overlay"><div class="spinner"></div><p id="spinner-text">Loading models…</p></div>
+          </div>
+          <p class="photo-hint">Tap a dish in the photo to re-analyze that spot.</p>
+        </div>
+        <div class="result-pane">
+          <div id="nonfood-warning" class="warning" hidden>🤔 This doesn’t look like food. Top guesses below — tap one if it’s right, or search manually.</div>
+          <div id="candidates" class="candidates"></div>
+          <div class="correction">
+            <input id="search-input" type="search" placeholder="Wrong? Search any food…" autocomplete="off" />
+            <div id="search-results" class="search-results" hidden></div>
+          </div>
+          <div id="portion-card" class="card" hidden>
+            <div class="card-head">
+              <h3>Portion</h3>
+              <span id="portion-method" class="tag"></span>
+            </div>
+            <div class="portion-row">
+              <input id="portion-slider" type="range" min="10" max="1000" step="5" />
+              <div class="portion-value"><output id="portion-grams">0</output> g</div>
+            </div>
+            <div class="portion-row">
+              <select id="portion-select" aria-label="Household portion"></select>
+            </div>
+            <p id="portion-note" class="muted"></p>
+          </div>
+          <div id="nutrition-card" class="card" hidden>
+            <div class="card-head">
+              <h3>Nutrition</h3>
+              <span id="confidence-tag" class="tag"></span>
+            </div>
+            <div class="kcal-hero">
+              <span id="kcal-value">–</span>
+              <span class="kcal-unit">kcal</span>
+              <span id="kcal-range" class="kcal-range"></span>
+            </div>
+            <div id="macro-bars" class="macro-bars"></div>
+            <details id="micro-details">
+              <summary>Vitamins & minerals</summary>
+              <div id="micro-table" class="micro-table"></div>
+            </details>
+            <button id="btn-save" class="primary wide">💾 Save to history</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- History -->
+    <section id="view-history" class="view" hidden>
+      <button id="btn-back-history" class="back-btn">← Back</button>
+      <h2>History</h2>
+      <div id="history-summary" class="muted"></div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+    <!-- Settings -->
+    <section id="view-settings" class="view" hidden>
+      <button id="btn-back-settings" class="back-btn">← Back</button>
+      <h2>Settings</h2>
+      <div class="card">
+        <label class="setting-row">
+          <span>Plate diameter (portion scale reference)</span>
+          <select id="setting-plate">
+            <option value="20">20 cm — side plate</option>
+            <option value="23">23 cm — lunch plate</option>
+            <option value="26" selected>26 cm — dinner plate</option>
+            <option value="28">28 cm — large plate</option>
+          </select>
+        </label>
+        <label class="setting-row">
+          <span>Theme</span>
+          <select id="setting-theme">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+      </div>
+      <div class="card">
+        <h3>Offline storage</h3>
+        <p class="muted">Models are downloaded once and cached. After that, NutriLens works with no connection at all.</p>
+        <div id="storage-status" class="muted">…</div>
+        <button id="btn-prefetch" class="primary">⬇️ Download all models for offline use</button>
+        <progress id="prefetch-progress" max="1" value="0" hidden></progress>
+      </div>
+      <div class="card">
+        <h3>About</h3>
+        <p class="muted">NutriLens runs Swin-Food101, MobileCLIP-S0 and SlimSAM entirely in your browser via ONNX Runtime Web. Nutrition data: USDA FoodData Central (FNDDS 2021-2023). Estimates are informational, not medical advice.</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

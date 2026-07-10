@@ -1,0 +1,85 @@
+/**
+ * NutriLens service worker — offline-first.
+ *
+ * Strategy:
+ *  - App shell (small, changes with releases): precached at install,
+ *    cache-first at runtime. Bump CACHE_VERSION to ship updates.
+ *  - Models + data (large, immutable per release): runtime cache-first into a
+ *    separate cache; fetched lazily by the inference worker (with progress UI)
+ *    or eagerly via Settings → "Download all models".
+ *  - Navigations fall back to the cached shell when offline.
+ */
+const CACHE_VERSION = 'v1';
+const SHELL_CACHE = `nutrilens-shell-${CACHE_VERSION}`;
+const MODEL_CACHE = `nutrilens-models-${CACHE_VERSION}`;
+
+const SHELL_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/icons/icon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/assets/index.js',
+  '/assets/index.css',
+  '/assets/inference-worker.js',
+  // ONNX Runtime web runtime (needed to run any model offline)
+  '/ort/ort-wasm-simd-threaded.wasm',
+  '/ort/ort-wasm-simd-threaded.mjs',
+  '/ort/ort-wasm-simd-threaded.jsep.wasm',
+  '/ort/ort-wasm-simd-threaded.jsep.mjs',
+  '/ort/ort-wasm-simd-threaded.asyncify.wasm',
+  '/ort/ort-wasm-simd-threaded.asyncify.mjs',
+  // Small data files
+  '/data/nutrition-db.json',
+  '/data/vocabulary.json',
+  '/data/label-embeddings.json',
+  '/data/label-embeddings.bin',
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(SHELL_CACHE);
+    // allSettled: optional files (e.g. jsep variants across ORT versions) may 404.
+    await Promise.allSettled(SHELL_ASSETS.map((u) => cache.add(u)));
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names
+      .filter((n) => n.startsWith('nutrilens-') && !n.endsWith(CACHE_VERSION))
+      .map((n) => caches.delete(n)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.origin !== location.origin) return;
+
+  // Large immutable model files → cache-first in the model cache.
+  if (url.pathname.startsWith('/models/')) {
+    event.respondWith(cacheFirst(MODEL_CACHE, event.request));
+    return;
+  }
+  // SPA navigations → shell.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      cacheFirst(SHELL_CACHE, new Request('/index.html')).catch(() => fetch(event.request)),
+    );
+    return;
+  }
+  event.respondWith(cacheFirst(SHELL_CACHE, event.request));
+});
+
+async function cacheFirst(cacheName, request) {
+  const cache = await caches.open(cacheName);
+  const hit = await cache.match(request, { ignoreSearch: true });
+  if (hit) return hit;
+  const res = await fetch(request);
+  if (res.ok) cache.put(request, res.clone());
+  return res;
+}

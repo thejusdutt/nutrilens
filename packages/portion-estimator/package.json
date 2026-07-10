@@ -1,0 +1,13 @@
+{
+  "name": "@nutrilens/portion-estimator",
+  "version": "1.0.0",
+  "description": "Single-image food portion estimation for the browser: RANSAC plate-ellipse scale reference, mask-area to mass conversion with per-food density priors, and explicit uncertainty ranges",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "dependencies": {
+    "@nutrilens/image-preprocess": "1.0.0"
+  },
+  "keywords": ["portion", "serving-size", "food", "computer-vision", "ransac", "ellipse"]
+}

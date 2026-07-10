@@ -1,0 +1,10 @@
+node_modules/
+app/dist/
+app/public/ort/
+app/public/models/
+tools/data/
+eval/data/
+eval/results/*.jsonl
+eval/results/raw/
+*.log
+preview.log
