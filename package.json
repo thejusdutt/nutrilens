@@ -1,0 +1,30 @@
+{
+  "name": "nutrilens-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "NutriLens — fully offline, in-browser food recognition and nutrition estimation PWA",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "app"
+  ],
+  "scripts": {
+    "fetch-assets": "bash tools/fetch-assets.sh",
+    "build:db": "node tools/build-nutrition-db.mjs",
+    "build:embeddings": "node tools/build-embeddings.mjs",
+    "dev": "npm --workspace app run dev",
+    "build": "npm --workspace app run build",
+    "preview": "npm --workspace app run preview",
+    "test": "vitest run",
+    "eval": "node eval/run-eval.mjs",
+    "eval:fetch": "node eval/fetch-dataset.mjs",
+    "eval:report": "node eval/make-report.mjs"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "^3.5.0",
+    "onnxruntime-node": "^1.27.0",
+    "puppeteer-core": "^25.3.0",
+    "sharp": "^0.34.0",
+    "vitest": "^3.0.0"
+  }
+}

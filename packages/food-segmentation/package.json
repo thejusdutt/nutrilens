@@ -1,0 +1,13 @@
+{
+  "name": "@nutrilens/food-segmentation",
+  "version": "1.0.0",
+  "description": "Promptable food segmentation in the browser via SlimSAM ONNX, with pure-JS mask post-processing (connected components, hole filling, area stats)",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "dependencies": {
+    "@nutrilens/image-preprocess": "1.0.0"
+  },
+  "keywords": ["segmentation", "sam", "slimsam", "onnx", "browser", "food"]
+}

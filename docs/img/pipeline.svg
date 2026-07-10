@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 210" font-family="system-ui, sans-serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5c6672"/>
+    </marker>
+  </defs>
+  <style>
+    .box{fill:#eef5f0;stroke:#14803c;stroke-width:1.5;rx:10}
+    .side{fill:#f2f4f7;stroke:#98a4b0;stroke-width:1.2}
+    .t{fill:#171c22;font-weight:600}
+    .s{fill:#5c6672;font-size:11px}
+    .arrow{stroke:#5c6672;stroke-width:1.6;fill:none;marker-end:url(#a)}
+  </style>
+  <rect class="box" x="10" y="70" width="110" height="56" rx="10"/>
+  <text class="t" x="65" y="94" text-anchor="middle">📷 Photo</text>
+  <text class="s" x="65" y="112" text-anchor="middle">camera / upload</text>
+
+  <rect class="box" x="160" y="70" width="150" height="56" rx="10"/>
+  <text class="t" x="235" y="88" text-anchor="middle">Recognition</text>
+  <text class="s" x="235" y="104" text-anchor="middle">Swin-Food101 (92%)</text>
+  <text class="s" x="235" y="118" text-anchor="middle">+ MobileCLIP zero-shot</text>
+
+  <rect class="box" x="350" y="70" width="130" height="56" rx="10"/>
+  <text class="t" x="415" y="88" text-anchor="middle">Fusion</text>
+  <text class="s" x="415" y="104" text-anchor="middle">211-food vocab</text>
+  <text class="s" x="415" y="118" text-anchor="middle">non-food rejection</text>
+
+  <rect class="box" x="520" y="70" width="140" height="56" rx="10"/>
+  <text class="t" x="590" y="88" text-anchor="middle">Portion</text>
+  <text class="s" x="590" y="104" text-anchor="middle">SlimSAM mask ×</text>
+  <text class="s" x="590" y="118" text-anchor="middle">plate-ellipse scale</text>
+
+  <rect class="box" x="700" y="70" width="130" height="56" rx="10"/>
+  <text class="t" x="765" y="88" text-anchor="middle">Nutrition</text>
+  <text class="s" x="765" y="104" text-anchor="middle">USDA FNDDS</text>
+  <text class="s" x="765" y="118" text-anchor="middle">30 nutrients/food</text>
+
+  <rect class="box" x="870" y="70" width="100" height="56" rx="10"/>
+  <text class="t" x="920" y="88" text-anchor="middle">Result</text>
+  <text class="s" x="920" y="104" text-anchor="middle">kcal + macros</text>
+  <text class="s" x="920" y="118" text-anchor="middle">+ micros ± range</text>
+
+  <rect class="side" x="350" y="10" width="130" height="34" rx="8"/>
+  <text class="s" x="415" y="31" text-anchor="middle">tap-to-refine (multi-dish)</text>
+  <rect class="side" x="520" y="160" width="140" height="34" rx="8"/>
+  <text class="s" x="590" y="181" text-anchor="middle">manual serving slider</text>
+
+  <line class="arrow" x1="120" y1="98" x2="155" y2="98"/>
+  <line class="arrow" x1="310" y1="98" x2="345" y2="98"/>
+  <line class="arrow" x1="480" y1="98" x2="515" y2="98"/>
+  <line class="arrow" x1="660" y1="98" x2="695" y2="98"/>
+  <line class="arrow" x1="830" y1="98" x2="865" y2="98"/>
+  <line class="arrow" x1="415" y1="44" x2="415" y2="66"/>
+  <line class="arrow" x1="590" y1="160" x2="590" y2="130"/>
+</svg>

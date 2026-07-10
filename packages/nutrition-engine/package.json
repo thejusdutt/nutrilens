@@ -1,0 +1,10 @@
+{
+  "name": "@nutrilens/nutrition-engine",
+  "version": "1.0.0",
+  "description": "Offline nutrition computation over a compact USDA-derived database: per-portion scaling of calories, macro- and micronutrients, %DV, aggregation, uncertainty ranges and fuzzy food search",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "keywords": ["nutrition", "usda", "fndds", "calories", "macros", "micronutrients", "offline"]
+}
