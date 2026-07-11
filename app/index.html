@@ -78,6 +78,15 @@
         </div>
         <div class="result-pane">
           <div id="nonfood-warning" class="warning" hidden>🤔 This doesn’t look like food. Top guesses below — tap one if it’s right, or search manually.</div>
+          <button id="btn-whole-plate" class="wide">🍱 Analyze whole plate (all items)</button>
+          <div id="meal-card" class="card" hidden>
+            <div class="card-head">
+              <h3>On this plate</h3>
+              <span id="meal-count" class="tag"></span>
+            </div>
+            <div id="meal-items" class="meal-items"></div>
+            <p class="muted">Adjust grams or fix a name — totals update instantly. Tap the photo to add anything that was missed.</p>
+          </div>
           <div id="candidates" class="candidates"></div>
           <div class="correction">
             <input id="search-input" type="search" placeholder="Wrong? Search any food…" autocomplete="off" />

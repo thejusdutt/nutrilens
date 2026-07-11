@@ -126,6 +126,17 @@ main { max-width: 1080px; margin: 0 auto; padding: clamp(12px, 3vw, 24px); }
 .candidate .pct { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
 .candidate b { font-weight: 600; }
 
+/* Whole-plate meal builder */
+#btn-whole-plate { margin: 0 0 12px; }
+.meal-items { display: flex; flex-direction: column; gap: 8px; }
+.meal-item { display: grid; grid-template-columns: 26px minmax(0,1fr) 88px auto auto; gap: 8px; align-items: center; }
+.meal-item .dot { width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.meal-item select.mi-food { min-width: 0; padding: 6px 8px; font-size: 13.5px; }
+.meal-item .mi-grams { width: 88px; padding: 6px 8px; font-variant-numeric: tabular-nums; }
+.meal-item .mi-kcal { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; font-size: 13.5px; }
+.meal-item .mi-del { border: none; background: none; color: var(--muted); padding: 2px 6px; }
+@media (max-width: 480px) { .meal-item { grid-template-columns: 22px minmax(0,1fr) 74px auto auto; } }
+
 .correction { position: relative; margin-bottom: 12px; }
 .correction input { width: 100%; }
 .search-results { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); max-height: 260px; overflow: auto; }
