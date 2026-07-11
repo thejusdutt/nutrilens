@@ -12,7 +12,7 @@ app's own origin and cached in Cache Storage.
 | Architecture | Swin-Base transformer, 224×224 input |
 | Training | Fine-tuned on Food-101 (75,750 train images, 101 dishes) |
 | Accuracy | 92.1% top-1 self-reported; 91.4% verified by HF eval; see ACCURACY_REPORT for our measurement of the shipped int8 file |
-| Shipped file | `onnx/model_int8.onnx`, 93 MB (q4f16 52.7 MB also fetched for A/B eval) |
+| Shipped file | `onnx/model_int8.onnx`, 93 MB (q4f16 variant unusable: ORT 1.27 fp16-fusion load bug) |
 | Preprocessing | bicubic resize 224², rescale 1/255, ImageNet mean/std (`resizeBicubic` in @nutrilens/image-preprocess for training parity) |
 | License | Apache-2.0 |
 

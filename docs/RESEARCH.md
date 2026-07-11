@@ -23,9 +23,10 @@ reasoning behind every major decision. Date of research: 2026-07-10.
 | MediaPipe | rejected | No food-specific models; classification limited to generic ImageNet-style categories. |
 | WebNN | rejected (for now) | Still behind flags in most browsers in 2026; ORT-Web can adopt it later transparently. |
 
-Decision: **onnxruntime-web** at runtime (WebGPU with automatic WASM
-fallback), **onnxruntime-node** in the evaluation harness, behind a thin
-runtime adapter so every library is isomorphic.
+Decision: **onnxruntime-web** at runtime (multi-threaded SIMD WASM by
+default; WebGPU opt-in — see §9 note on quantized models), **onnxruntime-node**
+in the evaluation harness, behind a thin runtime adapter so every library is
+isomorphic.
 
 ## 3. Food classification model
 
@@ -42,10 +43,13 @@ Candidates surveyed (all fine-tuned on Food-101 unless noted):
 
 Decision: **Swin-Base fine-tuned on Food-101** — highest verified accuracy
 with a ready-made, officially quantized ONNX export under Apache-2.0.
-We ship `model_int8.onnx` (93 MB) by default; int8 quantization of
-Swin typically costs <0.5pt top-1. The q4f16 variant is also fetched so the
-evaluation harness can quantify the accuracy/size trade-off empirically
-(see ACCURACY_REPORT.md).
+We ship `model_int8.onnx` (93 MB): measured 90.2% top-1 on our validation
+subsample (int8 costs ~1–2 pt vs the fp32 reference — acceptable for a 4×
+size cut; note int8 is safe for *classifiers*, unlike CLIP embedding towers,
+see §4). The smaller q4f16 variant (52.7 MB) was evaluated but **fails to
+load under ONNX Runtime 1.27** (fp16 SimplifiedLayerNormFusion graph bug —
+the same bug hit the MobileCLIP-S2 fp16 *text* tower; the S2 fp16 *vision*
+tower is unaffected). Re-test on future ORT releases.
 
 ### Why not detection-first (YOLO etc.)?
 
@@ -117,7 +121,7 @@ Fusion strategy (implemented in `@nutrilens/food-recognition`):
 | **SlimSAM-77 (uniform)** | **chosen** — promptable SAM distillation, quantized ONNX 12.2 MB encoder + 4.9 MB decoder, MIT-licensed, proven in-browser via transformers.js demos. |
 | MobileSAM | comparable, slightly larger; SlimSAM has official Xenova ONNX export. |
 | DeepLabV3 (TFJS) | closed 21-class Pascal set; useless for food. |
-| Custom GrabCut/saliency in JS | kept as zero-model fallback in `@nutrilens/food-segmentation` for very low-end devices, but measurably worse. |
+| Custom GrabCut/saliency in JS | rejected — prototyping showed it markedly worse on textured food; instead the app falls back to FNDDS serving priors when segmentation is unavailable. |
 
 Segmentation is prompted with the image center (single-dish flow) or the
 user's tap (multi-dish flow); the mask feeds portion estimation.
