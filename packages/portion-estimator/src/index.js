@@ -53,7 +53,9 @@ export class PortionEstimator {
    * Estimate the mass of a segmented food region.
    *
    * @param {Object} p
-   * @param {number} p.areaPx        Foreground pixel count of the food mask.
+   * @param {number} p.areaPx        Foreground pixel count of the food mask
+   *                                 (use {@link maskAreaInsideEllipse} so pixels
+   *                                 outside the plate rim don't get priced as food).
    * @param {number} p.imageWidth
    * @param {number} p.imageHeight
    * @param {import('./plate-detector.js').PlateEllipse|null} [p.plate]
@@ -64,17 +66,29 @@ export class PortionEstimator {
     const heightCm = prior.heightCm ?? 2.2;
     const densityGml = prior.densityGml ?? 0.8;
     const servingG = prior.servingG ?? 300;
-    const spread = prior.spread ?? 1.6;
+    const spread = prior.spread ?? 1.55;
 
     if (plate && plate.confidence > 0.3 && areaPx > 0) {
       // Areas on the plate plane scale by the product of the two axis scales.
       const cmPerPxMajor = this.plateDiameterCm / (2 * plate.rx);
       const cmPerPxMinor = this.plateDiameterCm / (2 * plate.ry);
-      const areaCm2 = areaPx * cmPerPxMajor * cmPerPxMinor;
-      let grams = areaCm2 * heightCm * densityGml;
-      grams = this._clamp(grams);
-      // Widen the band when the plate fit itself is shaky.
-      const s = spread * (plate.confidence > 0.6 ? 1 : 1.25);
+      let areaCm2 = areaPx * cmPerPxMajor * cmPerPxMinor;
+      // Food on a plate cannot exceed the plate's own surface: a mask that
+      // "measures" more than that is segmentation bleed or a bad ellipse fit.
+      const plateAreaCm2 = Math.PI * (this.plateDiameterCm / 2) ** 2;
+      areaCm2 = Math.min(areaCm2, 0.9 * plateAreaCm2);
+
+      const gArea = this._clamp(areaCm2 * heightCm * densityGml);
+      // Shrinkage toward the population serving prior (log-domain blend).
+      // The pure geometric model is unbiased in area but noisy in the height×
+      // density assumption; USDA serving statistics are biased toward the mean
+      // but low-variance. Their log-linear combination has lower expected
+      // error than either alone — and stops one bad mask from claiming a
+      // 3,000-kcal plate. Weight follows how much we trust the geometry.
+      const w = plate.confidence > 0.6 ? 0.65 : 0.5;
+      const grams = this._clamp(Math.exp(w * Math.log(gArea) + (1 - w) * Math.log(servingG)));
+
+      const s = spread * (plate.confidence > 0.6 ? 1 : 1.2);
       return {
         grams: Math.round(grams),
         low: Math.round(this._clamp(grams / s)),
@@ -99,4 +113,33 @@ export class PortionEstimator {
 
   /** @private */
   _clamp(g) { return Math.min(this.maxGrams, Math.max(this.minGrams, g)); }
+}
+
+/**
+ * Count mask pixels that lie inside the plate ellipse (with a small margin).
+ * Food sits on the plate; mask area outside the rim is background bleed
+ * (table, shadows, napkins) and must not be priced as food.
+ *
+ * @param {Uint8Array} mask 0/1, length = width*height
+ * @param {number} width
+ * @param {number} height
+ * @param {import('./plate-detector.js').PlateEllipse} plate
+ * @param {number} [margin=1.05] Allowed normalized radius (1 = exactly the rim).
+ * @returns {number} pixel count
+ */
+export function maskAreaInsideEllipse(mask, width, height, plate, margin = 1.05) {
+  const m2 = margin * margin;
+  let count = 0;
+  for (let y = 0; y < height; y++) {
+    const dy = (y - plate.cy) / plate.ry;
+    const dy2 = dy * dy;
+    if (dy2 > m2) continue;
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      if (!mask[row + x]) continue;
+      const dx = (x - plate.cx) / plate.rx;
+      if (dx * dx + dy2 <= m2) count++;
+    }
+  }
+  return count;
 }

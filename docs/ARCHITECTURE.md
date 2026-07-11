@@ -63,10 +63,15 @@ Segmentation → Portion**, because:
 ## Portion estimation
 
 ```
-SlimSAM mask (px²) ── plate ellipse (rx, ry px; ⌀ 26 cm prior) ──►
+SlimSAM mask ∩ plate ellipse (px²) ── ⌀ 26 cm prior ──►
 cm²/px² = (D/2rx)·(D/2ry)   (product of axis scales ⇒ foreshortening handled)
-grams = area_cm² × height_prior(food) × density_prior(food)
+g_geom = min(area_cm², 0.9·plate_area) × height_prior × density_prior
+grams  = exp( w·ln g_geom + (1−w)·ln serving_prior ),  w = 0.65 (0.5 if shaky fit)
 ```
+
+The log-domain shrinkage toward the USDA serving statistic is what keeps the
+estimator honest: geometry carries the photo signal, the prior bounds the
+noise of the height×density assumption.
 
 - Priors per food (pile height cm, bulk density g/cm³, typical serving g) live
   in `tools/vocabulary.mjs` and ship inside nutrition-db.json.
