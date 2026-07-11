@@ -8,11 +8,23 @@ airplane mode.
 
 ![pipeline](docs/img/pipeline.svg)
 
+## Measured accuracy (see eval/results/ACCURACY_REPORT.md)
+
+| | Food-101 val subsample (2,523 imgs) | Extended Indian set (259 imgs) |
+|---|---|---|
+| **Fused top-1 (shipped)** | **90.4%** | **82.6%** |
+| Fused top-5 | 98.4% | 96.9% |
+| False "not food" rate | 0.1% | 0.0% |
+| Calibration (ECE) | 0.016 | – |
+
+Fusion beats the fine-tuned classifier alone (90.2%) on its own turf *while*
+recognizing hundreds of foods outside its training set.
+
 ## Highlights
 
-- **Recognition** — Swin-Base fine-tuned on Food-101 (92% top-1) **fused** with
-  a MobileCLIP-S2 open-vocabulary head (211-food vocabulary incl. Indian, East
-  Asian, fruits, breakfast foods) and non-food rejection.
+- **Recognition** — Swin-Base fine-tuned on Food-101 (90.2% measured top-1)
+  **fused** with a MobileCLIP-S2 open-vocabulary head (211-food vocabulary
+  incl. Indian, East Asian, fruits, breakfast foods) and non-food rejection.
 - **Portion estimation** — SlimSAM segmentation + a custom RANSAC plate-ellipse
   detector turn mask area into grams with explicit uncertainty; always
   user-adjustable (slider + FNDDS household measures).
@@ -74,6 +86,7 @@ docs/                  research, architecture, models, datasets, testing, compat
 ```bash
 npm test                   # 39 unit tests across all packages (vitest)
 node eval/browser-smoke.mjs   # end-to-end PWA test in headless Chrome
+node eval/offline-test.mjs    # proves full analysis works with the network disabled
 npm run eval:fetch         # Food-101 val subsample (25/class) + Indian food set
 npm run eval               # run both heads over every image (Node, same code as browser)
 npm run eval:report        # ACCURACY_REPORT.md + PERFORMANCE_REPORT.md + fusion sweep

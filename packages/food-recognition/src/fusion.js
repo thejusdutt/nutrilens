@@ -26,8 +26,10 @@ export class FusionScorer {
    *   with the zero-shot embedding matrix rows** (probes included).
    * @param {Object} [opts]
    * @param {number} [opts.wSwin=0.72]        Base weight of the closed-set head for in-set labels.
-   * @param {number} [opts.oovBias=-0.35]     Additive log-score bias for OOV labels (compensates the
-   *                                          closed-set head never voting for them).
+   * @param {number} [opts.oovBias=-1.0]      Additive log-score bias for OOV labels (compensates the
+   *                                          closed-set head never voting for them). Defaults fitted
+   *                                          on the eval sweep (see eval/make-report.mjs): 90.4%
+   *                                          Food-101 / 82.6% extended-set top-1.
    * @param {number} [opts.probeMass=0.42]    If total zero-shot probability on non-food probes exceeds
    *                                          this, the image is declared non-food.
    * @param {number} [opts.minConfidence=0.10] Below this fused top-1 prob the result is flagged uncertain.
@@ -35,7 +37,7 @@ export class FusionScorer {
   constructor(vocab, opts = {}) {
     this.vocab = vocab;
     this.wSwin = opts.wSwin ?? 0.72;
-    this.oovBias = opts.oovBias ?? -0.35;
+    this.oovBias = opts.oovBias ?? -1.0;
     this.probeMass = opts.probeMass ?? 0.42;
     this.minConfidence = opts.minConfidence ?? 0.10;
     this.foodIdx = [];

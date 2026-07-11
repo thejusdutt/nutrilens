@@ -43,8 +43,14 @@ them at scale.
 5. saves to history and asserts the history view renders,
 6. captures `eval/results/browser-smoke.png`.
 
-Verified result on the beignets fixture: top-1 "Beignets" (55% fused), plate
+Verified result on the beignets fixture: top-1 "Beignets" (100% fused), plate
 detected (`plate-scaled · ±60%`), 25 micronutrient rows, SW active — PASS.
+
+`node eval/offline-test.mjs` additionally proves the offline-first claim:
+prefetch models online → force the browser fully offline (CDP emulation) →
+reload → app shell serves from cache → a complete photo analysis
+(recognition + segmentation + portion + nutrition) succeeds with zero
+network. Verified: PASS ("Beignets, 2978 kcal" offline).
 
 ## 4. Statistical evaluation — "how accurate is it, really?"
 

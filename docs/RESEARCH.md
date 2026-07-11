@@ -188,3 +188,18 @@ gzipped; loaded into IndexedDB on first run.
 Comparable to a small mobile app; cached via Cache Storage + streamed
 progress UI on first run. Models lazy-load: classification first, SlimSAM
 only when portion estimation is requested.
+
+
+## 10. Outcome (closing the loop)
+
+Final measured results of the shipped configuration (full methodology in
+docs/TESTING.md, generated reports in eval/results/):
+
+- Fused top-1: **90.4%** on the Food-101 validation subsample — above the
+  closed-set head alone (90.2%) — and **82.6%** on the extended Indian-food
+  set that Food-101 cannot represent at all.
+- Non-food rejection false-positive rate 0.1%; ECE 0.016 (well calibrated).
+- Two model decisions were reversed by evaluation (int8 CLIP → fp16; S0 → S2),
+  which is exactly the role the harness was built to play. Remaining known
+  gaps: naan/chapati confusion (60–74% per-class), visually ambiguous meats
+  (steak/pork-chop/filet cluster) — inherent Food-101 label noise territory.
