@@ -539,6 +539,8 @@ async function analyzeWholePlate() {
   const btn = $('btn-whole-plate');
   btn.disabled = true;
   try {
+    setSpinner('Loading models…');
+    await Promise.all([ensureWorker(), dataReady]); // button can be pressed before first-load finishes
     setSpinner('Finding everything on the plate…');
     const m = await rpc({
       type: 'segment-auto',
