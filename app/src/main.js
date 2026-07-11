@@ -1,7 +1,7 @@
 /** NutriLens app shell: capture → recognize → portion → nutrition → history. */
 import { toRawImage, crop } from '@nutrilens/image-preprocess';
 import { overlayMask } from '@nutrilens/food-segmentation';
-import { PortionEstimator } from '@nutrilens/portion-estimator';
+import { PortionEstimator, maskAreaInsideEllipse } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
 import { saveMeal, listMeals, listMealsByDate, deleteMeal, getDay, setDay, dateKey } from './db.js';
 import { getProfile, setProfile, dailyGoal, suggestSlot, SLOTS, SLOT_LABEL, ACTIVITY, RATE } from './goals.js';
@@ -286,7 +286,7 @@ async function runPortionEstimation(point) {
     }
     const estimator = new PortionEstimator({ plateDiameterCm: Number(localStorage.getItem('plateCm') ?? 26) });
     state.portion = estimator.estimate({
-      areaPx: state.seg.areaPx,
+      areaPx: foodAreaPx(state.seg.mask, raw.width, raw.height, state.seg.areaPx),
       imageWidth: raw.width,
       imageHeight: raw.height,
       plate: state.plate,
@@ -361,7 +361,8 @@ async function addMealItemAt(x, y) {
     if (!candidates.length) return;
     const estimator = new PortionEstimator({ plateDiameterCm: Number(localStorage.getItem('plateCm') ?? 26) });
     const est = estimator.estimate({
-      areaPx: region.areaPx, imageWidth: state.raw.width, imageHeight: state.raw.height,
+      areaPx: foodAreaPx(region.mask, state.raw.width, state.raw.height, region.areaPx),
+      imageWidth: state.raw.width, imageHeight: state.raw.height,
       plate: state.plate, prior: engine.food(candidates[0].id).prior,
     });
     state.meal.items.push({ id: candidates[0].id, grams: est.grams, prob: candidates[0].prob, candidates, region });
@@ -414,6 +415,14 @@ $('search-input').addEventListener('input', (e) => {
 // Portion + nutrition rendering
 // ---------------------------------------------------------------------------
 function currentGrams() { return state.userGrams ?? state.portion?.grams ?? 100; }
+
+/** Food pixels that actually lie on the plate — bleed outside the rim is background. */
+function foodAreaPx(mask, w, h, fallbackAreaPx) {
+  if (state.plate && state.plate.confidence > 0.3 && mask) {
+    return maskAreaInsideEllipse(mask, w, h, state.plate);
+  }
+  return fallbackAreaPx;
+}
 
 function renderPortion() {
   const card = $('portion-card');
@@ -569,7 +578,7 @@ async function analyzeWholePlate() {
       if (!result.isFood || !candidates.length || candidates[0].prob < 0.18) continue; // plate rim, cutlery, shadows
       const food = engine.food(candidates[0].id);
       const est = estimator.estimate({
-        areaPx: region.areaPx,
+        areaPx: foodAreaPx(region.mask, state.raw.width, state.raw.height, region.areaPx),
         imageWidth: state.raw.width,
         imageHeight: state.raw.height,
         plate: state.plate,
@@ -656,7 +665,8 @@ function renderMeal() {
         // Re-derive grams from the same region area with the new food's priors.
         const estimator = new PortionEstimator({ plateDiameterCm: Number(localStorage.getItem('plateCm') ?? 26) });
         it.grams = estimator.estimate({
-          areaPx: it.region.areaPx, imageWidth: state.raw.width, imageHeight: state.raw.height,
+          areaPx: foodAreaPx(it.region.mask, state.raw.width, state.raw.height, it.region.areaPx),
+          imageWidth: state.raw.width, imageHeight: state.raw.height,
           plate: state.plate, prior: engine.food(it.id).prior,
         }).grams;
       } else {
