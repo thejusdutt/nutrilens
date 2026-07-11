@@ -17,7 +17,6 @@ get () { # get <dest> <url>
 # --- Swin-Food101 classifier (primary, 92.1% top-1 on Food-101) ---
 SWIN=$HF/onnx-community/swin-finetuned-food101-ONNX/resolve/main
 get app/public/models/swin-food101/onnx/model_int8.onnx   "$SWIN/onnx/model_int8.onnx"
-get app/public/models/swin-food101/onnx/model_q4f16.onnx  "$SWIN/onnx/model_q4f16.onnx"
 get app/public/models/swin-food101/config.json            "$SWIN/config.json"
 get app/public/models/swin-food101/preprocessor_config.json "$SWIN/preprocessor_config.json"
 
