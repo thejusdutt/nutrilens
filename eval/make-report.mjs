@@ -91,7 +91,7 @@ for (const wSwin of [0.55, 0.65, 0.72, 0.8, 0.88]) {
 }
 sweep.sort((x, y) => y.balanced - x.balanced);
 const best = sweep[0];
-const DEFAULTS = { wSwin: 0.72, oovBias: -0.35 };
+const DEFAULTS = { wSwin: 0.72, oovBias: -1.0 }; // keep in sync with FusionScorer defaults
 
 // --------------------------- per-class breakdown ---------------------------
 function perClass(rows, params) {
