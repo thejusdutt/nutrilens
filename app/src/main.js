@@ -75,6 +75,9 @@ function ensureWorker() {
         resolve(m.backend);
       } else if (m.type === 'sam-encoding') {
         setSpinner('Measuring portion…');
+      } else if (m.type === 'auto-progress') {
+        // interim notification, not the RPC result — must not resolve pending
+        setSpinner(`Scanning the plate… ${m.done}/${m.total}`);
       } else if (m.type === 'error' && m.id == null) {
         reject(new Error(m.message));
       } else if (pending.has(m.id)) {
@@ -180,6 +183,7 @@ const state = {
   portion: null,      // { grams, low, high, method }
   userGrams: null,    // manual override
   imageEncoded: false,
+  meal: null,         // whole-plate mode: { items: [{id, grams, prob, candidates, region}] }
 };
 
 async function startAnalysis(blob) {
@@ -221,6 +225,11 @@ function resetResultUI() {
   $('nonfood-warning').hidden = true;
   $('search-results').hidden = true;
   $('search-input').value = '';
+  $('meal-card').hidden = true;
+  $('btn-whole-plate').disabled = false;
+  $('btn-whole-plate').hidden = false;
+  $('btn-whole-plate').textContent = '🍱 Analyze whole plate (all items)';
+  state.meal = null;
   const octx = $('overlay-canvas').getContext('2d');
   octx.clearRect(0, 0, octx.canvas.width, octx.canvas.height);
 }
@@ -309,12 +318,14 @@ function drawOverlay() {
   }
 }
 
-// Tap-to-refine: crop around the tap for re-classification + point-prompted mask.
+// Tap-to-refine: crop around the tap for re-classification + point-prompted
+// mask. In whole-plate mode a tap ADDS the item under the finger to the meal.
 $('overlay-canvas').addEventListener('click', async (e) => {
   if (!state.raw) return;
   const rect = e.currentTarget.getBoundingClientRect();
   const x = (e.clientX - rect.left) / rect.width * state.raw.width;
   const y = (e.clientY - rect.top) / rect.height * state.raw.height;
+  if (state.meal) { await addMealItemAt(x, y); return; }
   setSpinner('Analyzing that spot…');
   try {
     const side = Math.round(Math.min(state.raw.width, state.raw.height) * 0.6);
@@ -333,6 +344,34 @@ $('overlay-canvas').addEventListener('click', async (e) => {
   }
 });
 
+/** Whole-plate mode: segment + classify the tapped spot and add it as an item. */
+async function addMealItemAt(x, y) {
+  setSpinner('Adding that item…');
+  try {
+    const m = await rpc({ type: 'segment', points: [{ x, y }] }); // image already encoded
+    const region = { mask: new Uint8Array(m.mask), areaPx: m.areaPx, bbox: m.bbox, iou: m.iou, point: { x, y } };
+    if (!region.bbox) return;
+    const b = region.bbox;
+    const pad = Math.round(Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.15);
+    const cropped = crop(state.raw, b.x0 - pad, b.y0 - pad, (b.x1 - b.x0) + 2 * pad, (b.y1 - b.y0) + 2 * pad);
+    const { result } = await rpc({ type: 'recognize', image: rawToMsg(cropped) });
+    const candidates = result.top.filter((t) => engine.food(t.id));
+    if (!candidates.length) return;
+    const estimator = new PortionEstimator({ plateDiameterCm: Number(localStorage.getItem('plateCm') ?? 26) });
+    const est = estimator.estimate({
+      areaPx: region.areaPx, imageWidth: state.raw.width, imageHeight: state.raw.height,
+      plate: state.plate, prior: engine.food(candidates[0].id).prior,
+    });
+    state.meal.items.push({ id: candidates[0].id, grams: est.grams, prob: candidates[0].prob, candidates, region });
+    drawMealOverlay();
+    renderMeal();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setSpinner(null);
+  }
+}
+
 // Manual correction search
 $('search-input').addEventListener('input', (e) => {
   const q = e.target.value.trim();
@@ -347,8 +386,22 @@ $('search-input').addEventListener('input', (e) => {
     b.onclick = () => {
       box.hidden = true;
       $('search-input').value = '';
-      state.candidates = [{ id: h.id, name: h.name, prob: 1, sources: { manual: true } }, ...state.candidates.filter((c) => c.id !== h.id)];
       $('nonfood-warning').hidden = true;
+      if (state.meal) {
+        // Whole-plate mode: add the searched food as a typical serving.
+        const food = engine.food(h.id);
+        state.meal.items.push({
+          id: h.id,
+          grams: food.prior?.servingG ?? 100,
+          prob: 1,
+          candidates: [{ id: h.id, name: h.name, prob: 1 }],
+          region: null, // no mask — added manually
+        });
+        drawMealOverlay();
+        renderMeal();
+        return;
+      }
+      state.candidates = [{ id: h.id, name: h.name, prob: 1, sources: { manual: true } }, ...state.candidates.filter((c) => c.id !== h.id)];
       selectFood(h.id);
     };
     box.append(b);
@@ -411,35 +464,21 @@ const MACRO_STYLE = [
   ['protein', '#4f8ef7'], ['carbs', '#e8a13c'], ['fat', '#e05d7b'], ['fiber', '#34a86c'], ['sugars', '#b06fd8'],
 ];
 
-function renderNutrition() {
-  const id = state.selectedId;
-  if (!id) return;
-  const grams = currentGrams();
-  const manual = state.userGrams != null;
-  const p = state.portion ?? { grams, low: grams, high: grams };
-  const portionRange = manual
-    ? { grams, low: grams, high: grams }
-    : { grams: p.grams, low: p.low, high: p.high };
-  const r = engine.forPortionRange(id, portionRange);
-  if (!r) return;
+/** Fill the nutrition card from a nutrient table (shared by single + meal modes). */
+function fillNutritionCard(nutrients, { kcalRange = '', confText, confWarn = false } = {}) {
   $('nutrition-card').hidden = false;
-
-  const conf = state.candidates.find((c) => c.id === id)?.prob ?? 1;
   const tag = $('confidence-tag');
-  const level = conf >= 0.6 ? 'high' : conf >= 0.3 ? 'medium' : 'low';
-  tag.textContent = state.candidates[0]?.sources?.manual ? 'manual' : `${level} confidence · ${(conf * 100).toFixed(0)}%`;
-  tag.className = level === 'low' ? 'tag warn' : 'tag';
+  tag.textContent = confText ?? '';
+  tag.className = confWarn ? 'tag warn' : 'tag';
 
-  const kcal = r.nutrients.kcal;
+  const kcal = nutrients.kcal;
   $('kcal-value').textContent = kcal ? Math.round(kcal.value) : '–';
-  $('kcal-range').textContent = kcal && !manual && kcal.low !== kcal.high
-    ? `(${Math.round(kcal.low)}–${Math.round(kcal.high)})`
-    : '';
+  $('kcal-range').textContent = kcalRange;
 
   const bars = $('macro-bars');
   bars.innerHTML = '';
   for (const [key, color] of MACRO_STYLE) {
-    const n = r.nutrients[key];
+    const n = nutrients[key];
     if (!n) continue;
     const pct = n.pctDV != null ? Math.min(100, n.pctDV) : Math.min(100, n.value);
     const row = document.createElement('div');
@@ -453,7 +492,7 @@ function renderNutrition() {
   const micro = $('micro-table');
   micro.innerHTML = '';
   const macroKeys = new Set(['kcal', ...MACRO_STYLE.map(([k]) => k)]);
-  for (const [key, n] of Object.entries(r.nutrients)) {
+  for (const [key, n] of Object.entries(nutrients)) {
     if (macroKeys.has(key)) continue;
     const row = document.createElement('div');
     row.className = 'micro-row';
@@ -463,23 +502,239 @@ function renderNutrition() {
   }
 }
 
+function renderNutrition() {
+  if (state.meal) { renderMealNutrition(); return; }
+  const id = state.selectedId;
+  if (!id) return;
+  const grams = currentGrams();
+  const manual = state.userGrams != null;
+  const p = state.portion ?? { grams, low: grams, high: grams };
+  const portionRange = manual
+    ? { grams, low: grams, high: grams }
+    : { grams: p.grams, low: p.low, high: p.high };
+  const r = engine.forPortionRange(id, portionRange);
+  if (!r) return;
+
+  const conf = state.candidates.find((c) => c.id === id)?.prob ?? 1;
+  const level = conf >= 0.6 ? 'high' : conf >= 0.3 ? 'medium' : 'low';
+  const kcal = r.nutrients.kcal;
+  fillNutritionCard(r.nutrients, {
+    kcalRange: kcal && !manual && kcal.low !== kcal.high ? `(${Math.round(kcal.low)}–${Math.round(kcal.high)})` : '',
+    confText: state.candidates[0]?.sources?.manual ? 'manual' : `${level} confidence · ${(conf * 100).toFixed(0)}%`,
+    confWarn: level === 'low',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Whole-plate mode: detect every item, per-item portions, meal totals
+// ---------------------------------------------------------------------------
+const REGION_COLORS = [
+  [46, 204, 113], [79, 142, 247], [232, 161, 60], [224, 93, 123], [176, 111, 216], [52, 199, 190],
+];
+
+$('btn-whole-plate').onclick = () => analyzeWholePlate();
+
+async function analyzeWholePlate() {
+  if (!state.raw) return;
+  const btn = $('btn-whole-plate');
+  btn.disabled = true;
+  try {
+    setSpinner('Finding everything on the plate…');
+    const m = await rpc({
+      type: 'segment-auto',
+      image: state.imageEncoded ? undefined : rawToMsg(state.raw),
+      detectPlate: !state.imageEncoded,
+      plate: state.plate,
+      width: state.raw.width,
+      height: state.raw.height,
+    });
+    state.imageEncoded = true;
+    if (m.plate) state.plate = m.plate;
+
+    const estimator = new PortionEstimator({ plateDiameterCm: Number(localStorage.getItem('plateCm') ?? 26) });
+    const items = [];
+    for (let i = 0; i < m.regions.length; i++) {
+      const region = { ...m.regions[i], mask: new Uint8Array(m.regions[i].mask) };
+      setSpinner(`Identifying item ${i + 1} of ${m.regions.length}…`);
+      // Classify a padded crop around the region so context is preserved.
+      const b = region.bbox;
+      const pad = Math.round(Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.15);
+      const cropped = crop(state.raw, b.x0 - pad, b.y0 - pad, (b.x1 - b.x0) + 2 * pad, (b.y1 - b.y0) + 2 * pad);
+      const { result } = await rpc({ type: 'recognize', image: rawToMsg(cropped) });
+      const candidates = result.top.filter((t) => engine.food(t.id));
+      if (!result.isFood || !candidates.length || candidates[0].prob < 0.18) continue; // plate rim, cutlery, shadows
+      const food = engine.food(candidates[0].id);
+      const est = estimator.estimate({
+        areaPx: region.areaPx,
+        imageWidth: state.raw.width,
+        imageHeight: state.raw.height,
+        plate: state.plate,
+        prior: food.prior,
+      });
+      items.push({ id: candidates[0].id, grams: est.grams, prob: candidates[0].prob, candidates, region });
+    }
+    if (!items.length) {
+      showError('Couldn’t isolate separate items — tap each food in the photo instead.');
+      btn.disabled = false;
+      return;
+    }
+    state.meal = { items };
+    $('candidates').innerHTML = '';
+    $('portion-card').hidden = true;
+    $('nonfood-warning').hidden = true;
+    btn.hidden = true;
+    drawMealOverlay();
+    renderMeal();
+  } catch (err) {
+    console.error(err);
+    showError(`Whole-plate analysis failed: ${err.message}`);
+    btn.disabled = false;
+  } finally {
+    setSpinner(null);
+  }
+}
+
+function drawMealOverlay() {
+  const { raw, meal } = state;
+  const view = { data: new Uint8ClampedArray(raw.data), width: raw.width, height: raw.height };
+  meal.items.forEach((it, i) => { if (it.region) overlayMask(it.region.mask, view, REGION_COLORS[i % REGION_COLORS.length], 0.38); });
+  const octx = $('overlay-canvas').getContext('2d');
+  octx.putImageData(new ImageData(view.data, raw.width, raw.height), 0, 0);
+  const fontPx = Math.max(16, Math.round(raw.width / 40));
+  octx.font = `800 ${fontPx}px system-ui`;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  meal.items.forEach((it, i) => {
+    if (!it.region?.bbox) return; // manually-added items have no mask
+    const b = it.region.bbox;
+    const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    const [r, g, bl] = REGION_COLORS[i % REGION_COLORS.length];
+    octx.beginPath();
+    octx.arc(cx, cy, fontPx * 0.85, 0, Math.PI * 2);
+    octx.fillStyle = `rgb(${r},${g},${bl})`;
+    octx.fill();
+    octx.fillStyle = '#fff';
+    octx.fillText(String(i + 1), cx, cy + 1);
+  });
+}
+
+function renderMeal() {
+  const meal = state.meal;
+  $('meal-card').hidden = false;
+  $('meal-count').textContent = `${meal.items.length} item${meal.items.length > 1 ? 's' : ''}`;
+  const box = $('meal-items');
+  box.innerHTML = '';
+  meal.items.forEach((it, i) => {
+    const row = document.createElement('div');
+    row.className = 'meal-item';
+    const [r, g, b] = REGION_COLORS[i % REGION_COLORS.length];
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = `rgb(${r},${g},${b})`;
+    dot.textContent = i + 1;
+
+    const sel = document.createElement('select');
+    sel.className = 'mi-food';
+    sel.title = `${(it.prob * 100).toFixed(0)}% confidence`;
+    const seen = new Set();
+    for (const c of [{ id: it.id }, ...it.candidates]) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = engine.food(c.id).name;
+      sel.append(o);
+    }
+    sel.value = it.id;
+    sel.onchange = () => {
+      it.id = sel.value;
+      if (it.region) {
+        // Re-derive grams from the same region area with the new food's priors.
+        const estimator = new PortionEstimator({ plateDiameterCm: Number(localStorage.getItem('plateCm') ?? 26) });
+        it.grams = estimator.estimate({
+          areaPx: it.region.areaPx, imageWidth: state.raw.width, imageHeight: state.raw.height,
+          plate: state.plate, prior: engine.food(it.id).prior,
+        }).grams;
+      } else {
+        it.grams = engine.food(it.id).prior?.servingG ?? 100;
+      }
+      renderMeal();
+    };
+
+    const grams = document.createElement('input');
+    grams.type = 'number';
+    grams.className = 'mi-grams';
+    grams.min = 5; grams.max = 1500; grams.step = 5;
+    grams.value = it.grams;
+    grams.setAttribute('aria-label', 'grams');
+    grams.oninput = () => {
+      it.grams = Math.max(1, Number(grams.value) || 0);
+      renderMealNutrition();
+      kcalEl.textContent = itemKcal(it);
+    };
+
+    const kcalEl = document.createElement('span');
+    kcalEl.className = 'mi-kcal';
+    kcalEl.textContent = itemKcal(it);
+
+    const del = document.createElement('button');
+    del.className = 'mi-del';
+    del.title = 'Remove item';
+    del.textContent = '✕';
+    del.onclick = () => {
+      meal.items.splice(i, 1);
+      if (!meal.items.length) { resetResultUI(); drawPhoto(); return; }
+      drawMealOverlay();
+      renderMeal();
+    };
+
+    row.append(dot, sel, grams, kcalEl, del);
+    box.append(row);
+  });
+  renderMealNutrition();
+}
+
+const itemKcal = (it) => `${Math.round((engine.food(it.id).per100g.kcal ?? 0) * it.grams / 100)} kcal`;
+
+function renderMealNutrition() {
+  const meal = state.meal;
+  if (!meal?.items.length) return;
+  const totals = engine.aggregate(meal.items.map((it) => ({ id: it.id, grams: it.grams })));
+  fillNutritionCard(totals.nutrients, {
+    confText: `plate total · ${meal.items.length} item${meal.items.length > 1 ? 's' : ''}`,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Save + history
 // ---------------------------------------------------------------------------
 $('btn-save').onclick = async () => {
-  const id = state.selectedId;
-  const grams = currentGrams();
-  const r = engine.forPortion(id, grams);
   const thumb = await makeThumb(state.raw);
-  await saveMeal({
-    foodId: id,
-    foodName: r.name,
-    grams,
-    kcal: Math.round(r.nutrients.kcal?.value ?? 0),
-    nutrients: Object.fromEntries(Object.entries(r.nutrients).map(([k, n]) => [k, +n.value.toFixed(2)])),
-    thumb,
-    ts: Date.now(),
-  });
+  let entry;
+  if (state.meal) {
+    const items = state.meal.items.map((it) => ({ id: it.id, grams: it.grams }));
+    const totals = engine.aggregate(items);
+    entry = {
+      foodId: items[0].id,
+      foodName: totals.name,
+      grams: items.reduce((s, it) => s + it.grams, 0),
+      kcal: Math.round(totals.nutrients.kcal?.value ?? 0),
+      nutrients: Object.fromEntries(Object.entries(totals.nutrients).map(([k, n]) => [k, +n.value.toFixed(2)])),
+      items,
+    };
+  } else {
+    const id = state.selectedId;
+    const grams = currentGrams();
+    const r = engine.forPortion(id, grams);
+    entry = {
+      foodId: id,
+      foodName: r.name,
+      grams,
+      kcal: Math.round(r.nutrients.kcal?.value ?? 0),
+      nutrients: Object.fromEntries(Object.entries(r.nutrients).map(([k, n]) => [k, +n.value.toFixed(2)])),
+    };
+  }
+  await saveMeal({ ...entry, thumb, ts: Date.now() });
   $('btn-save').textContent = '✓ Saved';
   setTimeout(() => { $('btn-save').textContent = '💾 Save to history'; }, 1600);
   renderRecent();

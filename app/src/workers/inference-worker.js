@@ -195,6 +195,60 @@ async function loadSegmenter() {
 
 const asRaw = (m) => ({ data: new Uint8ClampedArray(m.data), width: m.width, height: m.height });
 
+/**
+ * Whole-plate discovery: prompt SAM with a grid of points, keep distinct,
+ * plausibly-food-sized masks. Regions are deduplicated by bbox overlap and
+ * containment so one dish doesn't appear five times.
+ * @returns [{ mask:Uint8Array, areaPx, areaFraction, iou, bbox, point }]
+ */
+async function autoSegment(seg, width, height, plate, onProgress) {
+  // Sample points inside the plate ellipse when we have one (that's where
+  // food lives); otherwise over the central 80% of the frame.
+  const pts = [];
+  const N = 4;
+  for (let gy = 0; gy < N; gy++) {
+    for (let gx = 0; gx < N; gx++) {
+      if (plate && plate.confidence > 0.3) {
+        const a = ((gx + 0.5) / N) * Math.PI * 2;
+        const r = Math.sqrt((gy + 0.5) / N) * 0.8;
+        pts.push({ x: plate.cx + r * plate.rx * Math.cos(a), y: plate.cy + r * plate.ry * Math.sin(a) });
+      } else {
+        pts.push({ x: width * (0.1 + 0.8 * (gx + 0.5) / N), y: height * (0.1 + 0.8 * (gy + 0.5) / N) });
+      }
+    }
+  }
+  const candidates = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (p.x < 0 || p.y < 0 || p.x >= width || p.y >= height) continue;
+    try {
+      const m = await seg.segment([p]);
+      if (m.bbox && m.iou > 0.7 && m.areaFraction > 0.008 && m.areaFraction < 0.45) {
+        candidates.push({ ...m, point: p });
+      }
+    } catch { /* skip failed prompts */ }
+    onProgress?.(i + 1, pts.length);
+  }
+  // Greedy dedupe, SMALLEST first: dishes sit on the plate, so a mask that
+  // contains an already-kept smaller mask is almost always the plate surface
+  // (or a merged multi-dish blob) — the small distinct regions must win.
+  candidates.sort((a, b) => a.areaPx - b.areaPx);
+  const kept = [];
+  for (const c of candidates) {
+    const dup = kept.some((k) => {
+      const ix = Math.max(0, Math.min(c.bbox.x1, k.bbox.x1) - Math.max(c.bbox.x0, k.bbox.x0));
+      const iy = Math.max(0, Math.min(c.bbox.y1, k.bbox.y1) - Math.max(c.bbox.y0, k.bbox.y0));
+      const inter = ix * iy;
+      const areaC = (c.bbox.x1 - c.bbox.x0) * (c.bbox.y1 - c.bbox.y0);
+      const areaK = (k.bbox.x1 - k.bbox.x0) * (k.bbox.y1 - k.bbox.y0);
+      return inter / Math.min(areaC, areaK) > 0.55; // overlap or containment
+    });
+    if (!dup) kept.push(c);
+    if (kept.length >= 6) break;
+  }
+  return kept;
+}
+
 self.onmessage = async (e) => {
   const msg = e.data;
   try {
@@ -217,6 +271,30 @@ self.onmessage = async (e) => {
       postMessage(
         { type: 'segmented', id: msg.id, mask: m.mask.buffer, width: m.width, height: m.height, areaPx: m.areaPx, areaFraction: m.areaFraction, iou: m.iou, bbox: m.bbox, plate },
         [m.mask.buffer],
+      );
+    } else if (msg.type === 'segment-auto') {
+      const seg = await loadSegmenter();
+      let plate = msg.plate ?? null;
+      let dims = { width: msg.width, height: msg.height };
+      if (msg.image) {
+        const raw = asRaw(msg.image);
+        dims = { width: raw.width, height: raw.height };
+        if (msg.detectPlate) plate = detectPlateEllipse(raw);
+        postMessage({ type: 'sam-encoding', id: msg.id });
+        await seg.setImage(raw);
+      }
+      const regions = await autoSegment(seg, dims.width, dims.height, plate,
+        (done, total) => postMessage({ type: 'auto-progress', id: msg.id, done, total }));
+      postMessage(
+        {
+          type: 'auto-segmented',
+          id: msg.id,
+          plate,
+          width: dims.width,
+          height: dims.height,
+          regions: regions.map((r) => ({ mask: r.mask.buffer, areaPx: r.areaPx, areaFraction: r.areaFraction, iou: r.iou, bbox: r.bbox, point: r.point })),
+        },
+        regions.map((r) => r.mask.buffer),
       );
     }
   } catch (err) {
