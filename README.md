@@ -40,6 +40,15 @@ recognizing hundreds of foods outside its training set.
   on the Food-101 validation split + an extended Indian-food set, running the
   *identical* library code in Node.
 
+**Live deployment:** https://nutrilens-e4o.pages.dev (Cloudflare Pages, free tier).
+Files over Pages' 25 MiB cap are chunked at build time by `tools/split-models.mjs`
+and reassembled client-side. Deploy updates with:
+
+```bash
+npm run build && node tools/split-models.mjs
+npx wrangler pages deploy app/dist --project-name nutrilens
+```
+
 ## Quick start
 
 ```bash

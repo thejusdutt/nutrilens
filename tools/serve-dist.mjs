@@ -28,7 +28,17 @@ createServer((req, res) => {
   let path = normalize(join(dir, decodeURIComponent(url.pathname))).replace(/[\\/]+$/, '');
   if (!path.startsWith(dir)) { res.writeHead(403).end(); return; }
   if (!existsSync(path) || statSync(path).isDirectory()) {
-    path = existsSync(join(path, 'index.html')) ? join(path, 'index.html') : join(dir, 'index.html');
+    const idx = join(path, 'index.html');
+    if (existsSync(idx)) {
+      path = idx;
+    } else if ((req.headers.accept ?? '').includes('text/html')) {
+      path = join(dir, 'index.html'); // SPA fallback for navigations only
+    } else {
+      // Assets must 404 honestly — the app's chunked-model logic depends on
+      // missing files not being answered with index.html + 200.
+      res.writeHead(404, { 'Content-Type': 'text/plain' }).end('not found');
+      return;
+    }
   }
   const stat = statSync(path);
   res.writeHead(200, {

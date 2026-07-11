@@ -588,15 +588,42 @@ function swPrefetch(onProgress) {
       for (let i = 0; i < PREFETCH_URLS.length; i++) {
         const url = PREFETCH_URLS[i];
         if (!(await cache.match(url))) {
+          // Manifest first, validated (mirrors the inference worker): hosts
+          // with per-file caps (Cloudflare Pages: 25 MiB) serve big models as
+          // .pNN parts, and SPA-mode hosts answer missing paths with
+          // index.html + 200, so 404-based detection is unreliable.
           // no-store: skip the HTTP disk cache (fails on ~100 MB bodies);
           // Cache Storage below is our persistence layer.
-          const res = await fetch(url, { cache: 'no-store' });
-          if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-          // Buffer before put(): streaming put can fail on large bodies
-          // served without Content-Length (compressed static hosts).
-          const body = await res.arrayBuffer();
+          let manifest = null;
+          try {
+            const mres = await fetch(`${url}.manifest.json`, { cache: 'no-store' });
+            if (mres.ok) {
+              const m = await mres.json();
+              if (Number.isInteger(m.parts) && Number.isInteger(m.size)) manifest = m;
+            }
+          } catch { /* whole-file host */ }
+          let body;
+          if (manifest) {
+            const buf = new Uint8Array(manifest.size);
+            let off = 0;
+            for (let p = 0; p < manifest.parts; p++) {
+              const pres = await fetch(`${url}.p${String(p).padStart(2, '0')}`, { cache: 'no-store' });
+              if (!pres.ok) throw new Error(`${url} part ${p}: HTTP ${pres.status}`);
+              const chunk = new Uint8Array(await pres.arrayBuffer());
+              buf.set(chunk, off);
+              off += chunk.length;
+              onProgress?.((i + off / manifest.size) / PREFETCH_URLS.length);
+            }
+            body = buf.buffer;
+          } else {
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+            // Buffer before put(): streaming put can fail on large bodies
+            // served without Content-Length (compressed static hosts).
+            body = await res.arrayBuffer();
+          }
           await cache.put(url, new Response(body, {
-            headers: { 'Content-Type': res.headers.get('Content-Type') ?? 'application/octet-stream' },
+            headers: { 'Content-Type': 'application/octet-stream' },
           }));
         }
         onProgress?.((i + 1) / PREFETCH_URLS.length);
