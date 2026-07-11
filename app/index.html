@@ -46,6 +46,15 @@
         <input id="file-input" type="file" accept="image/*" hidden />
       </div>
       <div id="model-status" class="model-status" hidden></div>
+      <div id="today-card" class="card today-card" role="button" tabindex="0" aria-label="Open today's diary">
+        <div class="today-head">
+          <h3>Today</h3>
+          <span id="today-date" class="muted"></span>
+        </div>
+        <div class="today-remaining"><b id="today-left">–</b> kcal remaining</div>
+        <div class="today-bar"><div id="today-fill" class="today-fill"></div></div>
+        <div id="today-macros" class="today-macros muted"></div>
+      </div>
       <section id="recent" class="recent" hidden>
         <h2>Recent</h2>
         <div id="recent-list" class="recent-list"></div>
@@ -121,24 +130,91 @@
               <summary>Vitamins & minerals</summary>
               <div id="micro-table" class="micro-table"></div>
             </details>
-            <button id="btn-save" class="primary wide">💾 Save to history</button>
+            <div class="save-row">
+              <select id="save-slot" aria-label="Meal">
+                <option value="breakfast">🌅 Breakfast</option>
+                <option value="lunch">☀️ Lunch</option>
+                <option value="dinner">🌙 Dinner</option>
+                <option value="snacks">🍿 Snacks</option>
+              </select>
+              <button id="btn-save" class="primary">💾 Add to diary</button>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- History -->
+    <!-- Diary -->
     <section id="view-history" class="view" hidden>
       <button id="btn-back-history" class="back-btn">← Back</button>
-      <h2>History</h2>
-      <div id="history-summary" class="muted"></div>
-      <div id="history-list" class="history-list"></div>
+      <div class="diary-date-nav">
+        <button id="diary-prev" class="icon-btn" aria-label="Previous day">‹</button>
+        <h2 id="diary-date">Today</h2>
+        <button id="diary-next" class="icon-btn" aria-label="Next day">›</button>
+      </div>
+      <div class="card remaining-card">
+        <div class="remaining-math">
+          <div><b id="rem-goal">–</b><span>Goal</span></div>
+          <span class="op">−</span>
+          <div><b id="rem-food">0</b><span>Food</span></div>
+          <span class="op">+</span>
+          <div><b id="rem-exercise">0</b><span>Exercise</span></div>
+          <span class="op">=</span>
+          <div class="rem-result"><b id="rem-left">–</b><span>Remaining</span></div>
+        </div>
+        <div class="day-macros" id="day-macros"></div>
+      </div>
+      <div id="diary-meals"></div>
+      <div class="card day-extras">
+        <div class="extra-row">
+          <span>💧 Water</span>
+          <div class="water-ctl">
+            <button id="water-minus" class="icon-btn">−</button>
+            <b id="water-count">0</b> glasses
+            <button id="water-plus" class="icon-btn">＋</button>
+          </div>
+        </div>
+        <div class="extra-row">
+          <label for="exercise-kcal">🏃 Exercise burned</label>
+          <div><input id="exercise-kcal" type="number" min="0" max="5000" step="10" value="0" /> kcal</div>
+        </div>
+        <div class="extra-row">
+          <label for="weight-kg">⚖️ Weight</label>
+          <div><input id="weight-kg" type="number" min="20" max="400" step="0.1" placeholder="–" /> kg</div>
+        </div>
+      </div>
+      <details id="day-micros-details" class="card">
+        <summary>Day’s vitamins &amp; minerals</summary>
+        <div id="day-micros" class="micro-table"></div>
+      </details>
     </section>
 
     <!-- Settings -->
     <section id="view-settings" class="view" hidden>
       <button id="btn-back-settings" class="back-btn">← Back</button>
       <h2>Settings</h2>
+      <div class="card">
+        <h3>Your daily goal</h3>
+        <div class="goal-grid">
+          <label>Sex
+            <select id="p-sex"><option value="male">Male</option><option value="female">Female</option></select>
+          </label>
+          <label>Age <input id="p-age" type="number" min="13" max="100" /></label>
+          <label>Height <span class="unit-wrap"><input id="p-height" type="number" min="100" max="230" /> cm</span></label>
+          <label>Weight <span class="unit-wrap"><input id="p-weight" type="number" min="30" max="300" step="0.5" /> kg</span></label>
+          <label class="span2">Activity <select id="p-activity"></select></label>
+          <label class="span2">Goal <select id="p-rate"></select></label>
+          <label class="span2">Calorie override
+            <span class="unit-wrap"><input id="p-custom" type="number" min="1000" max="6000" step="10" placeholder="auto" /> kcal</span>
+          </label>
+        </div>
+        <div class="goal-grid three">
+          <label>Carbs % <input id="p-carbs" type="number" min="10" max="75" step="5" /></label>
+          <label>Protein % <input id="p-protein" type="number" min="10" max="60" step="5" /></label>
+          <label>Fat % <input id="p-fat" type="number" min="10" max="60" step="5" /></label>
+        </div>
+        <p id="goal-summary" class="muted"></p>
+      </div>
       <div class="card">
         <label class="setting-row">
           <span>Plate diameter (portion scale reference)</span>
