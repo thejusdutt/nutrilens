@@ -3,7 +3,8 @@ import { toRawImage, crop } from '@nutrilens/image-preprocess';
 import { overlayMask } from '@nutrilens/food-segmentation';
 import { PortionEstimator } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
-import { saveMeal, listMeals, deleteMeal } from './db.js';
+import { saveMeal, listMeals, listMealsByDate, deleteMeal, getDay, setDay, dateKey } from './db.js';
+import { getProfile, setProfile, dailyGoal, suggestSlot, SLOTS, SLOT_LABEL, ACTIVITY, RATE } from './goals.js';
 import InferenceWorker from './workers/inference-worker.js?worker';
 
 const $ = (id) => document.getElementById(id);
@@ -189,6 +190,7 @@ const state = {
 async function startAnalysis(blob) {
   show('analyze');
   resetResultUI();
+  $('save-slot').value = pendingSlot ?? suggestSlot();
   setSpinner('Preparing photo…');
   state.raw = await toRawImage(blob, { maxSide: 1280 });
   state.userGrams = null;
@@ -736,10 +738,16 @@ $('btn-save').onclick = async () => {
       nutrients: Object.fromEntries(Object.entries(r.nutrients).map(([k, n]) => [k, +n.value.toFixed(2)])),
     };
   }
-  await saveMeal({ ...entry, thumb, ts: Date.now() });
-  $('btn-save').textContent = '✓ Saved';
-  setTimeout(() => { $('btn-save').textContent = '💾 Save to history'; }, 1600);
+  await saveMeal({
+    ...entry, thumb, ts: Date.now(),
+    date: dateKey(),
+    slot: $('save-slot').value,
+  });
+  pendingSlot = null;
+  $('btn-save').textContent = '✓ Added';
+  setTimeout(() => { $('btn-save').textContent = '💾 Add to diary'; }, 1600);
   renderRecent();
+  renderTodayCard();
 };
 
 function makeThumb(raw) {
@@ -762,7 +770,8 @@ async function renderRecent() {
     const card = document.createElement('div');
     card.className = 'recent-card';
     const img = document.createElement('img');
-    img.src = URL.createObjectURL(m.thumb);
+    if (m.thumb) img.src = URL.createObjectURL(m.thumb);
+    else { img.style.background = 'var(--surface-2)'; img.alt = ''; }
     img.alt = m.foodName;
     card.append(img);
     const meta = document.createElement('div');
@@ -774,37 +783,183 @@ async function renderRecent() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Diary (MyFitnessPal-style): date nav, meal sections, Goal − Food + Exercise
+// ---------------------------------------------------------------------------
+let diaryDate = dateKey();
+
+const fmtDiaryDate = (key) => {
+  if (key === dateKey()) return 'Today';
+  const d = new Date(`${key}T12:00:00`);
+  const yest = new Date(); yest.setDate(yest.getDate() - 1);
+  if (key === dateKey(yest)) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+};
+
+function shiftDiaryDate(days) {
+  const d = new Date(`${diaryDate}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  diaryDate = dateKey(d);
+  openHistory();
+}
+$('diary-prev').onclick = () => shiftDiaryDate(-1);
+$('diary-next').onclick = () => shiftDiaryDate(1);
+
 async function openHistory() {
   show('history');
-  const meals = await listMeals();
-  const today = new Date().toDateString();
-  const todayKcal = meals.filter((m) => new Date(m.ts).toDateString() === today).reduce((s, m) => s + m.kcal, 0);
-  $('history-summary').textContent = meals.length
-    ? `${meals.length} meals logged · ${todayKcal} kcal today`
-    : 'Nothing logged yet — analyze a photo and hit Save.';
-  const list = $('history-list');
-  list.innerHTML = '';
-  for (const m of meals) {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(m.thumb);
-    img.alt = m.foodName;
-    const meta = document.createElement('div');
-    meta.className = 'hi-meta';
-    meta.innerHTML = `<b>${m.foodName}</b><span class="muted">${new Date(m.ts).toLocaleString()} · ${m.grams} g · P ${m.nutrients.protein ?? 0} g · C ${m.nutrients.carbs ?? 0} g · F ${m.nutrients.fat ?? 0} g</span>`;
-    const right = document.createElement('div');
-    right.innerHTML = `<div class="hi-kcal">${m.kcal} kcal</div>`;
-    const del = document.createElement('button');
-    del.className = 'hi-del';
-    del.textContent = '🗑';
-    del.title = 'Delete';
-    del.onclick = async () => { await deleteMeal(m.id); openHistory(); renderRecent(); };
-    right.append(del);
-    item.append(img, meta, right);
-    list.append(item);
+  $('diary-date').textContent = fmtDiaryDate(diaryDate);
+  await dataReady;
+  const [meals, day] = await Promise.all([listMealsByDate(diaryDate), getDay(diaryDate)]);
+  const goal = dailyGoal();
+
+  // --- remaining banner + day macro bars ---
+  const foodKcal = Math.round(meals.reduce((s, m) => s + (m.kcal ?? 0), 0));
+  const remaining = goal.kcal - foodKcal + (day.exerciseKcal || 0);
+  $('rem-goal').textContent = goal.kcal.toLocaleString();
+  $('rem-food').textContent = foodKcal.toLocaleString();
+  $('rem-exercise').textContent = (day.exerciseKcal || 0).toLocaleString();
+  $('rem-left').textContent = remaining.toLocaleString();
+  document.querySelector('.rem-result').classList.toggle('over', remaining < 0);
+
+  const dayTotals = { protein: 0, carbs: 0, fat: 0 };
+  for (const m of meals) for (const k of Object.keys(dayTotals)) dayTotals[k] += m.nutrients?.[k] ?? 0;
+  const dm = $('day-macros');
+  dm.innerHTML = '';
+  for (const [key, color] of MACRO_STYLE.slice(0, 3)) {
+    const target = goal.macros[key];
+    const val = dayTotals[key];
+    const row = document.createElement('div');
+    row.className = 'macro-row';
+    row.innerHTML = `<span>${key[0].toUpperCase() + key.slice(1)}</span>
+      <span class="bar"><span class="fill" style="width:${Math.min(100, val / target * 100)}%;background:${color}"></span></span>
+      <span class="val">${Math.round(val)} / ${target} g</span>`;
+    dm.append(row);
   }
+
+  // --- meal sections ---
+  const wrap = $('diary-meals');
+  wrap.innerHTML = '';
+  for (const slot of SLOTS) {
+    const entries = meals.filter((m) => (m.slot ?? 'snacks') === slot);
+    const sec = document.createElement('div');
+    sec.className = 'meal-section';
+    const kcal = Math.round(entries.reduce((s, m) => s + m.kcal, 0));
+    sec.innerHTML = `<div class="meal-section-head"><h3>${SLOT_LABEL[slot]}</h3><span class="kcal">${kcal ? `${kcal} kcal` : ''}</span></div>`;
+    for (const m of entries) {
+      const row = document.createElement('div');
+      row.className = 'diary-entry';
+      const name = document.createElement('div');
+      name.className = 'de-name';
+      name.innerHTML = `<b>${m.foodName}</b><span>${m.grams} g · P ${Math.round(m.nutrients?.protein ?? 0)} · C ${Math.round(m.nutrients?.carbs ?? 0)} · F ${Math.round(m.nutrients?.fat ?? 0)} g</span>`;
+      const kc = document.createElement('span');
+      kc.className = 'de-kcal';
+      kc.textContent = `${m.kcal} kcal`;
+      const del = document.createElement('button');
+      del.className = 'de-del';
+      del.textContent = '✕';
+      del.title = 'Remove';
+      del.onclick = async () => { await deleteMeal(m.id); openHistory(); renderRecent(); renderTodayCard(); };
+      row.append(name, kc, del);
+      sec.append(row);
+    }
+    // quick add: text search (no photo needed) — typical serving, editable later
+    const addRow = document.createElement('div');
+    addRow.className = 'meal-add-row';
+    const inp = document.createElement('input');
+    inp.type = 'search';
+    inp.placeholder = `Add to ${slot}…`;
+    const camBtn = document.createElement('button');
+    camBtn.textContent = '📷';
+    camBtn.title = 'Add by photo';
+    camBtn.onclick = () => { pendingSlot = slot; show('home'); $('btn-camera').click(); };
+    const results = document.createElement('div');
+    results.className = 'meal-add-results';
+    results.hidden = true;
+    inp.oninput = () => {
+      const q = inp.value.trim();
+      results.innerHTML = '';
+      const hits = q.length >= 2 ? engine.search(q, 8) : [];
+      results.hidden = hits.length === 0;
+      for (const h of hits) {
+        const food = engine.food(h.id);
+        const grams = food.prior?.servingG ?? 100;
+        const b = document.createElement('button');
+        b.innerHTML = `${h.name} <span class="muted">· ${grams} g · ${Math.round((food.per100g.kcal ?? 0) * grams / 100)} kcal</span>`;
+        b.onclick = async () => {
+          const r = engine.forPortion(h.id, grams);
+          await saveMeal({
+            foodId: h.id, foodName: r.name, grams,
+            kcal: Math.round(r.nutrients.kcal?.value ?? 0),
+            nutrients: Object.fromEntries(Object.entries(r.nutrients).map(([k, n]) => [k, +n.value.toFixed(2)])),
+            thumb: null, ts: Date.now(), date: diaryDate, slot,
+          });
+          openHistory(); renderRecent(); renderTodayCard();
+        };
+        results.append(b);
+      }
+    };
+    addRow.append(inp, camBtn, results);
+    sec.append(addRow);
+    wrap.append(sec);
+  }
+
+  // --- extras: water / exercise / weight ---
+  $('water-count').textContent = day.water || 0;
+  $('exercise-kcal').value = day.exerciseKcal || 0;
+  $('weight-kg').value = day.weightKg ?? '';
+  $('water-plus').onclick = async () => { day.water = (day.water || 0) + 1; await setDay(day); openHistory(); };
+  $('water-minus').onclick = async () => { day.water = Math.max(0, (day.water || 0) - 1); await setDay(day); openHistory(); };
+  $('exercise-kcal').onchange = async (e) => { day.exerciseKcal = Math.max(0, Number(e.target.value) || 0); await setDay(day); openHistory(); renderTodayCard(); };
+  $('weight-kg').onchange = async (e) => {
+    day.weightKg = e.target.value ? Number(e.target.value) : null;
+    await setDay(day);
+    if (day.weightKg && diaryDate === dateKey()) setProfile({ weightKg: day.weightKg }); // today's weigh-in updates the goal
+  };
+
+  // --- day micros (summed across all logged entries) ---
+  const micro = $('day-micros');
+  micro.innerHTML = '';
+  const totals = {};
+  for (const m of meals) {
+    for (const [k, v] of Object.entries(m.nutrients ?? {})) totals[k] = (totals[k] ?? 0) + v;
+  }
+  const skip = new Set(['kcal', 'protein', 'carbs', 'fat', 'fiber', 'sugars']);
+  for (const [k, v] of Object.entries(totals)) {
+    if (skip.has(k)) continue;
+    const meta = engine.db.nutrients[k];
+    if (!meta) continue;
+    const row = document.createElement('div');
+    row.className = 'micro-row';
+    const val = v >= 10 ? v.toFixed(0) : v.toFixed(2);
+    row.innerHTML = `<span>${meta.name}</span><span class="dv">${val} ${meta.unit}${meta.rdi ? ` · ${Math.round(v / meta.rdi * 100)}% DV` : ''}</span>`;
+    micro.append(row);
+  }
+  $('day-micros-details').hidden = meals.length === 0;
 }
+
+/** Home "Today" summary card. */
+async function renderTodayCard() {
+  try {
+    await dataReady;
+    const [meals, day] = await Promise.all([listMealsByDate(dateKey()), getDay(dateKey())]);
+    const goal = dailyGoal();
+    const food = Math.round(meals.reduce((s, m) => s + (m.kcal ?? 0), 0));
+    const remaining = goal.kcal - food + (day.exerciseKcal || 0);
+    $('today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    $('today-left').textContent = remaining.toLocaleString();
+    const fill = $('today-fill');
+    fill.style.width = `${Math.min(100, food / goal.kcal * 100)}%`;
+    fill.classList.toggle('over', remaining < 0);
+    const t = { protein: 0, carbs: 0, fat: 0 };
+    for (const m of meals) for (const k of Object.keys(t)) t[k] += m.nutrients?.[k] ?? 0;
+    $('today-macros').textContent =
+      `${food} / ${goal.kcal} kcal · C ${Math.round(t.carbs)}/${goal.macros.carbs} g · P ${Math.round(t.protein)}/${goal.macros.protein} g · F ${Math.round(t.fat)}/${goal.macros.fat} g`;
+  } catch { /* first paint before data ready */ }
+}
+$('today-card').onclick = () => { diaryDate = dateKey(); openHistory(); };
+$('today-card').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { diaryDate = dateKey(); openHistory(); } };
+
+let pendingSlot = null; // set when "add by photo" launched from a diary meal section
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -813,6 +968,68 @@ $('setting-plate').value = localStorage.getItem('plateCm') ?? '26';
 $('setting-plate').onchange = (e) => localStorage.setItem('plateCm', e.target.value);
 $('setting-theme').value = themePref();
 $('setting-theme').onchange = (e) => { localStorage.setItem('theme', e.target.value); applyTheme(); };
+
+// --- daily goal profile (Mifflin-St Jeor → TDEE → goal, MFP-style) ---
+for (const [v, label] of ACTIVITY) {
+  const o = document.createElement('option');
+  o.value = v; o.textContent = label;
+  $('p-activity').append(o);
+}
+for (const [v, label] of RATE) {
+  const o = document.createElement('option');
+  o.value = v; o.textContent = label;
+  $('p-rate').append(o);
+}
+
+function loadProfileForm() {
+  const p = getProfile();
+  $('p-sex').value = p.sex;
+  $('p-age').value = p.age;
+  $('p-height').value = p.heightCm;
+  $('p-weight').value = p.weightKg;
+  $('p-activity').value = String(p.activity);
+  $('p-rate').value = String(p.rateKgWeek);
+  $('p-custom').value = p.customKcal ?? '';
+  $('p-carbs').value = p.macroPct.carbs;
+  $('p-protein').value = p.macroPct.protein;
+  $('p-fat').value = p.macroPct.fat;
+  renderGoalSummary();
+}
+
+function renderGoalSummary() {
+  const g = dailyGoal();
+  const pct = getProfile().macroPct;
+  const sumOK = pct.carbs + pct.protein + pct.fat === 100;
+  $('goal-summary').innerHTML =
+    `Maintenance ≈ <b>${g.tdee.toLocaleString()}</b> kcal · daily goal <b>${g.kcal.toLocaleString()}</b> kcal`
+    + ` (${g.source === 'custom' ? 'manual override' : 'computed'})`
+    + ` · targets C ${g.macros.carbs} g / P ${g.macros.protein} g / F ${g.macros.fat} g`
+    + (sumOK ? '' : ' — ⚠️ macro percentages must add up to 100');
+}
+
+function saveProfileForm() {
+  const pct = {
+    carbs: Number($('p-carbs').value) || 50,
+    protein: Number($('p-protein').value) || 20,
+    fat: Number($('p-fat').value) || 30,
+  };
+  setProfile({
+    sex: $('p-sex').value,
+    age: Number($('p-age').value) || 30,
+    heightCm: Number($('p-height').value) || 170,
+    weightKg: Number($('p-weight').value) || 70,
+    activity: Number($('p-activity').value),
+    rateKgWeek: Number($('p-rate').value),
+    customKcal: $('p-custom').value ? Number($('p-custom').value) : null,
+    macroPct: pct,
+  });
+  renderGoalSummary();
+  renderTodayCard();
+}
+for (const id of ['p-sex', 'p-age', 'p-height', 'p-weight', 'p-activity', 'p-rate', 'p-custom', 'p-carbs', 'p-protein', 'p-fat']) {
+  $(id).addEventListener('change', saveProfileForm);
+}
+loadProfileForm();
 
 async function refreshStorageStatus() {
   try {
@@ -918,6 +1135,7 @@ $('btn-back-settings').onclick = () => show('home');
 
 show('home');
 renderRecent();
+renderTodayCard();
 // Warm the model download in the background on first visit (non-blocking),
 // and make sure the SW model cache is populated for offline use even when
 // this page wasn't yet controlled by the SW (very first visit).

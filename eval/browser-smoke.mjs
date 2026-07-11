@@ -74,10 +74,10 @@ try {
 
   // History save round-trip.
   await page.click('#btn-save');
-  await page.waitForFunction(() => document.getElementById('btn-save').textContent.includes('Saved'));
+  await page.waitForFunction(() => document.getElementById('btn-save').textContent.includes('✓'));
   await page.click('#btn-history');
-  await page.waitForSelector('.history-item', { timeout: 5000 });
-  console.log('history entry rendered ✓');
+  await page.waitForSelector('.diary-entry', { timeout: 8000 });
+  console.log('diary entry rendered ✓');
 
   await page.screenshot({ path: join(root, 'eval/results/browser-smoke.png') });
 
