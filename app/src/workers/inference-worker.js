@@ -249,13 +249,19 @@ async function autoSegment(seg, width, height, plate, onProgress) {
   return kept;
 }
 
+let initPromise = null;
+
 self.onmessage = async (e) => {
   const msg = e.data;
   try {
     if (msg.type === 'init') {
       wantWebGPU = !!msg.webgpu;
-      await init();
+      initPromise ??= init();
+      await initPromise;
     } else if (msg.type === 'recognize') {
+      // Requests can race ahead of model loading (e.g. a button pressed while
+      // the first download is still running) — queue behind init.
+      await (initPromise ??= init());
       const result = await recognizer.recognize(asRaw(msg.image));
       postMessage({ type: 'recognized', id: msg.id, result });
     } else if (msg.type === 'segment') {
