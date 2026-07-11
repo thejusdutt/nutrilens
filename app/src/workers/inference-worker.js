@@ -27,31 +27,52 @@ let segmenter = null;
 let backend = 'wasm';
 let samLoading = null;
 
-/** Fetch a URL as ArrayBuffer, reporting byte progress. */
+// Must match MODEL_CACHE in public/sw.js. Model bytes are read/written to
+// Cache Storage directly from this worker: the Cache API has no service-worker
+// lifetime limits (SWs get terminated mid-download on ~100 MB files), works
+// before the page is SW-controlled, and makes repeat loads instant.
+const MODEL_CACHE = 'nutrilens-models-v1';
+
+/** Fetch a URL as bytes with progress, cache-first via Cache Storage. */
 async function fetchWithProgress(url, label) {
-  const res = await fetch(url);
+  const cache = await caches.open(MODEL_CACHE).catch(() => null);
+  const hit = cache && await cache.match(url);
+  if (hit) return new Uint8Array(await hit.arrayBuffer());
+
+  // no-store: bypass the HTTP disk cache — 100 MB writes to it can fail
+  // (ERR_CACHE_WRITE_FAILURE) and we persist to Cache Storage ourselves.
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   const total = Number(res.headers.get('Content-Length')) || 0;
-  if (!res.body) return new Uint8Array(await res.arrayBuffer());
-  const reader = res.body.getReader();
-  const chunks = [];
-  let loaded = 0;
-  let lastPost = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.length;
-    const now = Date.now();
-    if (now - lastPost > 120) { // throttle DOM-updating progress messages
-      postMessage({ type: 'progress', label, loaded, total });
-      lastPost = now;
+  let buf;
+  if (!res.body) {
+    buf = new Uint8Array(await res.arrayBuffer());
+  } else {
+    const reader = res.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    let lastPost = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.length;
+      const now = Date.now();
+      if (now - lastPost > 120) { // throttle DOM-updating progress messages
+        postMessage({ type: 'progress', label, loaded, total });
+        lastPost = now;
+      }
     }
+    postMessage({ type: 'progress', label, loaded, total });
+    buf = new Uint8Array(loaded);
+    let off = 0;
+    for (const c of chunks) { buf.set(c, off); off += c.length; }
   }
-  postMessage({ type: 'progress', label, loaded, total });
-  const buf = new Uint8Array(loaded);
-  let off = 0;
-  for (const c of chunks) { buf.set(c, off); off += c.length; }
+  if (cache) {
+    await cache.put(url, new Response(buf.slice().buffer, {
+      headers: { 'Content-Type': 'application/octet-stream' },
+    })).catch(() => {});
+  }
   return buf;
 }
 
@@ -91,10 +112,21 @@ async function createSession(bytes) {
 // Session factory that plugs pre-fetched bytes into the library loaders.
 const ortLike = { Tensor: ort.Tensor, InferenceSession: { create: (bytes) => createSession(bytes) } };
 
+/** Cache-first JSON fetch through the same model cache (offline safety). */
+async function cachedJson(url) {
+  const cache = await caches.open(MODEL_CACHE).catch(() => null);
+  const hit = cache && await cache.match(url);
+  if (hit) return hit.json();
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  if (cache) await cache.put(url, res.clone()).catch(() => {});
+  return res.json();
+}
+
 async function init() {
   console.log('[nutrilens-worker] init start');
   const [swinCfg, vocab, embMeta] = await Promise.all([
-    fetch('/models/swin-food101/config.json').then((r) => r.json()),
+    cachedJson('/models/swin-food101/config.json'),
     fetch('/data/vocabulary.json').then((r) => r.json()),
     fetch('/data/label-embeddings.json').then((r) => r.json()),
   ]);
@@ -106,7 +138,7 @@ async function init() {
   console.log('[nutrilens-worker] creating swin session…');
   const swin = await SwinFoodClassifier.load(ortLike, swinBytes, labels);
   console.log('[nutrilens-worker] swin ready, backend:', backend);
-  const clipBytes = await fetchWithProgress('/models/mobileclip-s0/onnx/vision_model_int8.onnx', 'Open-vocabulary model');
+  const clipBytes = await fetchWithProgress('/models/mobileclip-s2/onnx/vision_model_fp16.onnx', 'Open-vocabulary model');
   const zs = await ZeroShotFoodClassifier.load(ortLike, clipBytes, {
     labels: vocab.map((v) => v.id), matrix, dim: embMeta.dim, logitScale: embMeta.logitScale,
   });

@@ -1,7 +1,7 @@
 /**
- * Precompute L2-normalized MobileCLIP-S0 text embeddings for the food
+ * Precompute L2-normalized MobileCLIP-S2 text embeddings for the food
  * vocabulary with prompt ensembling. Runs the text tower ONCE at build time —
- * only the resulting matrix ships to the browser (the 43 MB text model and
+ * only the resulting matrix ships to the browser (the text model and
  * tokenizer never leave the repo).
  *
  * Outputs:
@@ -18,13 +18,13 @@ import { AutoTokenizer } from '@huggingface/transformers';
 import { VOCABULARY, promptsFor } from './vocabulary.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const textDir = join(root, 'tools/data/mobileclip-s0-text');
+const textDir = join(root, 'tools/data/mobileclip-s2');
 
 const vocabJson = JSON.parse(readFileSync(join(root, 'app/public/data/vocabulary.json'), 'utf8'));
 const byId = new Map(VOCABULARY.map((v) => [v.id, v]));
 
 const tokenizer = await AutoTokenizer.from_pretrained(textDir, { local_files_only: true });
-const session = await ort.InferenceSession.create(join(textDir, 'onnx/text_model_int8.onnx'));
+const session = await ort.InferenceSession.create(join(textDir, 'onnx/text_model.onnx'));
 
 /** Embed a batch of prompts → array of L2-normalized Float32Array. */
 async function embedPrompts(prompts) {
@@ -73,7 +73,7 @@ writeFileSync(join(root, 'app/public/data/label-embeddings.json'), JSON.stringif
   dim,
   count: rows.length,
   logitScale: 100,
-  model: 'Xenova/mobileclip_s0 text tower (int8), prompt-ensembled',
+  model: 'Xenova/mobileclip_s2 text tower (fp32), prompt-ensembled',
   sha256: createHash('sha256').update(buf).digest('hex').slice(0, 16),
 }));
 console.log(`wrote ${rows.length} x ${dim} embeddings (${(buf.length / 1024).toFixed(0)} KB)`);

@@ -40,7 +40,7 @@ export async function createRecognizer(opts = {}) {
   const swin = await SwinFoodClassifier.load(ort, swinModel, labels, { temperature: opts.temperature ?? 1 });
   const zs = await ZeroShotFoodClassifier.load(
     ort,
-    join(models, 'mobileclip-s0/onnx/vision_model_int8.onnx'),
+    join(models, 'mobileclip-s2/onnx/vision_model_fp16.onnx'),
     { labels: vocab.map((v) => v.id), matrix, dim: embMeta.dim, logitScale: embMeta.logitScale },
   );
   const scorer = new FusionScorer(vocab, opts.fusion ?? {});

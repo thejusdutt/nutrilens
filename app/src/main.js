@@ -567,21 +567,54 @@ async function refreshStorageStatus() {
 const PREFETCH_URLS = [
   '/models/swin-food101/onnx/model_int8.onnx',
   '/models/swin-food101/config.json',
-  '/models/mobileclip-s0/onnx/vision_model_int8.onnx',
+  '/models/mobileclip-s2/onnx/vision_model_fp16.onnx',
   '/models/slimsam/onnx/vision_encoder_quantized.onnx',
   '/models/slimsam/onnx/prompt_encoder_mask_decoder_quantized.onnx',
   '/data/nutrition-db.json', '/data/vocabulary.json',
   '/data/label-embeddings.json', '/data/label-embeddings.bin',
 ];
+/**
+ * Download-and-cache all model assets into Cache Storage, directly from the
+ * page. Deliberately NOT delegated to the service worker: SWs are terminated
+ * by the browser mid-download on ~100 MB files, and page-side caching also
+ * works on the very first visit before the SW controls the page. Idempotent
+ * (cache-first) and deduplicated against concurrent calls.
+ */
+let prefetchRun = null;
+function swPrefetch(onProgress) {
+  prefetchRun ??= (async () => {
+    try {
+      const cache = await caches.open('nutrilens-models-v1'); // must match sw.js MODEL_CACHE
+      for (let i = 0; i < PREFETCH_URLS.length; i++) {
+        const url = PREFETCH_URLS[i];
+        if (!(await cache.match(url))) {
+          // no-store: skip the HTTP disk cache (fails on ~100 MB bodies);
+          // Cache Storage below is our persistence layer.
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+          // Buffer before put(): streaming put can fail on large bodies
+          // served without Content-Length (compressed static hosts).
+          const body = await res.arrayBuffer();
+          await cache.put(url, new Response(body, {
+            headers: { 'Content-Type': res.headers.get('Content-Type') ?? 'application/octet-stream' },
+          }));
+        }
+        onProgress?.((i + 1) / PREFETCH_URLS.length);
+      }
+    } finally {
+      prefetchRun = null;
+    }
+  })();
+  return prefetchRun;
+}
+
 $('btn-prefetch').onclick = async () => {
   const prog = $('prefetch-progress');
   prog.hidden = false;
   $('btn-prefetch').disabled = true;
+  $('btn-prefetch').textContent = 'Downloading models…';
   try {
-    for (let i = 0; i < PREFETCH_URLS.length; i++) {
-      await fetch(PREFETCH_URLS[i]); // service worker caches model/data responses
-      prog.value = (i + 1) / PREFETCH_URLS.length;
-    }
+    await swPrefetch((p) => { prog.value = p; });
     $('btn-prefetch').textContent = '✓ Available offline';
   } catch (err) {
     $('btn-prefetch').textContent = `Failed: ${err.message} — retry`;
@@ -601,5 +634,10 @@ $('btn-back-settings').onclick = () => show('home');
 
 show('home');
 renderRecent();
-// Warm the model download in the background on first visit (non-blocking).
-if (navigator.onLine) setTimeout(() => ensureWorker().catch(() => {}), 800);
+// Warm the model download in the background on first visit (non-blocking),
+// and make sure the SW model cache is populated for offline use even when
+// this page wasn't yet controlled by the SW (very first visit).
+if (navigator.onLine) {
+  setTimeout(() => ensureWorker().catch(() => {}), 800);
+  setTimeout(() => swPrefetch().catch(() => {}), 20000);
+}
