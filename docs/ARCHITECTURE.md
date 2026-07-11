@@ -9,8 +9,8 @@
 │  ┌───────────────────────────┐   postMessage  ┌───────────────────────────────┐  │
 │  │ capture: camera/file/drop │◄──────────────►│ ONNX Runtime Web (WASM/WebGPU)│  │
 │  │ toRawImage (EXIF, resize) │  RawImage /    │ ┌──────────┐  ┌─────────────┐ │  │
-│  │ candidates + confidence UI│  probs / masks │ │Swin-F101 │  │MobileCLIP-S0│ │  │
-│  │ portion slider + measures │                │ │ int8 93MB│  │vision 11.8MB│ │  │
+│  │ candidates + confidence UI│  probs / masks │ │Swin-F101 │  │MobileCLIP-S2│ │  │
+│  │ portion slider + measures │                │ │ int8 93MB│  │vision fp16  │ │  │
 │  │ NutritionEngine (%DV,     │                │ └────┬─────┘  └──────┬──────┘ │  │
 │  │  ranges, search)          │                │      └─── FusionScorer ──────┐│  │
 │  │ IndexedDB history         │                │ ┌──────────────┐ ┌──────────┐││  │
@@ -19,8 +19,8 @@
 │              ▲                                │ └──────────────┘ │RANSAC(JS)│││  │
 │              │ Cache Storage (models, shell)  │                  └──────────┘││  │
 │  ┌───────────┴───────────┐                    └──────────────────────────────┘│  │
-│  │ Service Worker        │  cache-first: /models/**, app shell, ORT wasm      │  │
-│  └───────────────────────┘                                                    │  │
+│  │ Service Worker        │  cache-first app shell; big models cached via      │  │
+│  └───────────────────────┘  Cache API by the worker itself (SW-lifetime-proof)  │  │
 └──────────────────────────────────────────────────────────────────────────────────┘
 
 Build time (Node, never shipped):
@@ -91,19 +91,23 @@ grams = area_cm² × height_prior(food) × density_prior(food)
 - **All ONNX sessions live in one Web Worker** — the UI thread never runs
   inference; progress/results stream via postMessage (transferables for
   pixel buffers and masks).
-- **WASM over WebGPU by default**: the shipped models are int8-quantized;
+- **WASM over WebGPU by default**: the Swin/SlimSAM models are int8-quantized;
   quantized ops are not WebGPU-resident in ORT, causing per-node CPU fallback
   with synchronous readbacks (measured: hangs/minutes vs seconds). WASM
-  SIMD+threads executes int8 efficiently. WebGPU stays one query-param away
-  (`?webgpu=1`) for fp16 experiments.
+  SIMD+threads executes them efficiently. WebGPU stays one query-param away
+  (`?webgpu=1`).
 - **COOP/COEP headers** documented + set in dev/preview so wasm gets threads;
   graceful single-thread fallback otherwise.
 - **Lazy loading**: classifier models load on first analysis (with byte
   progress); SlimSAM loads only when portion estimation is first needed;
   nutrition JSONs are eager (<1 MB).
-- **Caching**: hand-written service worker; app shell precached (stable,
-  hash-free asset names + `CACHE_VERSION` busting), models runtime-cached
-  cache-first, explicit "download everything" prefetch in Settings.
+- **Caching**: hand-written service worker precaches the app shell (stable,
+  hash-free asset names + `CACHE_VERSION` busting). The ~100 MB model binaries
+  are deliberately **not** routed through the SW: browsers terminate service
+  workers mid-transfer on bodies that large (and the HTTP disk cache write
+  fails outright — `ERR_CACHE_WRITE_FAILURE`). Instead the inference worker
+  and the Settings prefetch write model bytes into Cache Storage directly
+  (`cache: 'no-store'` fetches to bypass the HTTP cache), cache-first on read.
 
 ## Error handling & honesty
 

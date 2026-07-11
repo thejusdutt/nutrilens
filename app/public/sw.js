@@ -56,13 +56,24 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
+// NOTE: model prefetching is intentionally done page/worker-side via the
+// Cache API (see app/src/main.js swPrefetch and the inference worker's
+// fetchWithProgress): browsers terminate service workers mid-download on
+// ~100 MB files, so the SW's job here is only to *serve* the caches.
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== location.origin) return;
 
-  // Large immutable model files → cache-first in the model cache.
+  // Model files: intercept only small metadata (.json). The ~10–100 MB .onnx
+  // binaries are deliberately NOT intercepted — streaming them through the SW
+  // dies when the browser terminates the SW mid-transfer. The inference worker
+  // reads/writes them via the Cache API itself (cache-first), so offline works
+  // without the SW ever touching those requests.
   if (url.pathname.startsWith('/models/')) {
-    event.respondWith(cacheFirst(MODEL_CACHE, event.request));
+    if (url.pathname.endsWith('.json')) {
+      event.respondWith(cacheFirst(MODEL_CACHE, event.request));
+    }
     return;
   }
   // SPA navigations → shell.

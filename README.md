@@ -11,7 +11,7 @@ airplane mode.
 ## Highlights
 
 - **Recognition** — Swin-Base fine-tuned on Food-101 (92% top-1) **fused** with
-  a MobileCLIP-S0 open-vocabulary head (211-food vocabulary incl. Indian, East
+  a MobileCLIP-S2 open-vocabulary head (211-food vocabulary incl. Indian, East
   Asian, fruits, breakfast foods) and non-food rejection.
 - **Portion estimation** — SlimSAM segmentation + a custom RANSAC plate-ellipse
   detector turn mask area into grams with explicit uncertainty; always
@@ -50,7 +50,7 @@ required for camera + service worker.
 ### Install as an app
 
 Open the site in Chrome/Edge (desktop or Android) → "Install NutriLens".
-First analysis downloads the models with a progress bar (~135 MB, cached
+First analysis downloads the models with a progress bar (~180 MB, cached
 permanently); Settings → *Download all models* prefetches everything explicitly.
 After that: fully offline.
 
@@ -91,6 +91,6 @@ approximation — informational, not medical advice.
 
 ## Licenses
 
-Code: MIT. Models: Swin-Food101 (Apache-2.0), MobileCLIP-S0 (Apple AML, via
+Code: MIT. Models: Swin-Food101 (Apache-2.0), MobileCLIP-S2 (Apple AML, via
 Xenova ONNX export), SlimSAM (MIT/Apache-2.0). Data: USDA FoodData Central
 (public domain), Food-101 (research dataset, evaluation only).

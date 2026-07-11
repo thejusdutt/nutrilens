@@ -6,7 +6,7 @@ Food recognition for the browser (and Node) on ONNX Runtime, combining:
   ONNX model; NutriLens ships Swin-Base fine-tuned on Food-101
   (92.1% top-1, Apache-2.0, `onnx-community/swin-finetuned-food101-ONNX`).
 - **`ZeroShotFoodClassifier`** — an open-vocabulary CLIP-style head. Ships the
-  MobileCLIP-S0 *vision tower only* (11.8 MB int8); label text embeddings are
+  MobileCLIP-S2 *vision tower only* (69 MB fp16); label text embeddings are
   precomputed at build time with prompt ensembling, so the vocabulary is
   extensible without retraining **or** shipping a text encoder/tokenizer.
 - **`FusionScorer` / `FoodRecognizer`** — confidence-adaptive log-linear late

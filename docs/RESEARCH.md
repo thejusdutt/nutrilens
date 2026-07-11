@@ -76,19 +76,29 @@ raw fruits and vegetables. Requirement explicitly lists these. Options:
 
 Zero-shot encoder candidates:
 
-| Model | ImageNet ZS top-1 | Vision tower (int8) | ONNX |
+| Model | ImageNet ZS top-1 | Vision tower | ONNX |
 |---|---|---|---|
-| **Apple MobileCLIP-S0** | 67.8% | **11.8 MB** | ✅ Xenova/mobileclip_s0 |
-| MobileCLIP-S2 | 74.4% | 36.7 MB | ✅ |
+| MobileCLIP-S0 | 67.8% | 11.8 MB int8 / 22.9 MB fp16 | ✅ Xenova/mobileclip_s0 |
+| **Apple MobileCLIP-S2** | 74.4% | **69 MB fp16** | ✅ Xenova/mobileclip_s2 |
 | SigLIP-Base | ~76% | ~90 MB | ✅ |
 
-Decision: **MobileCLIP-S0** — 8× smaller than SigLIP for the vision tower.
-The text tower (43 MB) is **not shipped**: label embeddings for the full food
-vocabulary (~330 foods + non-food probes) are precomputed at build time in
-Node with prompt ensembling ("a photo of X", "a plate of X", …) and shipped
-as a ~500 KB binary matrix. The browser only runs the vision tower and a
-matrix multiply. If eval shows S0's zero-shot accuracy is the bottleneck for
-extended-vocabulary foods, S2 is a drop-in upgrade (same pipeline).
+Initial choice was S0-int8 for size; **empirical evaluation overturned it
+twice** (this is why the eval harness exists):
+
+1. **int8 quantization destroys CLIP vision towers.** The int8 S0 tower's
+   cosine similarities collapsed to noise (~0.10–0.125 flat across all 219
+   labels; measured zero-shot top-1 = 0.4% ≈ random). fp16/fp32 towers behave
+   correctly. Finding: never ship a *metric-embedding* model post-training
+   quantized to int8 without verifying the embedding space survives.
+2. **S0 is too weak on the extended vocabulary** even at fp16 (dosa 1/10,
+   idli 2/10, naan 2/10 zero-shot top-1 on held-out images). MobileCLIP-S2
+   fp16 scores 8/10, 8/10, 5/10 on the same samples (pizza 10/10, sushi 8/10).
+
+Decision: **MobileCLIP-S2, fp16 vision tower (69 MB)** — accuracy is the
+stated priority and the extended vocabulary is the entire point of this head.
+The S2 text tower (fp32, 254 MB) runs at build time only: label embeddings
+for the full vocabulary (211 foods + 8 non-food probes, prompt-ensembled) ship
+as a 438 KB binary matrix. The browser runs the vision tower and one matmul.
 
 Fusion strategy (implemented in `@nutrilens/food-recognition`):
 - Swin gives a calibrated distribution over 101 dishes.
@@ -169,11 +179,11 @@ gzipped; loaded into IndexedDB on first run.
 | Asset | Size |
 |---|---|
 | Swin-Food101 int8 | 93 MB |
-| MobileCLIP-S0 vision int8 | 11.8 MB |
+| MobileCLIP-S2 vision fp16 | 69 MB |
 | SlimSAM quantized (enc+dec) | 17.1 MB |
 | Label embeddings + nutrition DB | <1 MB |
-| App code + ORT wasm | ~12 MB |
-| **Total (one-time, cached)** | **~135 MB** |
+| App code + ORT wasm runtime | ~72 MB (4 wasm variants; ~13 MB actually loaded) |
+| **Total (one-time, cached)** | **~180 MB models+data** |
 
 Comparable to a small mobile app; cached via Cache Storage + streamed
 progress UI on first run. Models lazy-load: classification first, SlimSAM

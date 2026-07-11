@@ -1,1 +1,1 @@
-{"dim":512,"count":219,"logitScale":100,"model":"Xenova/mobileclip_s0 text tower (int8), prompt-ensembled","sha256":"8dd9b6e4c248cc0f"}
+{"dim":512,"count":219,"logitScale":100,"model":"Xenova/mobileclip_s2 text tower (fp32), prompt-ensembled","sha256":"bc8bc9d81906ab6d"}

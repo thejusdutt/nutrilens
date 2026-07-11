@@ -21,17 +21,21 @@ get app/public/models/swin-food101/onnx/model_q4f16.onnx  "$SWIN/onnx/model_q4f1
 get app/public/models/swin-food101/config.json            "$SWIN/config.json"
 get app/public/models/swin-food101/preprocessor_config.json "$SWIN/preprocessor_config.json"
 
-# --- MobileCLIP-S0 (zero-shot open-vocabulary head) ---
-MC=$HF/Xenova/mobileclip_s0/resolve/main
-get app/public/models/mobileclip-s0/onnx/vision_model_int8.onnx "$MC/onnx/vision_model_int8.onnx"
-get app/public/models/mobileclip-s0/config.json                 "$MC/config.json"
-get app/public/models/mobileclip-s0/preprocessor_config.json    "$MC/preprocessor_config.json"
-# Text tower + tokenizer are BUILD-TIME ONLY (embedding precomputation in Node)
-get tools/data/mobileclip-s0-text/onnx/text_model_int8.onnx "$MC/onnx/text_model_int8.onnx"
-get tools/data/mobileclip-s0-text/tokenizer.json            "$MC/tokenizer.json"
-get tools/data/mobileclip-s0-text/tokenizer_config.json     "$MC/tokenizer_config.json"
-get tools/data/mobileclip-s0-text/special_tokens_map.json   "$MC/special_tokens_map.json" || true # not present in repo
-get tools/data/mobileclip-s0-text/config.json               "$MC/config.json"
+# --- MobileCLIP-S2 (zero-shot open-vocabulary head) ---
+# fp16 vision tower: int8 CLIP vision towers are destroyed by quantization
+# (measured: cosine sims collapse to noise); fp16 matches fp32 quality.
+# S2 over S0: +25-60pt zero-shot top-1 on out-of-Food-101 foods (see eval).
+MC=$HF/Xenova/mobileclip_s2/resolve/main
+get app/public/models/mobileclip-s2/onnx/vision_model_fp16.onnx "$MC/onnx/vision_model_fp16.onnx"
+get app/public/models/mobileclip-s2/config.json                 "$MC/config.json"
+get app/public/models/mobileclip-s2/preprocessor_config.json    "$MC/preprocessor_config.json"
+# Text tower + tokenizer are BUILD-TIME ONLY (embedding precomputation in Node).
+# fp32 text: the fp16 text export trips an ORT graph-fusion bug, and build-time
+# size is irrelevant.
+get tools/data/mobileclip-s2/onnx/text_model.onnx  "$MC/onnx/text_model.onnx"
+get tools/data/mobileclip-s2/tokenizer.json        "$MC/tokenizer.json"
+get tools/data/mobileclip-s2/tokenizer_config.json "$MC/tokenizer_config.json"
+get tools/data/mobileclip-s2/config.json           "$MC/config.json"
 
 # --- SlimSAM (segmentation for portion estimation) ---
 SAM=$HF/Xenova/slimsam-77-uniform/resolve/main

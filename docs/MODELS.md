@@ -16,16 +16,21 @@ app's own origin and cached in Cache Storage.
 | Preprocessing | bicubic resize 224², rescale 1/255, ImageNet mean/std (`resizeBicubic` in @nutrilens/image-preprocess for training parity) |
 | License | Apache-2.0 |
 
-## 2. MobileCLIP-S0 vision tower (open-vocabulary head)
+## 2. MobileCLIP-S2 vision tower (open-vocabulary head)
 
 | | |
 |---|---|
-| Source | `Xenova/mobileclip_s0` (ONNX export of Apple MobileCLIP-S0) |
-| Shipped file | `onnx/vision_model_int8.onnx`, 11.8 MB |
+| Source | `Xenova/mobileclip_s2` (ONNX export of Apple MobileCLIP-S2) |
+| Shipped file | `onnx/vision_model_fp16.onnx`, 69 MB |
 | Preprocessing | shortest-side 256 bilinear + center crop 256², rescale only (no mean/std) |
-| Text tower | **build-time only** (43 MB int8 + tokenizer, in `tools/data/`); produces the shipped `label-embeddings.bin` (219 labels × 512 dims, prompt-ensembled: "a photo of X", "a close-up photo of X, food photography", "a plate of X" + synonyms) |
-| Zero-shot quality | 67.8% ImageNet top-1 (reference); see ACCURACY_REPORT for food-domain numbers |
+| Text tower | **build-time only** (fp32, 254 MB + tokenizer, in `tools/data/`); produces the shipped `label-embeddings.bin` (219 labels × 512 dims, prompt-ensembled: "a photo of X", "a close-up photo of X, food photography", "a plate of X" + synonyms) |
+| Zero-shot quality | 74.4% ImageNet top-1 (reference); see ACCURACY_REPORT for food-domain numbers |
 | License | Apple AML research license (weights), MIT (export tooling) |
+
+**Why fp16 and why S2** (empirical, see RESEARCH.md §4): the int8 vision
+export produces noise embeddings — int8 post-training quantization destroys
+CLIP-style metric embedding spaces — and S0 at fp16 was still too weak on
+extended-vocabulary foods (1–2/10 on dosa/idli/naan vs S2's 5–8/10).
 
 Adding a food requires **no retraining**: add a vocabulary entry + FNDDS
 mapping, rebuild embeddings + DB (two Node scripts, seconds).

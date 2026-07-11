@@ -130,7 +130,7 @@ Datasets: Food-101 official validation subsample (${food101.length} images, ${h1
 |---|---|---|
 | Closed-set head (Swin) top-1 | ${pct(h101.swin1)} | n/a (classes outside Food-101) |
 | Closed-set head (Swin) top-5 | ${pct(h101.swin5)} | n/a |
-| Zero-shot head (MobileCLIP-S0) top-1 | ${pct(h101.zs1)} | ${hExt ? pct(hExt.zs1) : '–'} |
+| Zero-shot head (MobileCLIP-S2) top-1 | ${pct(h101.zs1)} | ${hExt ? pct(hExt.zs1) : '–'} |
 | Zero-shot head top-5 | ${pct(h101.zs5)} | ${hExt ? pct(hExt.zs5) : '–'} |
 | **Fused (shipped defaults)** top-1 | **${pct(fDef101.top1)}** | **${fDefExt ? pct(fDefExt.top1) : '–'}** |
 | Fused (shipped defaults) top-5 | ${pct(fDef101.top5)} | ${fDefExt ? pct(fDefExt.top5) : '–'} |
@@ -182,7 +182,7 @@ Generated ${meta.date} · CPU: onnxruntime-node WASM-equivalent (browser numbers
 | Stage | mean | p50 | p90 | p99 |
 |---|---|---|---|---|
 | Swin-Food101 (${meta.swinVariant}) classify | ${sw.mean.toFixed(0)} ms | ${sw.p50} ms | ${sw.p90} ms | ${sw.p99} ms |
-| MobileCLIP-S0 embed+score | ${zl.mean.toFixed(0)} ms | ${zl.p50} ms | ${zl.p90} ms | ${zl.p99} ms |
+| MobileCLIP-S2 embed+score | ${zl.mean.toFixed(0)} ms | ${zl.p50} ms | ${zl.p90} ms | ${zl.p99} ms |
 
 Measured over ${all.length} images. Browser-side stage timings (SlimSAM encode ≈1.7 s CPU / decode ≈90 ms, plate detection ≈70 ms) are logged by the app console and in browser-smoke runs.
 
@@ -191,7 +191,7 @@ Measured over ${all.length} images. Browser-side stage timings (SlimSAM encode �
 | Asset | Size |
 |---|---|
 | swin-food101 model_int8.onnx | 93 MB |
-| mobileclip-s0 vision int8 | 11.8 MB |
+| mobileclip-s2 vision fp16 | 69 MB |
 | slimsam encoder+decoder (quantized) | 17.1 MB |
 | label embeddings + nutrition DB + vocab | ~0.6 MB |
 | ORT runtime (wasm, jsep) | ~31 MB |
