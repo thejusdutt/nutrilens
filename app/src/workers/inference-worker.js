@@ -202,19 +202,25 @@ const asRaw = (m) => ({ data: new Uint8ClampedArray(m.data), width: m.width, hei
  * @returns [{ mask:Uint8Array, areaPx, areaFraction, iou, bbox, point }]
  */
 async function autoSegment(seg, width, height, plate, onProgress) {
-  // Sample points inside the plate ellipse when we have one (that's where
-  // food lives); otherwise over the central 80% of the frame.
+  // Sample points inside the plate ellipse when we have one (that's where the
+  // main dish lives) PLUS a coarse full-frame grid: side bowls (chutneys,
+  // sambar, dips) sit OUTSIDE the plate rim and would otherwise never be
+  // probed. Duplicate hits are collapsed by the dedupe below.
   const pts = [];
   const N = 4;
-  for (let gy = 0; gy < N; gy++) {
-    for (let gx = 0; gx < N; gx++) {
-      if (plate && plate.confidence > 0.3) {
+  if (plate && plate.confidence > 0.3) {
+    for (let gy = 0; gy < N; gy++) {
+      for (let gx = 0; gx < N; gx++) {
         const a = ((gx + 0.5) / N) * Math.PI * 2;
         const r = Math.sqrt((gy + 0.5) / N) * 0.8;
         pts.push({ x: plate.cx + r * plate.rx * Math.cos(a), y: plate.cy + r * plate.ry * Math.sin(a) });
-      } else {
-        pts.push({ x: width * (0.1 + 0.8 * (gx + 0.5) / N), y: height * (0.1 + 0.8 * (gy + 0.5) / N) });
       }
+    }
+  }
+  const M = plate && plate.confidence > 0.3 ? 3 : N; // coarse frame grid (dense when no plate)
+  for (let gy = 0; gy < M; gy++) {
+    for (let gx = 0; gx < M; gx++) {
+      pts.push({ x: width * (0.1 + 0.8 * (gx + 0.5) / M), y: height * (0.1 + 0.8 * (gy + 0.5) / M) });
     }
   }
   const candidates = [];
