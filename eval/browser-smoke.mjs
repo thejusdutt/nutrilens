@@ -58,13 +58,14 @@ try {
     if (Date.now() - t0 > 300000) throw new Error('timed out waiting for nutrition card');
   }
   const result = await page.evaluate(() => ({
-    topCandidate: document.querySelector('.candidate b')?.textContent,
-    topPct: document.querySelector('.candidate .pct')?.textContent,
+    // meal-first flow: items live in the meal card; fall back to single-dish UI
+    topCandidate: document.querySelector('.meal-item .mi-food')?.selectedOptions[0]?.textContent
+      ?? document.querySelector('.candidate b')?.textContent,
     kcal: document.getElementById('kcal-value').textContent,
-    kcalRange: document.getElementById('kcal-range').textContent,
-    grams: document.getElementById('portion-grams').value,
-    portionMethod: document.getElementById('portion-method').textContent,
+    grams: document.querySelector('.meal-item .mi-grams')?.value
+      ?? document.getElementById('portion-grams').value,
     confidence: document.getElementById('confidence-tag').textContent,
+    mealItems: document.querySelectorAll('.meal-item').length,
     macroRows: document.querySelectorAll('.macro-row').length,
     microRows: document.querySelectorAll('.micro-row').length,
     nonFoodHidden: document.getElementById('nonfood-warning').hidden,

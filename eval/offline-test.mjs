@@ -61,7 +61,8 @@ try {
     if (Date.now() - t0 > 240000) throw new Error('offline analysis timed out');
   }
   const res = await page.evaluate(() => ({
-    top: document.querySelector('.candidate b')?.textContent,
+    top: document.querySelector('.meal-item .mi-food')?.selectedOptions[0]?.textContent
+      ?? document.querySelector('.candidate b')?.textContent,
     kcal: document.getElementById('kcal-value').textContent,
   }));
   console.log(`phase 3: offline analysis ✓ → ${res.top}, ${res.kcal} kcal`);
