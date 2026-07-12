@@ -205,7 +205,14 @@ async function startAnalysis(blob) {
     state.isFood = result.isFood;
     $('nonfood-warning').hidden = result.isFood;
     renderCandidates();
-    if (state.candidates.length) await selectFood(state.candidates[0].id, { fromAuto: true });
+    // Full-plate analysis is the PRIMARY flow: find every item automatically.
+    // Falls back to the single-dish flow inside analyzeWholePlate if item
+    // isolation fails. Skipped for non-food images.
+    if (state.candidates.length && result.isFood) {
+      await analyzeWholePlate({ auto: true });
+    } else if (state.candidates.length) {
+      await selectFood(state.candidates[0].id, { fromAuto: true });
+    }
     setSpinner(null);
   } catch (err) {
     setSpinner(null);
@@ -230,7 +237,7 @@ function resetResultUI() {
   $('meal-card').hidden = true;
   $('btn-whole-plate').disabled = false;
   $('btn-whole-plate').hidden = false;
-  $('btn-whole-plate').textContent = '🍱 Analyze whole plate (all items)';
+  $('btn-whole-plate').textContent = '↻ Re-scan whole plate';
   state.meal = null;
   const octx = $('overlay-canvas').getContext('2d');
   octx.clearRect(0, 0, octx.canvas.width, octx.canvas.height);
@@ -545,14 +552,19 @@ const REGION_COLORS = [
 
 $('btn-whole-plate').onclick = () => analyzeWholePlate();
 
-async function analyzeWholePlate() {
+/**
+ * Full-plate analysis — the primary flow (runs automatically after every
+ * photo). `auto: true` makes failures degrade silently into the single-dish
+ * flow instead of showing an error.
+ */
+async function analyzeWholePlate({ auto = false } = {}) {
   if (!state.raw) return;
   const btn = $('btn-whole-plate');
   btn.disabled = true;
   try {
     setSpinner('Loading models…');
     await Promise.all([ensureWorker(), dataReady]); // button can be pressed before first-load finishes
-    setSpinner('Finding everything on the plate…');
+    setSpinner('Scanning the whole plate…');
     const m = await rpc({
       type: 'segment-auto',
       image: state.imageEncoded ? undefined : rawToMsg(state.raw),
@@ -587,8 +599,12 @@ async function analyzeWholePlate() {
       items.push({ id: candidates[0].id, grams: est.grams, prob: candidates[0].prob, candidates, region });
     }
     if (!items.length) {
-      showError('Couldn’t isolate separate items — tap each food in the photo instead.');
       btn.disabled = false;
+      if (auto) { // degrade to single-dish flow, no error
+        if (state.candidates.length) await selectFood(state.candidates[0].id, { fromAuto: true });
+      } else {
+        showError('Couldn’t isolate separate items — tap each food in the photo instead.');
+      }
       return;
     }
     state.meal = { items };
@@ -600,8 +616,12 @@ async function analyzeWholePlate() {
     renderMeal();
   } catch (err) {
     console.error(err);
-    showError(`Whole-plate analysis failed: ${err.message}`);
     btn.disabled = false;
+    if (auto) { // degrade to single-dish flow, no error
+      if (state.candidates.length) await selectFood(state.candidates[0].id, { fromAuto: true }).catch(() => {});
+    } else {
+      showError(`Whole-plate analysis failed: ${err.message}`);
+    }
   } finally {
     setSpinner(null);
   }
