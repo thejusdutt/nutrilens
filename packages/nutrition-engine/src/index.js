@@ -25,10 +25,14 @@ export class NutritionEngine {
   constructor(db) {
     if (!db?.foods || !db?.nutrients) throw new Error('invalid nutrition database');
     this.db = db;
+    const words = (s) => (s ?? '').toLowerCase().split(/[^a-z0-9%]+/).filter(Boolean);
     this._searchIndex = Object.entries(db.foods).map(([id, f]) => ({
       id,
       name: f.name,
-      tokens: `${f.name} ${f.fdcDesc ?? ''} ${(f.aliases ?? []).join(' ')}`.toLowerCase(),
+      nameLower: f.name.toLowerCase(),
+      nameWords: words(f.name),
+      aliasWords: words((f.aliases ?? []).join(' ')),
+      descWords: words(f.fdcDesc),
     }));
   }
 
@@ -121,28 +125,44 @@ export class NutritionEngine {
   }
 
   /**
-   * Fuzzy search food names for manual correction UIs.
-   * Scores by token-prefix coverage of the query.
+   * Fuzzy search food names for manual correction and quick-add UIs.
+   *
+   * Ranking philosophy: what the food is CALLED beats what its source
+   * database happens to mention. Display-name word matches score far above
+   * alias matches, which score above source-description matches — otherwise
+   * "white rice" surfaces Risotto first (its USDA description reads
+   * "Rice, white, cooked with fat…"). Every query token must match
+   * somewhere; ties break toward shorter names, then alphabetically, so
+   * results are stable.
+   *
    * @param {string} query
    * @param {number} [limit=12]
    * @returns {{id:string, name:string, score:number}[]}
    */
   search(query, limit = 12) {
-    const qTokens = query.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    const q = query.toLowerCase().trim();
+    const qTokens = q.split(/[^a-z0-9%]+/).filter(Boolean);
     if (!qTokens.length) return [];
     const scored = [];
     for (const e of this._searchIndex) {
       let score = 0;
+      let allMatched = true;
       for (const qt of qTokens) {
-        if (e.tokens.includes(qt)) score += 2;
-        else if (e.tokens.split(/\s+/).some((t) => t.startsWith(qt))) score += 1;
+        if (e.nameWords.includes(qt)) score += 6;
+        else if (e.nameWords.some((w) => w.startsWith(qt))) score += 4;
+        else if (e.aliasWords.includes(qt)) score += 3;
+        else if (e.aliasWords.some((w) => w.startsWith(qt))) score += 2;
+        else if (e.descWords.includes(qt)) score += 1;
+        else if (e.descWords.some((w) => w.startsWith(qt))) score += 0.5;
+        else { allMatched = false; break; }
       }
-      // All tokens must contribute; prefer names that start with the query.
-      if (score >= qTokens.length) {
-        if (e.name.toLowerCase().startsWith(qTokens[0])) score += 1.5;
-        scored.push({ id: e.id, name: e.name, score });
-      }
+      if (!allMatched) continue;
+      if (e.nameLower === q) score += 30;
+      else if (e.nameLower.startsWith(q)) score += 12;
+      scored.push({ id: e.id, name: e.name, score });
     }
-    return scored.sort((a, b) => b.score - a.score).slice(0, limit);
+    return scored
+      .sort((a, b) => b.score - a.score || a.name.length - b.name.length || a.name.localeCompare(b.name))
+      .slice(0, limit);
   }
 }

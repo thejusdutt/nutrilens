@@ -120,17 +120,28 @@ for (const p of portions) {
 }
 
 // --------------------------- vocabulary → FNDDS matching ---------------------------
-const foodIndex = foods.map((f) => ({ fdcId: f.fdc_id, desc: f.description, lower: f.description.toLowerCase() }));
+const foodIndex = foods.map((f) => {
+  const lower = f.description.toLowerCase();
+  const words = lower.split(/[^a-z0-9%]+/).filter(Boolean);
+  return { fdcId: f.fdc_id, desc: f.description, lower, words: new Set(words), firstWord: words[0] };
+});
 
 function matchQuery(query) {
   const q = query.toLowerCase();
-  const tokens = q.split(/[\s,]+/).filter(Boolean);
+  const tokens = q.split(/[^a-z0-9%]+/).filter(Boolean); // same tokenization as descriptions
   let best = null, bestScore = -Infinity;
   for (const f of foodIndex) {
-    if (!tokens.every((t) => f.lower.includes(t))) continue;
+    // Whole-word matching only. Substring matching caused catastrophic
+    // mis-mappings: 'Roti' ⊂ 'ROTIsserie chicken', 'Lassi' ⊂ 'cLASSIc mixed
+    // vegetables', 'meat' ⊂ 'no MEAT'.
+    if (!tokens.every((t) => f.words.has(t))) continue;
     let score = -f.desc.length;
     if (f.lower === q) score += 1000;
-    if (f.lower.startsWith(tokens[0])) score += 60;
+    // FNDDS names the primary food first ("Cake, chocolate…", "Oatmeal,
+    // regular…"); a description that *starts* with the query's head token is
+    // that food, one that merely mentions it ("Cookie, oatmeal") is not.
+    if (f.firstWord === tokens[0]) score += 120;
+    if (f.lower.startsWith(q)) score += 80;
     if (/\bNFS\b|NS as to/i.test(f.desc)) score += 25; // generic entries better represent a class
     if (nutrientsByFood.get(f.fdcId)?.kcal == null) score -= 500;
     if (score > bestScore) { bestScore = score; best = f; }
@@ -180,6 +191,66 @@ for (const entry of VOCABULARY) {
   vocabOut.push({ id: entry.id, name: entry.name, f101, nonFood: false });
   reportLines.push(`${entry.id.padEnd(26)} ${String(per100g.kcal ?? '??').padStart(5)} kcal/100g  ← [${usedQuery}] ${match.desc}`);
 }
+
+// --------------------------- validation gate ---------------------------
+// The build FAILS if the data is implausible. Three layers:
+//  1. Atwater consistency: kcal ≈ 4·protein + 4·carbs + 9·fat (catches join
+//     errors and unit mix-ups).
+//  2. Physical ranges per 100 g.
+//  3. Golden references: well-known foods must match published USDA values
+//     (catches semantic mis-mappings like 'Roti' → 'ROTIsserie chicken').
+const GOLDEN = {
+  // id: [kcal, ±kcalTol, protein g, ±proteinTol] per 100 g
+  'plain-rice': [130, 20, 2.7, 1],
+  banana: [93, 15, 1, 0.6],
+  apple: [58, 12, 0.4, 0.4],
+  pizza: [270, 45, 11, 3],
+  hamburger: [280, 60, 16, 4],
+  'boiled-egg': [150, 25, 12.5, 2],
+  'chicken-curry': [120, 45, 9, 4],
+  chapati: [300, 70, 8, 3.5],
+  oatmeal: [70, 25, 2.5, 1.5],
+  'apple-pie': [240, 60, 2, 1.5],
+  dal: [130, 50, 7, 3],
+  'french-fries': [280, 70, 3.5, 1.5],
+  avocado: [160, 25, 2, 1],
+  'chocolate-cake': [370, 70, 4.5, 2],
+  'steamed-broccoli': [40, 25, 3, 1.5],
+  'potato-chips': [540, 60, 6.5, 2.5],
+  bacon: [470, 90, 34, 8],
+  sushi: [140, 50, 5, 3],
+  'fried-rice': [175, 45, 4.5, 2],
+  'lassi': [80, 40, 3, 2],
+  'paneer-tikka': [300, 80, 19, 6],
+  coffee: [2, 3, 0.2, 0.3],
+};
+const problems = [];
+for (const [id, f] of Object.entries(dbFoods)) {
+  const { kcal = 0, protein = 0, carbs = 0, fat = 0 } = f.per100g;
+  const atwater = 4 * protein + 4 * carbs + 9 * fat;
+  if (Math.abs(kcal - atwater) > Math.max(20, atwater * 0.25)) {
+    problems.push(`${id}: kcal=${kcal} inconsistent with macros (4P+4C+9F=${atwater.toFixed(0)}) [${f.fdcDesc}]`);
+  }
+  if (kcal < 0 || kcal > 900 || protein > 45 || fat > 100 || carbs > 95 || protein + carbs + fat > 105) {
+    problems.push(`${id}: implausible per-100g values kcal=${kcal} P=${protein} C=${carbs} F=${fat} [${f.fdcDesc}]`);
+  }
+}
+for (const [id, [kcal, kTol, protein, pTol]] of Object.entries(GOLDEN)) {
+  const f = dbFoods[id];
+  if (!f) { problems.push(`golden food missing from DB: ${id}`); continue; }
+  if (Math.abs(f.per100g.kcal - kcal) > kTol) {
+    problems.push(`${id}: kcal ${f.per100g.kcal} outside golden ${kcal}±${kTol} [${f.fdcDesc}]`);
+  }
+  if (Math.abs(f.per100g.protein - protein) > pTol) {
+    problems.push(`${id}: protein ${f.per100g.protein} outside golden ${protein}±${pTol} [${f.fdcDesc}]`);
+  }
+}
+if (problems.length) {
+  console.error(`\nVALIDATION FAILED (${problems.length}):`);
+  for (const p of problems) console.error('  ✗', p);
+  process.exit(1);
+}
+console.log(`validation: Atwater + ranges (${Object.keys(dbFoods).length} foods) + ${Object.keys(GOLDEN).length} golden references — all pass`);
 
 const db = {
   version: '2024-10-31',
