@@ -24,7 +24,7 @@
 └──────────────────────────────────────────────────────────────────────────────────┘
 
 Build time (Node, never shipped):
-  FNDDS CSV ──build-nutrition-db──► nutrition-db.json (211 foods × 30 nutrients)
+  FNDDS CSV ──build-nutrition-db──► nutrition-db.json (231 foods × 30 nutrients)
   vocabulary.mjs ──MobileCLIP text tower + prompt ensembling──► label-embeddings.bin
 ```
 
@@ -49,7 +49,7 @@ Segmentation → Portion**, because:
 
 - Closed-set head: `p_swin` over 101 dishes (calibrated by temperature).
 - Open-vocab head: cosine(image embed, precomputed label embeds) → softmax at
-  CLIP logit scale over 211 foods + 8 non-food probes.
+  CLIP logit scale over 231 foods + 8 non-food probes.
 - In-set labels: `score = wS·log p_swin + (1−wS)·log p_zs`, where
   `wS = wSwin·min(1, maxp_swin/0.5)` — Swin's weight shrinks when it is itself
   unsure (typical for foods outside Food-101).

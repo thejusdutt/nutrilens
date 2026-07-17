@@ -4,7 +4,7 @@ Four layers, each answering a different question.
 
 ## 1. Unit tests — "is the math right?" (`npm test`)
 
-39 vitest cases across the five packages:
+49 vitest cases across the five packages:
 
 - **image-preprocess**: resize correctness (solid-color invariance, seam
   interpolation, aspect preservation), crop/pad geometry, tensor
@@ -54,14 +54,20 @@ network. Verified: PASS ("Beignets, 2978 kcal" offline).
 
 ## 4. Statistical evaluation — "how accurate is it, really?"
 
-`npm run eval:fetch && npm run eval && npm run eval:report` measures top-1/
-top-5 per head and fused, expected calibration error with a reliability table,
-false-non-food rate, per-class breakdowns, latency percentiles, and a fusion
-parameter sweep — over the Food-101 validation subsample (2,523 images) and the
-extended Indian set (259 images). Raw per-image head outputs are stored
-(`eval/results/*.jsonl`) so fusion changes can be re-scored without re-running
-inference. Reports: `eval/results/ACCURACY_REPORT.md`,
+`npm run eval:fetch && node eval/fetch-commons.mjs && npm run eval && npm run
+eval:report` measures top-1/top-5 per head and fused, expected calibration
+error with a reliability table, false-non-food rate, per-class breakdowns,
+**per-cuisine breakdowns**, latency percentiles, and a cuisine-balanced fusion
+parameter sweep — over the Food-101 validation subsample (2,523 images), the
+extended Indian set (259 images), and the Wikimedia Commons cuisine sets (361
+images across Mexican/Spanish/Chinese/extra-Indian). Raw per-image head outputs
+are stored (`eval/results/*.jsonl`) so fusion changes can be re-scored without
+re-running inference. Reports: `eval/results/ACCURACY_REPORT.md`,
 `eval/results/PERFORMANCE_REPORT.md`.
+
+Latest measured (2026-07-17): Food-101 fused 90.4% top-1 / 98.4% top-5, ECE
+0.015; per-cuisine top-1 ranges Japanese 92.6% / Chinese 77.8% / Indian 76.7% /
+Spanish 72.8% / Mexican 70.0%, with top-5 staying 87–99% throughout.
 
 ## What is deliberately not tested
 

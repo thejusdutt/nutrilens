@@ -13,7 +13,7 @@
 
 ### Curated mapping
 
-`tools/vocabulary.mjs` defines 211 canonical foods; each carries one or more
+`tools/vocabulary.mjs` defines 231 canonical foods; each carries one or more
 FNDDS query strings. `tools/build-nutrition-db.mjs` resolves them with a scored
 matcher (all-token substring match; prefers exact description, shorter
 descriptions, and `NFS`/`NS as to` generic entries) and writes
@@ -49,6 +49,27 @@ closer entries; the proxy is the nearest culinary/nutritional neighbour.
   kaathi_rolls, momos→dumplings is the loosest accepted mapping) were excluded
   or mapped conservatively.
 
+### Cuisine sets (Wikimedia Commons)
+
+- 2026-07-17: 26 classes with no faithful Food-101/HF mapping — Mexican
+  (enchiladas, tamales, fajitas, chilaquiles, taquitos, refried beans, Mexican
+  rice, pozole, burrito bowl), Spanish (tortilla española, gazpacho, croquetas,
+  patatas bravas, empanadas), Chinese (chow mein, sweet-and-sour pork, kung
+  pao chicken, mapo tofu, congee, wonton soup, General Tso chicken, baozi),
+  extra Indian (biryani, vada, gulab jamun, paratha) — 15 images/class,
+  **361 images**, fetched by `eval/fetch-commons.mjs`.
+- Sourcing: prefer members of a curated Commons category, fall back to a
+  File-namespace search. Both are filtered through a per-class title regex
+  (e.g. `/empanad/i`) before download — unfiltered search results contain
+  real label noise (a search for "empanada food" once returned a pumpkin pie).
+  Requests are paced (~400 ms) with exponential backoff on HTTP 429; Commons
+  throttles unauthenticated bursts hard enough that an unpaced fetch silently
+  drops most of a class.
+- Purpose: measure cuisines Food-101 barely covers (Mexican: only 6 classes;
+  Spanish: 2; Chinese: 5) end-to-end, not just the Indian set.
+- Reproduce: `node eval/fetch-commons.mjs [--per-class 15]` →
+  `eval/data/cuisine/<cuisine>/<id>/*.jpg`.
+
 ### What we did not use
 
 - Fruits-360: studio images on white backgrounds — would inflate fruit accuracy
@@ -60,7 +81,13 @@ closer entries; the proxy is the nearest culinary/nutritional neighbour.
 
 ```bash
 npm run eval:fetch                     # ~2,800 images into eval/data/
-npm run eval                           # both heads over every image
-npm run eval:report                    # markdown reports + fusion sweep
+node eval/fetch-commons.mjs            # +361 cuisine images into eval/data/cuisine/
+npm run eval                           # both heads over every image (--set all is the default)
+npm run eval:report                    # markdown reports incl. per-cuisine + fusion sweep
 node eval/run-eval.mjs --swin-variant q4f16   # A/B the 52.7 MB quantization
 ```
+
+Never run two `eval` processes concurrently against the same `eval/results/*.jsonl` —
+`run-eval.mjs` appends, so overlapping runs interleave rows from different
+label-embedding versions into one file with no way to tell them apart after
+the fact.
