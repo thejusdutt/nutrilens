@@ -12,13 +12,32 @@ airplane mode.
 
 | | Food-101 val subsample (2,523 imgs) | Extended Indian set (259 imgs) |
 |---|---|---|
-| **Fused top-1 (shipped)** | **90.4%** | **82.6%** |
-| Fused top-5 | 98.4% | 96.9% |
+| **Fused top-1 (shipped)** | **90.4%** | **81.1%** |
+| Fused top-5 | 98.4% | 96.5% |
 | False "not food" rate | 0.1% | 0.0% |
-| Calibration (ECE) | 0.016 | – |
+| Calibration (ECE) | 0.015 | – |
 
 Fusion beats the fine-tuned classifier alone (90.2%) on its own turf *while*
 recognizing hundreds of foods outside its training set.
+
+### Per-cuisine (Food-101 slice + dedicated Wikimedia Commons / HF sets)
+
+| Cuisine | images | top-1 | top-5 |
+|---|---|---|---|
+| Japanese | 175 | 92.6% | 99.4% |
+| Korean | 25 | 96.0% | 100% |
+| Thai | 25 | 96.0% | 100% |
+| Vietnamese | 25 | 100% | 100% |
+| Chinese | 234 | 77.8% | 95.3% |
+| Indian | 369 | 76.7% | 95.4% |
+| Spanish | 125 | 72.8% | 92.0% |
+| Mexican | 277 | 70.0% | 87.4% |
+
+Cuisines dominated by zero-shot-only classes (no Food-101 coverage) score
+lower on top-1 but stay strong on top-5 — the UI surfaces the top-5
+suggestions, so a one-tap correction covers most misses. Hardest classes are
+visually ambiguous by nature (enchiladas vs. huevos rancheros, refried beans,
+biryani vs. pulao); see the per-class table in the report.
 
 ## Highlights
 

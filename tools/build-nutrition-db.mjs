@@ -223,6 +223,10 @@ const GOLDEN = {
   'lassi': [80, 40, 3, 2],
   'paneer-tikka': [300, 80, 19, 6],
   coffee: [2, 3, 0.2, 0.3],
+  'refried-beans': [90, 25, 5, 2.5],
+  gazpacho: [26, 15, 0.8, 0.8],
+  'general-tso-chicken': [295, 60, 13, 4],
+  tamales: [174, 45, 7.4, 3],
 };
 const problems = [];
 for (const [id, f] of Object.entries(dbFoods)) {
