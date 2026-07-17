@@ -19,9 +19,41 @@ const loadSet = (name) => {
 };
 const food101 = loadSet('food101');
 const extended = loadSet('extended');
+// Wikimedia Commons per-cuisine sets: cuisine-<name>.jsonl
+const cuisineSets = Object.fromEntries(
+  readdirSync(resultsDir)
+    .filter((f) => /^cuisine-.+\.jsonl$/.test(f))
+    .map((f) => [f.replace(/^cuisine-|\.jsonl$/g, ''), loadSet(f.replace('.jsonl', ''))]),
+);
 if (!food101.length && !extended.length) {
   console.error('no results found — run `npm run eval` first');
   process.exit(1);
+}
+
+// Canonical vocab id → cuisine, for slicing Food-101 rows into cuisines.
+const F101_CUISINE = {
+  'breakfast-burrito': 'mexican', 'chicken-quesadilla': 'mexican', guacamole: 'mexican',
+  'huevos-rancheros': 'mexican', nachos: 'mexican', tacos: 'mexican',
+  churros: 'spanish', paella: 'spanish',
+  dumplings: 'chinese', 'fried-rice': 'chinese', 'hot-and-sour-soup': 'chinese',
+  'peking-duck': 'chinese', 'spring-rolls': 'chinese',
+  'chicken-curry': 'indian', samosa: 'indian',
+  edamame: 'japanese', gyoza: 'japanese', 'miso-soup': 'japanese', ramen: 'japanese',
+  sashimi: 'japanese', sushi: 'japanese', takoyaki: 'japanese',
+  bibimbap: 'korean', 'pad-thai': 'thai', pho: 'vietnamese',
+};
+
+/** cuisine → rows (Food-101 slice + extended Indian set + dedicated Commons sets). */
+function cuisineRows() {
+  const by = new Map();
+  const add = (cuisine, row) => {
+    if (!by.has(cuisine)) by.set(cuisine, []);
+    by.get(cuisine).push(row);
+  };
+  for (const r of food101) { const c = F101_CUISINE[r.truth.id]; if (c) add(c, r); }
+  for (const r of extended) add('indian', r);
+  for (const [cuisine, rows] of Object.entries(cuisineSets)) for (const r of rows) add(cuisine, r);
+  return by;
 }
 
 const foodVocab = vocab.filter((v) => !v.nonFood);
@@ -80,13 +112,20 @@ function ece(confCorrect, bins = 10) {
 }
 
 // --------------------------- parameter sweep ---------------------------
+// Balanced score = mean of Food-101 overall top-1 and per-cuisine top-1 for
+// every cuisine that has a dedicated (non-Food-101) eval set, so no single
+// large set dominates the fitted parameters.
+const byCuisine = cuisineRows();
+const sweepCuisines = ['indian', ...Object.keys(cuisineSets)].filter((c, i, a) => a.indexOf(c) === i && byCuisine.get(c)?.length);
 const sweep = [];
 for (const wSwin of [0.55, 0.65, 0.72, 0.8, 0.88]) {
   for (const oovBias of [-1.0, -0.6, -0.35, -0.1, 0.2]) {
     const p = { wSwin, oovBias };
     const a = food101.length ? fusedMetrics(food101, p).top1 : 0;
     const b = extended.length ? fusedMetrics(extended, p).top1 : 0;
-    sweep.push({ wSwin, oovBias, food101: a, extended: b, balanced: (a + b) / 2 });
+    const perC = sweepCuisines.map((c) => fusedMetrics(byCuisine.get(c), p).top1);
+    const balanced = [a, ...perC].reduce((x, y) => x + y, 0) / (1 + perC.length);
+    sweep.push({ wSwin, oovBias, food101: a, extended: b, balanced });
   }
 }
 sweep.sort((x, y) => y.balanced - x.balanced);
@@ -138,6 +177,24 @@ Datasets: Food-101 official validation subsample (${food101.length} images, ${h1
 | False "not food" rate | ${pct(fDef101.falseNonFood)} | ${fDefExt ? pct(fDefExt.falseNonFood) : '–'} |
 
 Best swept fusion parameters: wSwin=${best.wSwin}, oovBias=${best.oovBias} (balanced top-1 ${pct(best.balanced)}).
+
+## Per-cuisine accuracy (fused, shipped defaults)
+
+Rows combine the Food-101 slice for that cuisine with its dedicated eval set
+(rajistics Indian images; Wikimedia Commons for Mexican/Spanish/Chinese/…).
+
+| Cuisine | n | top-1 | top-5 | false "not food" |
+|---|---|---|---|---|
+${[...byCuisine.entries()].sort((a, b) => b[1].length - a[1].length).map(([c, rows]) => {
+  const m = fusedMetrics(rows, DEFAULTS);
+  return `| ${c} | ${rows.length} | ${pct(m.top1)} | ${pct(m.top5)} | ${pct(m.falseNonFood)} |`;
+}).join('\n')}
+
+### Per-class accuracy inside dedicated cuisine sets (fused, defaults)
+
+| Cuisine | Class | n | top-1 |
+|---|---|---|---|
+${Object.entries(cuisineSets).flatMap(([c, rows]) => perClass(rows, DEFAULTS).map((w) => `| ${c} | ${w.id} | ${w.n} | ${pct(w.acc)} |`)).join('\n')}
 
 ## Confidence calibration (fused, best params, Food-101)
 

@@ -1,6 +1,6 @@
 {
-  "date": "2026-07-11T07:53:49.445Z",
+  "date": "2026-07-17T16:00:21.669Z",
   "swinVariant": "int8",
   "runtime": "onnxruntime-node 23.9.0",
-  "vocabSize": 219
+  "vocabSize": 239
 }

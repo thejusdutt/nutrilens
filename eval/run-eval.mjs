@@ -6,7 +6,7 @@
  * Outputs: eval/results/food101.jsonl, eval/results/extended.jsonl
  *          eval/results/meta.json (runtime, model variant, timings)
  *
- * Usage: node eval/run-eval.mjs [--swin-variant int8|q4f16] [--limit N] [--set food101|extended|both]
+ * Usage: node eval/run-eval.mjs [--swin-variant int8|q4f16] [--limit N] [--set food101|extended|cuisine|all]
  */
 import { readdirSync, writeFileSync, mkdirSync, appendFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,7 +16,7 @@ const args = process.argv.slice(2);
 const argVal = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
 const SWIN_VARIANT = argVal('--swin-variant', 'int8');
 const LIMIT = Number(argVal('--limit', Infinity));
-const SET = argVal('--set', 'both');
+const SET = argVal('--set', 'all');
 
 const resultsDir = join(root, 'eval/results');
 mkdirSync(resultsDir, { recursive: true });
@@ -59,13 +59,23 @@ async function runSet(name, dir, truthFromDir) {
   console.log(`${name}: ${done} images done`);
 }
 
-if (SET !== 'extended') {
+if (SET === 'all' || SET === 'food101') {
   await runSet('food101', join(root, 'eval/data/food101'),
     (cls) => ({ f101: labels.indexOf(cls), id: canonicalByF101.get(labels.indexOf(cls)) ?? null }));
 }
-if (SET !== 'food101') {
+if (SET === 'all' || SET === 'extended') {
   await runSet('extended', join(root, 'eval/data/extended'),
     (cls) => ({ f101: null, id: cls }));
+}
+if (SET === 'all' || SET === 'cuisine') {
+  // Wikimedia Commons per-cuisine sets: eval/data/cuisine/<cuisine>/<id>/*.jpg
+  const cuisineRoot = join(root, 'eval/data/cuisine');
+  if (existsSync(cuisineRoot)) {
+    for (const cuisine of readdirSync(cuisineRoot)) {
+      await runSet(`cuisine-${cuisine}`, join(cuisineRoot, cuisine),
+        (cls) => ({ f101: null, id: cls }));
+    }
+  }
 }
 
 writeFileSync(join(resultsDir, 'meta.json'), JSON.stringify({
