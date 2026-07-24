@@ -107,12 +107,15 @@ noise of the height×density assumption.
   progress); SlimSAM loads only when portion estimation is first needed;
   nutrition JSONs are eager (<1 MB).
 - **Caching**: hand-written service worker precaches the app shell (stable,
-  hash-free asset names + `CACHE_VERSION` busting). The ~100 MB model binaries
+  hash-free asset names + `SHELL_VERSION` busting). The ~100 MB model binaries
   are deliberately **not** routed through the SW: browsers terminate service
   workers mid-transfer on bodies that large (and the HTTP disk cache write
   fails outright — `ERR_CACHE_WRITE_FAILURE`). Instead the inference worker
   and the Settings prefetch write model bytes into Cache Storage directly
-  (`cache: 'no-store'` fetches to bypass the HTTP cache), cache-first on read.
+  (`cache: 'no-store'` fetches to bypass the HTTP cache), cache-first on read —
+  both through the one shared loader in `app/src/model-cache.js`.
+  The model cache carries its own `MODEL_VERSION`, so shipping a shell update
+  never evicts ~180 MB of already-downloaded models.
 
 ## Error handling & honesty
 
