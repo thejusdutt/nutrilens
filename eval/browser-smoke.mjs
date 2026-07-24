@@ -73,17 +73,24 @@ try {
   }));
   console.log(JSON.stringify(result, null, 2));
 
-  // History save round-trip.
+  // Diary save round-trip: a photo of a plate logs one entry per dish.
   await page.click('#btn-save');
   await page.waitForFunction(() => document.getElementById('btn-save').textContent.includes('✓'));
-  await page.click('#btn-history');
+  await page.evaluate(() => document.querySelector('.tab-btn[data-view="diary"]').click());
   await page.waitForSelector('.diary-entry', { timeout: 8000 });
-  console.log('diary entry rendered ✓');
+  const logged = await page.evaluate(() => ({
+    entries: document.querySelectorAll('.diary-entry').length,
+    remaining: document.getElementById('rem-left')?.textContent,
+    food: document.getElementById('rem-food')?.textContent,
+    streak: document.getElementById('streak-chip')?.textContent,
+  }));
+  console.log('diary:', JSON.stringify(logged));
 
   await page.screenshot({ path: join(root, 'eval/results/browser-smoke.png') });
 
   const ok = result.topCandidate?.toLowerCase().includes('beignet')
-    && Number(result.kcal) > 50 && result.macroRows >= 4 && result.microRows >= 10;
+    && Number(result.kcal) > 50 && result.macroRows >= 4 && result.microRows >= 10
+    && logged.entries >= 1 && Number(logged.food.replace(/\D/g, '')) > 0;
   console.log(ok ? 'BROWSER SMOKE PASS' : 'BROWSER SMOKE FAIL');
   process.exitCode = ok ? 0 : 1;
 } finally {

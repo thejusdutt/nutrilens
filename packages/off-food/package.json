@@ -1,0 +1,10 @@
+{
+  "name": "@nutrilens/off-food",
+  "version": "1.0.0",
+  "description": "Map an Open Food Facts product record onto a NutriLens food: unit-corrected per-100 g nutrients, parsed serving sizes and plausibility checks",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "keywords": ["open-food-facts", "barcode", "packaged-food", "nutrition", "offline"]
+}

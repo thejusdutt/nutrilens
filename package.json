@@ -17,6 +17,7 @@
     "preview": "npm --workspace app run preview",
     "test": "vitest run",
     "test:nutrition-ui": "node eval/nutrition-e2e.mjs",
+    "test:tracker": "node eval/tracker-e2e.mjs",
     "test:smoke": "node eval/browser-smoke.mjs",
     "test:offline": "node eval/offline-test.mjs",
     "eval": "node eval/run-eval.mjs",

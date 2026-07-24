@@ -1,0 +1,10 @@
+{
+  "name": "@nutrilens/diary",
+  "version": "1.0.0",
+  "description": "Food-diary domain logic: serving-size arithmetic, per-meal and per-day totals, logging streaks, weight projection, recent/frequent ranking and diary export",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "keywords": ["diary", "food-log", "calories", "macros", "servings", "offline"]
+}

@@ -36,7 +36,12 @@ try {
   await page.goto('http://localhost:5199/', { waitUntil: 'networkidle2' });
   await page.waitForFunction(() => navigator.serviceWorker?.ready.then(() => true), { timeout: 20000 });
   await page.click('#btn-settings');
-  await page.click('#btn-prefetch');
+  // The models section is a collapsed <details>: open it, then click through the
+  // DOM so the test does not depend on the button being in the viewport.
+  await page.evaluate(() => {
+    document.getElementById('btn-prefetch').closest('details')?.setAttribute('open', '');
+    document.getElementById('btn-prefetch').click();
+  });
   await page.waitForFunction(
     () => document.getElementById('btn-prefetch').textContent.startsWith('✓'),
     { timeout: 300000, polling: 1000 },

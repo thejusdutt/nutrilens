@@ -1,0 +1,10 @@
+{
+  "name": "@nutrilens/exercise-db",
+  "version": "1.0.0",
+  "description": "Offline exercise database and energy-expenditure maths: MET values for cardio and strength activities, ACSM kcal formula, custom activities",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "keywords": ["exercise", "met", "calories-burned", "acsm", "offline"]
+}
