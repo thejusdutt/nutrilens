@@ -5,6 +5,7 @@ import { PortionEstimator, maskAreaInsideEllipse } from '@nutrilens/portion-esti
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
 import { saveMeal, listMeals, listMealsByDate, deleteMeal, getDay, setDay, dateKey } from './db.js';
 import { getProfile, setProfile, dailyGoal, suggestSlot, SLOTS, SLOT_LABEL, ACTIVITY, RATE } from './goals.js';
+import { loadModelBytes } from './model-cache.js';
 import InferenceWorker from './workers/inference-worker.js?worker';
 
 const $ = (id) => document.getElementById(id);
@@ -193,6 +194,14 @@ async function startAnalysis(blob) {
   $('save-slot').value = pendingSlot ?? suggestSlot();
   setSpinner('Preparing photo…');
   state.raw = await toRawImage(blob, { maxSide: 1280 });
+  // Everything measured from the previous photo is now meaningless. Leaving
+  // `seg` behind made runPortionEstimation reuse the old mask (it only
+  // segments when seg is empty), and leaving `plate` behind let a plate from
+  // the previous photo scale a picture that has none.
+  state.seg = null;
+  state.plate = null;
+  state.portion = null;
+  state.selectedId = null;
   state.userGrams = null;
   state.imageEncoded = false;
   drawPhoto();
@@ -280,14 +289,17 @@ async function runPortionEstimation(point) {
     if (!state.seg || point) {
       setSpinner(state.imageEncoded ? 'Refining portion…' : 'Measuring portion…');
       const pts = [point ?? { x: raw.width / 2, y: raw.height / 2 }];
+      const detectPlate = !state.imageEncoded;
       const m = await rpc({
         type: 'segment',
-        image: state.imageEncoded ? undefined : rawToMsg(raw),
-        detectPlate: !state.imageEncoded,
+        image: detectPlate ? rawToMsg(raw) : undefined,
+        detectPlate,
         points: pts,
       });
       state.imageEncoded = true;
-      if (m.plate) state.plate = m.plate;
+      // Only a run that actually looked for a plate may set it — and when one
+      // did look, "no plate" is an answer, not a reason to keep the old one.
+      if (detectPlate) state.plate = m.plate ?? null;
       state.seg = { mask: new Uint8Array(m.mask), areaPx: m.areaPx, width: m.width, height: m.height, iou: m.iou };
       drawOverlay();
     }
@@ -565,16 +577,17 @@ async function analyzeWholePlate({ auto = false } = {}) {
     setSpinner('Loading models…');
     await Promise.all([ensureWorker(), dataReady]); // button can be pressed before first-load finishes
     setSpinner('Scanning the whole plate…');
+    const detectPlate = !state.imageEncoded;
     const m = await rpc({
       type: 'segment-auto',
-      image: state.imageEncoded ? undefined : rawToMsg(state.raw),
-      detectPlate: !state.imageEncoded,
+      image: detectPlate ? rawToMsg(state.raw) : undefined,
+      detectPlate,
       plate: state.plate,
       width: state.raw.width,
       height: state.raw.height,
     });
     state.imageEncoded = true;
-    if (m.plate) state.plate = m.plate;
+    if (detectPlate) state.plate = m.plate ?? null;
 
     const estimator = new PortionEstimator({ plateDiameterCm: Number(localStorage.getItem('plateCm') ?? 26) });
     const items = [];
@@ -1082,54 +1095,16 @@ const PREFETCH_URLS = [
  * page. Deliberately NOT delegated to the service worker: SWs are terminated
  * by the browser mid-download on ~100 MB files, and page-side caching also
  * works on the very first visit before the SW controls the page. Idempotent
- * (cache-first) and deduplicated against concurrent calls.
+ * (loadModelBytes is cache-first) and deduplicated against concurrent calls.
  */
 let prefetchRun = null;
 function swPrefetch(onProgress) {
   prefetchRun ??= (async () => {
     try {
-      const cache = await caches.open('nutrilens-models-v1'); // must match sw.js MODEL_CACHE
       for (let i = 0; i < PREFETCH_URLS.length; i++) {
-        const url = PREFETCH_URLS[i];
-        if (!(await cache.match(url))) {
-          // Manifest first, validated (mirrors the inference worker): hosts
-          // with per-file caps (Cloudflare Pages: 25 MiB) serve big models as
-          // .pNN parts, and SPA-mode hosts answer missing paths with
-          // index.html + 200, so 404-based detection is unreliable.
-          // no-store: skip the HTTP disk cache (fails on ~100 MB bodies);
-          // Cache Storage below is our persistence layer.
-          let manifest = null;
-          try {
-            const mres = await fetch(`${url}.manifest.json`, { cache: 'no-store' });
-            if (mres.ok) {
-              const m = await mres.json();
-              if (Number.isInteger(m.parts) && Number.isInteger(m.size)) manifest = m;
-            }
-          } catch { /* whole-file host */ }
-          let body;
-          if (manifest) {
-            const buf = new Uint8Array(manifest.size);
-            let off = 0;
-            for (let p = 0; p < manifest.parts; p++) {
-              const pres = await fetch(`${url}.p${String(p).padStart(2, '0')}`, { cache: 'no-store' });
-              if (!pres.ok) throw new Error(`${url} part ${p}: HTTP ${pres.status}`);
-              const chunk = new Uint8Array(await pres.arrayBuffer());
-              buf.set(chunk, off);
-              off += chunk.length;
-              onProgress?.((i + off / manifest.size) / PREFETCH_URLS.length);
-            }
-            body = buf.buffer;
-          } else {
-            const res = await fetch(url, { cache: 'no-store' });
-            if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-            // Buffer before put(): streaming put can fail on large bodies
-            // served without Content-Length (compressed static hosts).
-            body = await res.arrayBuffer();
-          }
-          await cache.put(url, new Response(body, {
-            headers: { 'Content-Type': 'application/octet-stream' },
-          }));
-        }
+        await loadModelBytes(PREFETCH_URLS[i], (loaded, total) => {
+          onProgress?.((i + (total ? loaded / total : 0)) / PREFETCH_URLS.length);
+        });
         onProgress?.((i + 1) / PREFETCH_URLS.length);
       }
     } finally {

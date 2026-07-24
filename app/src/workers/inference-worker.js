@@ -17,6 +17,7 @@ import {
 } from '@nutrilens/food-recognition';
 import { SlimSamSegmenter } from '@nutrilens/food-segmentation';
 import { detectPlateEllipse } from '@nutrilens/portion-estimator';
+import { loadModelBytes, MODEL_CACHE } from '../model-cache.js';
 
 ort.env.wasm.wasmPaths = '/ort/';
 // Multi-threaded WASM when the page is crossOriginIsolated (COOP/COEP served).
@@ -27,89 +28,16 @@ let segmenter = null;
 let backend = 'wasm';
 let samLoading = null;
 
-// Must match MODEL_CACHE in public/sw.js. Model bytes are read/written to
-// Cache Storage directly from this worker: the Cache API has no service-worker
-// lifetime limits (SWs get terminated mid-download on ~100 MB files), works
-// before the page is SW-controlled, and makes repeat loads instant.
-const MODEL_CACHE = 'nutrilens-models-v1';
+// Model bytes are read/written to Cache Storage directly from this worker (see
+// ../model-cache.js): the Cache API has no service-worker lifetime limits (SWs
+// get terminated mid-download on ~100 MB files), works before the page is
+// SW-controlled, and makes repeat loads instant.
 
-/** Fetch a URL as bytes with progress, cache-first via Cache Storage.
- * Falls back to `<url>.manifest.json` + `<url>.pNN` part files when the plain
- * URL is absent — static hosts with per-file size caps (Cloudflare Pages:
- * 25 MiB) serve the big models pre-split by tools/split-models.mjs. The
- * reassembled bytes are cached under the plain URL either way, so offline and
- * repeat loads behave identically on every host. */
-async function fetchWithProgress(url, label) {
-  const cache = await caches.open(MODEL_CACHE).catch(() => null);
-  const hit = cache && await cache.match(url);
-  if (hit) return new Uint8Array(await hit.arrayBuffer());
-
-  // Manifest first (tiny request), validated — NOT 404-based: SPA-mode hosts
-  // (Cloudflare Pages without a 404.html, naive static servers) answer any
-  // missing path with index.html + HTTP 200, which would otherwise get parsed
-  // as model bytes.
-  // no-store everywhere: bypass the HTTP disk cache — 100 MB writes to it can
-  // fail (ERR_CACHE_WRITE_FAILURE) and we persist to Cache Storage ourselves.
-  let manifest = null;
-  try {
-    const mres = await fetch(`${url}.manifest.json`, { cache: 'no-store' });
-    if (mres.ok) {
-      const m = await mres.json();
-      if (Number.isInteger(m.parts) && Number.isInteger(m.size)) manifest = m;
-    }
-  } catch { /* no manifest → whole-file host */ }
-
-  let buf;
-  if (manifest) {
-    buf = new Uint8Array(manifest.size);
-    let off = 0;
-    for (let i = 0; i < manifest.parts; i++) {
-      const pres = await fetch(`${url}.p${String(i).padStart(2, '0')}`, { cache: 'no-store' });
-      if (!pres.ok) throw new Error(`${url} part ${i}: HTTP ${pres.status}`);
-      const part = new Uint8Array(await pres.arrayBuffer());
-      buf.set(part, off);
-      off += part.length;
-      postMessage({ type: 'progress', label, loaded: off, total: manifest.size });
-    }
-    if (off !== manifest.size) throw new Error(`${url}: reassembled ${off} of ${manifest.size} bytes`);
-  } else {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-    buf = await readWithProgress(res, label);
-  }
-  if (cache) {
-    await cache.put(url, new Response(buf.slice().buffer, {
-      headers: { 'Content-Type': 'application/octet-stream' },
-    })).catch(() => {});
-  }
-  return buf;
-}
-
-/** Stream a Response body to bytes, posting throttled progress messages. */
-async function readWithProgress(res, label) {
-  const total = Number(res.headers.get('Content-Length')) || 0;
-  if (!res.body) return new Uint8Array(await res.arrayBuffer());
-  const reader = res.body.getReader();
-  const chunks = [];
-  let loaded = 0;
-  let lastPost = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.length;
-    const now = Date.now();
-    if (now - lastPost > 120) { // throttle DOM-updating progress messages
-      postMessage({ type: 'progress', label, loaded, total });
-      lastPost = now;
-    }
-  }
-  postMessage({ type: 'progress', label, loaded, total });
-  const buf = new Uint8Array(loaded);
-  let off = 0;
-  for (const c of chunks) { buf.set(c, off); off += c.length; }
-  return buf;
-}
+/** Model bytes, cache-first, reporting download progress to the page. */
+const fetchWithProgress = (url, label) => loadModelBytes(
+  url,
+  (loaded, total) => postMessage({ type: 'progress', label, loaded, total }),
+);
 
 // Backend choice: the shipped models are int8-quantized, which multi-threaded
 // SIMD WASM executes efficiently while WebGPU largely cannot (quantized ops

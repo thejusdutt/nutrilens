@@ -8,7 +8,7 @@ function crossOriginIsolationHeaders() {
 }
 
 // Stable (hash-free) asset names so the hand-written service worker can keep a
-// deterministic precache list; cache busting is done via the SW CACHE_VERSION.
+// deterministic precache list; cache busting is done via the SW SHELL_VERSION.
 export default defineConfig({
   build: {
     target: 'es2022',

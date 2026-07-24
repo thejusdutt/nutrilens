@@ -3,15 +3,24 @@
  *
  * Strategy:
  *  - App shell (small, changes with releases): precached at install,
- *    cache-first at runtime. Bump CACHE_VERSION to ship updates.
+ *    cache-first at runtime. Bump SHELL_VERSION to ship updates.
  *  - Models + data (large, immutable per release): runtime cache-first into a
  *    separate cache; fetched lazily by the inference worker (with progress UI)
  *    or eagerly via Settings → "Download all models".
  *  - Navigations fall back to the cached shell when offline.
  */
-const CACHE_VERSION = 'v1';
-const SHELL_CACHE = `nutrilens-shell-${CACHE_VERSION}`;
-const MODEL_CACHE = `nutrilens-models-${CACHE_VERSION}`;
+
+/** Bump to ship an app-shell update. Does NOT touch the model cache. */
+const SHELL_VERSION = 'v1';
+/**
+ * Versioned separately on purpose: the models are ~180 MB and immutable, so
+ * shipping a UI fix must never evict them and force a re-download. Bump this
+ * only when the model files themselves change — and keep it in step with
+ * MODEL_CACHE in app/src/model-cache.js, which is what writes these bytes.
+ */
+const MODEL_VERSION = 'v1';
+const SHELL_CACHE = `nutrilens-shell-${SHELL_VERSION}`;
+const MODEL_CACHE = `nutrilens-models-${MODEL_VERSION}`;
 
 const SHELL_ASSETS = [
   '/',
@@ -49,8 +58,9 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
+    const keep = new Set([SHELL_CACHE, MODEL_CACHE]);
     await Promise.all(names
-      .filter((n) => n.startsWith('nutrilens-') && !n.endsWith(CACHE_VERSION))
+      .filter((n) => n.startsWith('nutrilens-') && !keep.has(n))
       .map((n) => caches.delete(n)));
     await self.clients.claim();
   })());
