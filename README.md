@@ -112,9 +112,13 @@ docs/                  research, architecture, models, datasets, testing, compat
 ## Tests & evaluation
 
 ```bash
-npm test                   # 39 unit tests across all packages (vitest)
-node eval/browser-smoke.mjs   # end-to-end PWA test in headless Chrome
-node eval/offline-test.mjs    # proves full analysis works with the network disabled
+npm test                   # 65 unit tests across all packages (vitest), including:
+                           #  · every per-100 g value traced back to the FNDDS CSVs
+                           #  · every food × nutrient × 11 portion sizes recomputed
+npm run test:nutrition-ui  # rendered kcal/macros/micros/%DV vs an independent
+                           #   oracle, across 12 foods, plate totals and the diary
+npm run test:smoke         # end-to-end PWA test in headless Chrome
+npm run test:offline       # proves full analysis works with the network disabled
 npm run eval:fetch         # Food-101 val subsample (25/class) + Indian food set
 npm run eval               # run both heads over every image (Node, same code as browser)
 npm run eval:report        # ACCURACY_REPORT.md + PERFORMANCE_REPORT.md + fusion sweep

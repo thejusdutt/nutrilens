@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { VOCABULARY, priorsFor } from './vocabulary.mjs';
+import { NUTRIENT_MAP, roundPer100g } from './nutrient-map.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fnddsDir = (() => {
@@ -47,40 +48,7 @@ const foodNutrients = load('food_nutrient.csv');
 const portions = load('food_portion.csv');
 
 // --------------------------- nutrient key map ---------------------------
-/** canonical key → [FNDDS nutrient name, display name, unit, FDA adult DV] */
-const NUTRIENT_MAP = {
-  kcal:        ['Energy',                             'Calories',      'kcal', 2000],
-  protein:     ['Protein',                            'Protein',       'g',    50],
-  fat:         ['Total lipid (fat)',                  'Fat',           'g',    78],
-  carbs:       ['Carbohydrate, by difference',        'Carbohydrates', 'g',    275],
-  fiber:       ['Fiber, total dietary',               'Fiber',         'g',    28],
-  sugars:      ['Sugars, Total'                ,       'Sugars',        'g',    null],
-  satFat:      ['Fatty acids, total saturated',       'Saturated fat', 'g',    20],
-  monoFat:     ['Fatty acids, total monounsaturated', 'Monounsaturated fat', 'g', null],
-  polyFat:     ['Fatty acids, total polyunsaturated', 'Polyunsaturated fat', 'g', null],
-  cholesterol: ['Cholesterol',                        'Cholesterol',   'mg',   300],
-  sodium:      ['Sodium, Na',                         'Sodium',        'mg',   2300],
-  potassium:   ['Potassium, K',                       'Potassium',     'mg',   4700],
-  calcium:     ['Calcium, Ca',                        'Calcium',       'mg',   1300],
-  iron:        ['Iron, Fe',                           'Iron',          'mg',   18],
-  magnesium:   ['Magnesium, Mg',                      'Magnesium',     'mg',   420],
-  phosphorus:  ['Phosphorus, P',                      'Phosphorus',    'mg',   1250],
-  zinc:        ['Zinc, Zn',                           'Zinc',          'mg',   11],
-  copper:      ['Copper, Cu',                         'Copper',        'mg',   0.9],
-  selenium:    ['Selenium, Se',                       'Selenium',      'µg',   55],
-  vitA:        ['Vitamin A, RAE',                     'Vitamin A',     'µg',   900],
-  vitC:        ['Vitamin C, total ascorbic acid',     'Vitamin C',     'mg',   90],
-  vitD:        ['Vitamin D (D2 + D3)',                'Vitamin D',     'µg',   20],
-  vitE:        ['Vitamin E (alpha-tocopherol)',       'Vitamin E',     'mg',   15],
-  vitK:        ['Vitamin K (phylloquinone)',          'Vitamin K',     'µg',   120],
-  thiamin:     ['Thiamin',                            'Thiamin (B1)',  'mg',   1.2],
-  riboflavin:  ['Riboflavin',                         'Riboflavin (B2)', 'mg', 1.3],
-  niacin:      ['Niacin',                             'Niacin (B3)',   'mg',   16],
-  vitB6:       ['Vitamin B-6',                        'Vitamin B6',    'mg',   1.7],
-  folate:      ['Folate, DFE',                        'Folate',        'µg',   400],
-  vitB12:      ['Vitamin B-12',                       'Vitamin B12',   'µg',   2.4],
-  choline:     ['Choline, total',                     'Choline',       'mg',   550],
-};
+// NUTRIENT_MAP lives in tools/nutrient-map.mjs, shared with the provenance test.
 
 // NOTE: food_nutrient.csv's `nutrient_id` column actually holds the legacy
 // `nutrient_nbr`, not `nutrient.id`. Join on nutrient_nbr. "Energy" appears
@@ -112,11 +80,16 @@ const portionsByFood = new Map();
 for (const p of portions) {
   const g = parseFloat(p.gram_weight);
   if (!g || g <= 0) continue;
+  // Weights are stored as whole grams, so anything under 0.5 g would round to
+  // 0 and offer the user a "0 g" measure worth 0 kcal (FNDDS really does list
+  // popcorn "1 kernel" ≈ 0.4 g). Sub-gram measures are useless for logging.
+  const grams = Math.round(g);
+  if (grams < 1) continue;
   const label = (p.portion_description || p.modifier || '').trim();
   if (!label || /quantity not specified/i.test(label)) continue;
   let list = portionsByFood.get(p.fdc_id);
   if (!list) portionsByFood.set(p.fdc_id, (list = []));
-  if (list.length < 6 && !list.some(([l]) => l === label)) list.push([label, Math.round(g)]);
+  if (list.length < 6 && !list.some(([l]) => l === label)) list.push([label, grams]);
 }
 
 // --------------------------- vocabulary → FNDDS matching ---------------------------
@@ -182,7 +155,7 @@ for (const entry of VOCABULARY) {
     fdcId: Number(match.fdcId),
     fdcDesc: match.desc,
     aliases: entry.syn ?? [],
-    per100g: Object.fromEntries(Object.entries(per100g).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+    per100g: Object.fromEntries(Object.entries(per100g).map(([k, v]) => [k, roundPer100g(v)])),
     portions: portionList,
     prior,
   };
@@ -229,6 +202,13 @@ const GOLDEN = {
   tamales: [174, 45, 7.4, 3],
 };
 const problems = [];
+// 0. Coverage: a nutrient we advertise in the UI must actually have data. An
+// FNDDS name that resolves to no food rows (the `sugars` → "Sugars, Total"
+// case) otherwise ships a column of blanks that no test would notice.
+for (const key of Object.keys(NUTRIENT_MAP)) {
+  const n = Object.values(dbFoods).filter((f) => f.per100g[key] != null).length;
+  if (n === 0) problems.push(`nutrient '${key}' (${NUTRIENT_MAP[key][0]}) has no values in any food — wrong FNDDS name?`);
+}
 for (const [id, f] of Object.entries(dbFoods)) {
   const { kcal = 0, protein = 0, carbs = 0, fat = 0 } = f.per100g;
   const atwater = 4 * protein + 4 * carbs + 9 * fat;
@@ -237,6 +217,10 @@ for (const [id, f] of Object.entries(dbFoods)) {
   }
   if (kcal < 0 || kcal > 900 || protein > 45 || fat > 100 || carbs > 95 || protein + carbs + fat > 105) {
     problems.push(`${id}: implausible per-100g values kcal=${kcal} P=${protein} C=${carbs} F=${fat} [${f.fdcDesc}]`);
+  }
+  // A household measure the user can pick must weigh something.
+  for (const [label, grams] of f.portions) {
+    if (!(grams >= 1)) problems.push(`${id}: portion "${label}" weighs ${grams} g`);
   }
 }
 for (const [id, [kcal, kTol, protein, pTol]] of Object.entries(GOLDEN)) {
