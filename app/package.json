@@ -11,10 +11,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@nutrilens/barcode": "1.0.0",
+    "@nutrilens/charts": "1.0.0",
+    "@nutrilens/diary": "1.0.0",
+    "@nutrilens/exercise-db": "1.0.0",
     "@nutrilens/food-recognition": "1.0.0",
     "@nutrilens/food-segmentation": "1.0.0",
     "@nutrilens/image-preprocess": "1.0.0",
     "@nutrilens/nutrition-engine": "1.0.0",
+    "@nutrilens/off-food": "1.0.0",
     "@nutrilens/portion-estimator": "1.0.0",
     "onnxruntime-web": "1.27.0"
   },

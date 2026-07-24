@@ -1,0 +1,10 @@
+{
+  "name": "@nutrilens/charts",
+  "version": "1.0.0",
+  "description": "Dependency-free SVG charts for offline dashboards: donut, bar, stacked bar and line, with accessible labels and light/dark friendly output",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "keywords": ["svg", "charts", "donut", "sparkline", "offline", "no-dependencies"]
+}

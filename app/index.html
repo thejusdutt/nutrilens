@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>NutriLens — offline food & nutrition scanner</title>
-  <meta name="description" content="Point your camera at food. Get calories, macros and micronutrients — fully offline, on-device AI." />
+  <title>NutriLens — offline food & nutrition tracker</title>
+  <meta name="description" content="Track calories, macros and micronutrients offline. Photo recognition, barcode scanning, recipes and a full food diary — all on your device." />
   <meta name="theme-color" content="#101418" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
@@ -23,21 +23,55 @@
     </div>
     <div class="topbar-actions">
       <span id="offline-badge" class="badge" hidden>offline</span>
-      <button id="btn-history" class="icon-btn" title="History" aria-label="History">🕘</button>
       <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
       <button id="btn-theme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">◐</button>
     </div>
   </header>
 
   <main id="view-root">
-    <!-- Home / capture -->
-    <section id="view-home" class="view">
+    <!-- Today / diary -->
+    <section id="view-diary" class="view" hidden>
+      <div id="today-root" class="stack"></div>
+    </section>
+
+    <!-- Nutrition dashboard -->
+    <section id="view-nutrition" class="view" hidden>
+      <div id="nutrition-root" class="stack"></div>
+    </section>
+
+    <!-- Progress -->
+    <section id="view-progress" class="view" hidden>
+      <div id="progress-root" class="stack"></div>
+    </section>
+
+    <!-- My food -->
+    <section id="view-myfoods" class="view" hidden>
+      <div id="myfoods-root" class="stack"></div>
+    </section>
+
+    <!-- More menu -->
+    <section id="view-more" class="view" hidden>
+      <h2>More</h2>
+      <div class="menu-list">
+        <button id="more-myfoods">🍱 My foods, meals &amp; recipes</button>
+        <button id="more-photo">📷 Scan a meal photo</button>
+        <button id="more-barcode">🏷️ Scan a barcode</button>
+        <button id="more-exercise">🏃 Log exercise</button>
+        <button id="more-weight">⚖️ Log weight</button>
+        <button id="more-export">⬇️ Export diary (CSV)</button>
+        <button id="more-settings">⚙️ Settings &amp; goals</button>
+      </div>
+      <p class="muted tiny">Everything runs on this device. Nothing is uploaded, and there is no account.</p>
+    </section>
+
+    <!-- Photo capture -->
+    <section id="view-home" class="view" hidden>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button"
            aria-label="Add a food photo: drop, paste, browse or use the camera">
         <div class="drop-inner">
           <div class="drop-emoji">🍽️</div>
           <p class="drop-title">Snap or drop a food photo</p>
-          <p class="drop-sub">Everything runs on this device — no photo ever leaves it.</p>
+          <p class="drop-sub">Recognition runs on this device — no photo ever leaves it.</p>
           <div class="drop-actions">
             <button id="btn-camera" class="primary">📷 Camera</button>
             <button id="btn-browse">🖼️ Browse</button>
@@ -46,17 +80,8 @@
         <input id="file-input" type="file" accept="image/*" hidden />
       </div>
       <div id="model-status" class="model-status" hidden></div>
-      <div id="today-card" class="card today-card" role="button" tabindex="0" aria-label="Open today's diary">
-        <div class="today-head">
-          <h3>Today</h3>
-          <span id="today-date" class="muted"></span>
-        </div>
-        <div class="today-remaining"><b id="today-left">–</b> kcal remaining</div>
-        <div class="today-bar"><div id="today-fill" class="today-fill"></div></div>
-        <div id="today-macros" class="today-macros muted"></div>
-      </div>
       <section id="recent" class="recent" hidden>
-        <h2>Recent</h2>
+        <h2>Recent photos</h2>
         <div id="recent-list" class="recent-list"></div>
       </section>
     </section>
@@ -73,7 +98,20 @@
       </div>
     </section>
 
-    <!-- Analysis -->
+    <!-- Barcode scanner -->
+    <section id="view-barcode" class="view" hidden>
+      <div class="camera-wrap">
+        <video id="scan-video" autoplay playsinline muted></video>
+        <div class="scan-guide" aria-hidden="true"></div>
+        <p id="scan-status" class="scan-status">Starting camera…</p>
+        <div class="camera-controls">
+          <button id="scan-cancel" class="icon-btn big" aria-label="Cancel">✕</button>
+          <button id="scan-manual">⌨️ Type the number</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Photo analysis -->
     <section id="view-analyze" class="view" hidden>
       <button id="btn-back" class="back-btn">← New photo</button>
       <div class="analyze-grid">
@@ -127,7 +165,7 @@
             </div>
             <div id="macro-bars" class="macro-bars"></div>
             <details id="micro-details">
-              <summary>Vitamins & minerals</summary>
+              <summary>Vitamins &amp; minerals</summary>
               <div id="micro-table" class="micro-table"></div>
             </details>
             <div class="save-row">
@@ -144,109 +182,94 @@
       </div>
     </section>
 
-    <!-- Diary -->
-    <section id="view-history" class="view" hidden>
-      <button id="btn-back-history" class="back-btn">← Back</button>
-      <div class="diary-date-nav">
-        <button id="diary-prev" class="icon-btn" aria-label="Previous day">‹</button>
-        <h2 id="diary-date">Today</h2>
-        <button id="diary-next" class="icon-btn" aria-label="Next day">›</button>
-      </div>
-      <div class="card remaining-card">
-        <div class="remaining-math">
-          <div><b id="rem-goal">–</b><span>Goal</span></div>
-          <span class="op">−</span>
-          <div><b id="rem-food">0</b><span>Food</span></div>
-          <span class="op">+</span>
-          <div><b id="rem-exercise">0</b><span>Exercise</span></div>
-          <span class="op">=</span>
-          <div class="rem-result"><b id="rem-left">–</b><span>Remaining</span></div>
-        </div>
-        <div class="day-macros" id="day-macros"></div>
-      </div>
-      <div id="diary-meals"></div>
-      <div class="card day-extras">
-        <div class="extra-row">
-          <span>💧 Water</span>
-          <div class="water-ctl">
-            <button id="water-minus" class="icon-btn">−</button>
-            <b id="water-count">0</b> glasses
-            <button id="water-plus" class="icon-btn">＋</button>
-          </div>
-        </div>
-        <div class="extra-row">
-          <label for="exercise-kcal">🏃 Exercise burned</label>
-          <div><input id="exercise-kcal" type="number" min="0" max="5000" step="10" value="0" /> kcal</div>
-        </div>
-        <div class="extra-row">
-          <label for="weight-kg">⚖️ Weight</label>
-          <div><input id="weight-kg" type="number" min="20" max="400" step="0.1" placeholder="–" /> kg</div>
-        </div>
-      </div>
-      <details id="day-micros-details" class="card">
-        <summary>Day’s vitamins &amp; minerals</summary>
-        <div id="day-micros" class="micro-table"></div>
-      </details>
-    </section>
-
-    <!-- Settings -->
+    <!-- Settings & goals -->
     <section id="view-settings" class="view" hidden>
-      <button id="btn-back-settings" class="back-btn">← Back</button>
       <h2>Settings</h2>
-      <div class="card">
-        <h3>Your daily goal</h3>
-        <div class="goal-grid">
-          <label>Sex
+
+      <details class="card" open>
+        <summary><h3>Daily goals</h3></summary>
+        <div class="form-grid">
+          <label for="p-sex">Sex
             <select id="p-sex"><option value="male">Male</option><option value="female">Female</option></select>
           </label>
-          <label>Age <input id="p-age" type="number" min="13" max="100" /></label>
-          <label>Height <span class="unit-wrap"><input id="p-height" type="number" min="100" max="230" /> cm</span></label>
-          <label>Weight <span class="unit-wrap"><input id="p-weight" type="number" min="30" max="300" step="0.5" /> kg</span></label>
-          <label class="span2">Activity <select id="p-activity"></select></label>
-          <label class="span2">Goal <select id="p-rate"></select></label>
-          <label class="span2">Calorie override
-            <span class="unit-wrap"><input id="p-custom" type="number" min="1000" max="6000" step="10" placeholder="auto" /> kcal</span>
-          </label>
+          <label for="p-age">Age <input id="p-age" type="number" min="13" max="100" step="1" /></label>
+          <label for="p-height">Height (cm) <input id="p-height" type="number" min="120" max="230" step="1" /></label>
+          <label for="p-weight">Weight (kg) <input id="p-weight" type="number" min="30" max="300" step="0.1" /></label>
+          <label for="p-start-weight">Starting weight (kg) <input id="p-start-weight" type="number" min="30" max="300" step="0.1" placeholder="—" /></label>
+          <label for="p-goal-weight">Goal weight (kg) <input id="p-goal-weight" type="number" min="30" max="300" step="0.1" placeholder="—" /></label>
+          <label for="p-activity">Activity <select id="p-activity"></select></label>
+          <label for="p-rate">Weekly goal <select id="p-rate"></select></label>
+          <label for="p-custom">Calorie override <input id="p-custom" type="number" min="1000" max="6000" step="10" placeholder="auto" /></label>
+          <label for="p-water">Water goal (glasses) <input id="p-water" type="number" min="1" max="20" step="1" /></label>
+          <label for="p-steps">Step goal <input id="p-steps" type="number" min="1000" max="40000" step="500" /></label>
+          <label for="setting-plate">Plate diameter (cm) <input id="setting-plate" type="number" min="15" max="40" step="1" /></label>
         </div>
-        <div class="goal-grid three">
-          <label>Carbs % <input id="p-carbs" type="number" min="10" max="75" step="5" /></label>
-          <label>Protein % <input id="p-protein" type="number" min="10" max="60" step="5" /></label>
-          <label>Fat % <input id="p-fat" type="number" min="10" max="60" step="5" /></label>
-        </div>
+        <label class="check" for="p-credit">
+          <input id="p-credit" type="checkbox" /> Add exercise calories back to my daily goal
+        </label>
+        <fieldset class="macro-mode">
+          <legend>Macro targets</legend>
+          <div class="seg" role="group">
+            <button id="p-mode-percent" type="button">By percentage</button>
+            <button id="p-mode-grams" type="button">By grams</button>
+          </div>
+          <div class="form-grid" id="macro-percent-fields">
+            <label for="p-carbs">Carbs % <input id="p-carbs" type="number" min="0" max="100" step="5" /></label>
+            <label for="p-protein">Protein % <input id="p-protein" type="number" min="0" max="100" step="5" /></label>
+            <label for="p-fat">Fat % <input id="p-fat" type="number" min="0" max="100" step="5" /></label>
+          </div>
+          <div class="form-grid" id="macro-gram-fields" hidden>
+            <label for="p-carbs-g">Carbs (g) <input id="p-carbs-g" type="number" min="0" max="1000" step="5" /></label>
+            <label for="p-protein-g">Protein (g) <input id="p-protein-g" type="number" min="0" max="500" step="5" /></label>
+            <label for="p-fat-g">Fat (g) <input id="p-fat-g" type="number" min="0" max="400" step="5" /></label>
+          </div>
+        </fieldset>
         <p id="goal-summary" class="muted"></p>
-      </div>
-      <div class="card">
-        <label class="setting-row">
-          <span>Plate diameter (portion scale reference)</span>
-          <select id="setting-plate">
-            <option value="20">20 cm — side plate</option>
-            <option value="23">23 cm — lunch plate</option>
-            <option value="26" selected>26 cm — dinner plate</option>
-            <option value="28">28 cm — large plate</option>
-          </select>
-        </label>
-        <label class="setting-row">
-          <span>Theme</span>
+      </details>
+
+      <details class="card">
+        <summary><h3>Appearance</h3></summary>
+        <label for="setting-theme">Theme
           <select id="setting-theme">
-            <option value="auto">Auto</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
+            <option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
           </select>
         </label>
-      </div>
-      <div class="card">
-        <h3>Offline storage</h3>
-        <p class="muted">Models are downloaded once and cached. After that, NutriLens works with no connection at all.</p>
-        <div id="storage-status" class="muted">…</div>
-        <button id="btn-prefetch" class="primary">⬇️ Download all models for offline use</button>
+      </details>
+
+      <details class="card">
+        <summary><h3>Offline models</h3></summary>
+        <p class="muted">Download the recognition models once to use the camera with no network at all (~180 MB).</p>
+        <button id="btn-prefetch" class="primary">⬇️ Download all models</button>
         <progress id="prefetch-progress" max="1" value="0" hidden></progress>
-      </div>
-      <div class="card">
-        <h3>About</h3>
-        <p class="muted">NutriLens runs Swin-Food101, MobileCLIP-S0 and SlimSAM entirely in your browser via ONNX Runtime Web. Nutrition data: USDA FoodData Central (FNDDS 2021-2023). Estimates are informational, not medical advice.</p>
-      </div>
+        <p id="storage-status" class="muted tiny"></p>
+      </details>
+
+      <details class="card">
+        <summary><h3>Your data</h3></summary>
+        <button id="btn-export">⬇️ Export diary as CSV</button>
+        <p class="muted tiny">A plain CSV of every entry with daily totals. It never leaves your device unless you share it.</p>
+      </details>
+
+      <details class="card">
+        <summary><h3>About</h3></summary>
+        <p class="muted tiny">Recognition runs Swin-Food101, MobileCLIP-S2 and SlimSAM in your browser via ONNX Runtime Web.
+          Nutrition data: USDA FoodData Central (FNDDS 2024-10-31). Packaged products: Open Food Facts (ODbL).
+          Exercise energy: 2011 Compendium of Physical Activities with the ACSM formula.
+          Estimates are informational, not medical advice.</p>
+      </details>
     </section>
   </main>
+
+  <nav class="tabbar" aria-label="Main">
+    <button class="tab-btn" data-view="diary"><span aria-hidden="true">📔</span>Today</button>
+    <button class="tab-btn" data-view="nutrition"><span aria-hidden="true">📊</span>Nutrition</button>
+    <button class="fab" id="btn-add" aria-label="Add to diary"><span aria-hidden="true">＋</span></button>
+    <button class="tab-btn" data-view="progress"><span aria-hidden="true">📈</span>Progress</button>
+    <button class="tab-btn" data-view="more"><span aria-hidden="true">⋯</span>More</button>
+  </nav>
+
+  <div id="sheet-host" class="sheet-host" hidden></div>
+  <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

@@ -117,6 +117,28 @@ noise of the height×density assumption.
   The model cache carries its own `MODEL_VERSION`, so shipping a shell update
   never evicts ~180 MB of already-downloaded models.
 
+## App structure
+
+The PWA is plain ES modules, one per screen, with no framework:
+
+| module | responsibility |
+|---|---|
+| `main.js` | shell, theme, service worker, model worker, photo pipeline, settings |
+| `ui.js` | `el()` builder, view switching, bottom-sheet stack, toasts, event bus |
+| `db.js` | IndexedDB: entries, days, foods, meals, exercise, measurements, products |
+| `foods.js` | one lookup across USDA, custom foods, scanned products, saved meals |
+| `logfood.js` | add-food flow: tabs, serving size × count, quick add, builders |
+| `today.js` | the diary: streak, calories, macros, meals, habits, completion |
+| `nutrition-view.js` | calories / macros / nutrients, day or week |
+| `progress-view.js` | weight, calorie trend, measurements |
+| `exercise-view.js` | MET-based exercise logging |
+| `barcode-scan.js` | camera loop, native or own decoder, Open Food Facts lookup |
+
+Screens never write storage directly through each other: mutations emit `diary`,
+`day`, `foods` or `profile` on the shared bus, and whichever screens are mounted
+re-render themselves. That is what keeps "log a food from a sheet" correct
+without any screen knowing who logged it.
+
 ## Error handling & honesty
 
 - Every stage degrades explicitly: no plate → serving prior; segmentation

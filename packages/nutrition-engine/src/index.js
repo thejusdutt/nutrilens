@@ -54,6 +54,22 @@ export class NutritionEngine {
   forPortion(id, grams) {
     const f = this.db.foods[id];
     if (!f) return null;
+    return this.forFood(f, grams, id);
+  }
+
+  /**
+   * Same computation for a food record that is not in the database — a
+   * user-created food, or a packaged product from a barcode scan. Sharing this
+   * path is what keeps a scanned yoghurt and a USDA yoghurt identical
+   * downstream: one scaling rule, one set of units, one %DV basis.
+   *
+   * @param {{name:string, per100g:Record<string,number>}} food
+   * @param {number} grams
+   * @param {string} [id]
+   */
+  forFood(food, grams, id = food?.id) {
+    if (!food?.per100g) return null;
+    const f = food;
     const factor = grams / 100;
     const nutrients = {};
     for (const [key, per100] of Object.entries(f.per100g)) {
@@ -92,11 +108,14 @@ export class NutritionEngine {
    * Sum several portions (a multi-item meal) into one nutrient table.
    * @param {Array<{id:string, grams:number}>} items
    */
-  aggregate(items) {
+  aggregate(items, resolve) {
     const acc = {};
-    let name = [];
+    const name = [];
     for (const it of items) {
-      const r = this.forPortion(it.id, it.grams);
+      // `resolve` lets a caller mix in foods the database has never heard of
+      // (custom foods, scanned products) without copying the scaling maths.
+      const food = resolve ? resolve(it.id) : this.food(it.id);
+      const r = food ? this.forFood(food, it.grams, it.id) : null;
       if (!r) continue;
       name.push(r.name);
       for (const [k, n] of Object.entries(r.nutrients)) {

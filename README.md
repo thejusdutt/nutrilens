@@ -1,10 +1,12 @@
 # 🍽️ NutriLens
 
-**A production-quality, fully offline food-recognition and nutrition-estimation
-PWA.** Photograph any meal; get the dish, calories, macros and a full
-micronutrient profile with confidence ranges — computed **100% on your device**.
-No backend, no cloud APIs, no telemetry; after the first visit it works in
-airplane mode.
+**A production-quality, fully offline food tracker with on-device recognition.**
+A complete food diary — search, barcode scan, serving sizes, custom foods,
+recipes, exercise, weight and a nutrition dashboard — plus the part no other
+tracker does locally: photograph a plate and get every dish, its portion and its
+full micronutrient profile. Everything is computed **100% on your device**. No
+backend, no account, no cloud APIs, no telemetry; after the first visit it works
+in airplane mode.
 
 ![pipeline](docs/img/pipeline.svg)
 
@@ -41,6 +43,18 @@ biryani vs. pulao); see the per-class table in the report.
 
 ## Highlights
 
+- **The diary** — meals, serving sizes with a serving count, one-tap repeats from
+  Recent/Frequent, quick add, edit-in-place, copy a meal to another day, logging
+  streaks, notes, and "complete this entry" with a five-week weight projection.
+- **Barcode scanning** — own EAN-13/EAN-8/UPC-A decoder (`packages/barcode`), with
+  the native `BarcodeDetector` used when present; products come from Open Food
+  Facts and are cached, so re-scanning works offline forever.
+- **Your own food** — create foods from a nutrition label, save reusable meals,
+  and build recipes that divide into servings.
+- **Exercise** — MET database (2011 Compendium) with the ACSM energy formula,
+  cardio and strength, credited back to the day's calories.
+- **Dashboards** — calories by meal, macro split, every nutrient against its
+  target, day or week; weight and calorie trends over 30/90/365 days.
 - **Recognition** — Swin-Base fine-tuned on Food-101 (90.2% measured top-1)
   **fused** with a MobileCLIP-S2 open-vocabulary head (211-food vocabulary
   incl. Indian, East Asian, fruits, breakfast foods) and non-food rejection.
@@ -50,11 +64,11 @@ biryani vs. pulao); see the per-class table in the report.
 - **Nutrition** — USDA FNDDS 2021-2023: 30 nutrients (energy, macros, 11
   minerals, 12 vitamins, cholesterol, fatty-acid classes) per food, %DV, ranges.
 - **PWA** — installable, offline-first service worker, camera/upload/drag-drop/
-  paste, tap-to-refine multi-dish flow, history (IndexedDB), dark mode.
+  paste, tap-to-refine multi-dish flow, IndexedDB storage, CSV export, dark mode.
 - **All inference in a Web Worker** on ONNX Runtime Web (multi-threaded WASM;
   WebGPU opt-in via `?webgpu=1`).
-- **Five reusable MIT libraries** under `packages/` — each with clean API,
-  JSDoc, unit tests and README, publishable independently.
+- **Ten reusable MIT libraries** under `packages/` — each with a clean API,
+  JSDoc and unit tests, publishable independently.
 - **Automated evaluation** — reproducible accuracy/calibration/latency reports
   on the Food-101 validation split + an extended Indian-food set, running the
   *identical* library code in Node.
@@ -103,7 +117,15 @@ packages/
   food-segmentation/   SlimSAM wrapper + pure-JS mask utilities
   portion-estimator/   RANSAC plate-ellipse scale reference + area→grams model
   nutrition-engine/    offline nutrition DB engine (scaling, %DV, search, ranges)
+  diary/               serving maths, day totals, streaks, projections, CSV export
+  exercise-db/         MET activity table + ACSM energy expenditure
+  barcode/             EAN-13/EAN-8/UPC-A encoder + scanline image decoder
+  off-food/            Open Food Facts product → food record (unit-corrected)
+  charts/              dependency-free SVG donut/bar/column/line charts
 app/                   the PWA (Vite, vanilla ES modules, Web Worker inference)
+  src/today.js         diary screen        src/logfood.js    add-food flow
+  src/nutrition-view.js dashboards         src/progress-view.js weight & trends
+  src/foods.js         one lookup over USDA + your foods + products + recipes
 tools/                 build-time pipelines: asset fetch, FNDDS→DB, embeddings, icons
 eval/                  dataset fetch + evaluation harness + report generation
 docs/                  research, architecture, models, datasets, testing, compat
@@ -112,11 +134,14 @@ docs/                  research, architecture, models, datasets, testing, compat
 ## Tests & evaluation
 
 ```bash
-npm test                   # 65 unit tests across all packages (vitest), including:
+npm test                   # 176 unit tests across all packages (vitest), including:
                            #  · every per-100 g value traced back to the FNDDS CSVs
                            #  · every food × nutrient × 11 portion sizes recomputed
 npm run test:nutrition-ui  # rendered kcal/macros/micros/%DV vs an independent
                            #   oracle, across 12 foods, plate totals and the diary
+npm run test:tracker       # every tracker flow end to end: goals, serving-size
+                           #   logging, editing, quick add, custom foods, recipes,
+                           #   barcode, exercise, habits, copy-day, dashboard
 npm run test:smoke         # end-to-end PWA test in headless Chrome
 npm run test:offline       # proves full analysis works with the network disabled
 npm run eval:fetch         # Food-101 val subsample (25/class) + Indian food set

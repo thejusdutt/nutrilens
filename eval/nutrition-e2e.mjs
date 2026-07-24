@@ -254,54 +254,68 @@ try {
   console.log(`B. plate totals: ${items.length} items, per-item kcal + summed macros/micros`);
 
   // ---------------- C. diary arithmetic ----------------
-  const plateKcal = Math.round(items.reduce((s, it) => s + (db.foods[it.id].per100g.kcal ?? 0) * it.grams / 100, 0));
+  // Saving a plate writes one diary line per dish, so each stays editable.
+  const perItemKcal = items.map((it) => Math.round((db.foods[it.id].per100g.kcal ?? 0) * it.grams / 100));
   await page.select('#save-slot', 'lunch');
   await clickIn('#btn-save');
-  await new Promise((r) => setTimeout(r, 600));
-
-  await clickIn('#btn-history');
-  await new Promise((r) => setTimeout(r, 800));
-  // Quick-add a known food (typical serving) to breakfast.
-  const quick = await page.evaluate(() => {
-    const section = [...document.querySelectorAll('.meal-section')]
-      .find((s) => s.querySelector('h3').textContent.includes('Breakfast'));
-    const inp = section.querySelector('.meal-add-row input');
-    inp.value = 'Banana';
-    inp.dispatchEvent(new Event('input', { bubbles: true }));
-    const btn = [...section.querySelectorAll('.meal-add-results button')][0];
-    const text = btn.textContent.trim();
-    btn.click();
-    return text;
-  });
   await new Promise((r) => setTimeout(r, 900));
 
-  const bananaG = db.foods.banana.prior?.servingG ?? 100;
-  check('quick-add offer text', quick,
-    `Banana · ${bananaG} g · ${Math.round((db.foods.banana.per100g.kcal ?? 0) * bananaG / 100)} kcal`);
+  await page.evaluate(() => document.querySelector('.tab-btn[data-view="diary"]').click());
+  await page.waitForSelector('.diary-entry', { timeout: 15000 });
+
+  // Log a known food into breakfast through the normal add-food sheet, taking
+  // the offered serving with the ＋ button (the one-tap path).
+  await page.evaluate(() => document.querySelector('.meal-section[data-slot="breakfast"] .meal-log').click());
+  await page.waitForSelector('.sheet .logfood', { timeout: 8000 });
+  const offered = await page.evaluate(() => {
+    const input = document.querySelector('.sheet input[type="search"]');
+    input.value = 'Banana';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const row = [...document.querySelectorAll('.sheet .food-row')]
+      .find((r) => r.querySelector('b')?.textContent.trim() === 'Banana');
+    if (!row) return null;
+    const out = { kcal: row.querySelector('.fr-kcal').textContent.trim(), serving: row.querySelector('.muted').textContent.trim() };
+    row.querySelector('.fr-add').click();
+    return out;
+  });
+  if (!offered) throw new Error('the add-food sheet did not offer Banana');
+  await new Promise((r) => setTimeout(r, 1200));
+
+  // The offered serving is the food's own first household measure.
+  const [bananaLabel, bananaG] = db.foods.banana.portions[0] ?? ['100 g', 100];
+  const bananaKcal = Math.round((db.foods.banana.per100g.kcal ?? 0) * bananaG / 100);
+  check('offered serving', offered.serving, `1 × ${bananaLabel}`);
+  check('offered calories', offered.kcal, `${bananaKcal.toLocaleString()} kcal`);
 
   const diary = await page.evaluate(() => ({
     goal: document.getElementById('rem-goal').textContent.replace(/[^\d-]/g, ''),
     food: document.getElementById('rem-food').textContent.replace(/[^\d-]/g, ''),
     exercise: document.getElementById('rem-exercise').textContent.replace(/[^\d-]/g, ''),
     left: document.getElementById('rem-left').textContent.replace(/[^\d-]/g, ''),
-    entries: [...document.querySelectorAll('.meal-section')].map((s) => ({
-      slot: s.querySelector('h3').textContent.trim(),
+    sections: [...document.querySelectorAll('.meal-section[data-slot]')].map((s) => ({
+      slot: s.dataset.slot,
       head: s.querySelector('.kcal').textContent.trim(),
-      rows: [...s.querySelectorAll('.diary-entry')].map((r) => r.querySelector('.de-kcal').textContent.trim()),
+      rows: [...s.querySelectorAll('.diary-entry')].map((r) => ({
+        kcal: r.querySelector('.de-kcal').textContent.trim(),
+        detail: r.querySelector('.de-name span').textContent.trim(),
+      })),
     })),
   }));
-  const kcals = diary.entries.flatMap((s) => s.rows.map((r) => Number(r.replace(/\D/g, ''))));
-  const bananaKcal = Math.round((db.foods.banana.per100g.kcal ?? 0) * bananaG / 100);
-  check('diary holds both entries', kcals.sort((a, b) => a - b),
-    [plateKcal, bananaKcal].sort((a, b) => a - b));
+  const kcals = diary.sections.flatMap((s) => s.rows.map((r) => Number(r.kcal.replace(/\D/g, ''))));
+
+  check('every plate item became its own entry',
+    kcals.slice().sort((a, b) => a - b),
+    [...perItemKcal, bananaKcal].sort((a, b) => a - b));
   check('Food = sum of entries', Number(diary.food), kcals.reduce((s, k) => s + k, 0));
   check('Goal − Food + Exercise = Remaining',
     Number(diary.left), Number(diary.goal) - Number(diary.food) + Number(diary.exercise));
-  for (const s of diary.entries) {
-    const sum = s.rows.reduce((t, r) => t + Number(r.replace(/\D/g, '')), 0);
-    check(`section total ${s.slot}`, s.head, sum ? `${sum} kcal` : '');
+  for (const s of diary.sections) {
+    const sum = s.rows.reduce((t, r) => t + Number(r.kcal.replace(/\D/g, '')), 0);
+    check(`section total ${s.slot}`, s.head, sum ? `${sum.toLocaleString()} kcal` : '');
   }
-  console.log(`C. diary: ${kcals.length} entries, section totals, remaining banner`);
+  const banana = diary.sections.find((s) => s.slot === 'breakfast').rows[0];
+  check('entry records the serving it was logged with', banana.detail.startsWith(`1 × ${bananaLabel}`), true);
+  console.log(`C. diary: ${kcals.length} entries, per-serving detail, section totals, remaining banner`);
 } finally {
   await browser.close();
   server?.kill();

@@ -1,0 +1,10 @@
+{
+  "name": "@nutrilens/barcode",
+  "version": "1.0.0",
+  "description": "Dependency-free EAN-13 / EAN-8 / UPC-A barcode encoder and image decoder: run-length scanline matching with GTIN check-digit validation",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "keywords": ["barcode", "ean13", "ean8", "upc", "gtin", "decoder", "offline", "no-dependencies"]
+}
