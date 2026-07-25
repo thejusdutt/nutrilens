@@ -236,3 +236,45 @@ export function overlayMask(mask, img, rgb = [46, 204, 113], alpha = 0.45) {
     img.data[i * 4 + 2] = img.data[i * 4 + 2] * (1 - alpha) + rgb[2] * alpha;
   }
 }
+
+/**
+ * Draw the mask's boundary at full strength onto an RGBA buffer.
+ *
+ * Paired with a faint {@link overlayMask} tint this shows *which* pixels the
+ * app measured without hiding the food itself — a 40%-opacity fill over four
+ * idli and four vada turns a photo into coloured blobs, and the one thing the
+ * user is there to check is whether the app looked at the right things.
+ *
+ * @param {Uint8Array} mask 0/1
+ * @param {{data:Uint8ClampedArray,width:number,height:number}} img mutated in place
+ * @param {[number,number,number]} [rgb]
+ * @param {number} [thickness=2] in pixels
+ */
+export function outlineMask(mask, img, rgb = [46, 204, 113], thickness = 2) {
+  const { width: w, height: h } = img;
+  const edge = new Uint8Array(mask.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (!mask[i]) continue;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1
+        || !mask[i - 1] || !mask[i + 1] || !mask[i - w] || !mask[i + w]) edge[i] = 1;
+    }
+  }
+  const r = Math.max(0, thickness - 1);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!edge[y * w + x]) continue;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) continue;
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= w) continue;
+          const o = (yy * w + xx) * 4;
+          img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2];
+        }
+      }
+    }
+  }
+}

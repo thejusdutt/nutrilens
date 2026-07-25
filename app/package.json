@@ -20,6 +20,7 @@
     "@nutrilens/image-preprocess": "1.0.0",
     "@nutrilens/nutrition-engine": "1.0.0",
     "@nutrilens/off-food": "1.0.0",
+    "@nutrilens/plate-analyzer": "1.0.0",
     "@nutrilens/portion-estimator": "1.0.0",
     "onnxruntime-web": "1.27.0"
   },

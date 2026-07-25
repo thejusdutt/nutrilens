@@ -122,6 +122,43 @@ function matchQuery(query) {
   return best;
 }
 
+/**
+ * Some dishes have no single FNDDS row that describes them as served. FNDDS
+ * lists "Caesar salad, with romaine, no dressing" — nobody eats that — and has
+ * no coconut chutney at all. Rather than mis-map them to a food they are not,
+ * such entries declare a mass-weighted recipe over FNDDS foods, so every
+ * number still traces to USDA data and the mapping report shows the mixture.
+ *
+ * The literal component 'water' contributes mass but no nutrients, which is
+ * how a ground-coconut paste is thinned.
+ *
+ * @param {[string, number][]} mix  [query, mass fraction]
+ * @returns {{per100g:object, desc:string, fdcId:number, portions:[string,number][]}|null}
+ */
+function buildMix(mix) {
+  const per100g = {};
+  const parts = [];
+  let matchedMass = 0;
+  let primary = null;
+  for (const [query, share] of mix) {
+    if (query === 'water') { parts.push(`${(share * 100).toFixed(0)}% water`); continue; }
+    const m = matchQuery(query);
+    if (!m) return null;
+    const src = nutrientsByFood.get(m.fdcId) ?? {};
+    for (const [k, v] of Object.entries(src)) per100g[k] = (per100g[k] ?? 0) + v * share;
+    parts.push(`${(share * 100).toFixed(0)}% ${m.desc}`);
+    if (!primary || share > primary.share) primary = { ...m, share };
+    matchedMass += share;
+  }
+  if (!primary || matchedMass <= 0) return null;
+  return {
+    per100g,
+    desc: `mixture: ${parts.join(' + ')}`,
+    fdcId: Number(primary.fdcId),
+    portions: portionsByFood.get(primary.fdcId) ?? [],
+  };
+}
+
 const dbFoods = {};
 const vocabOut = [];
 const reportLines = [];
@@ -136,24 +173,39 @@ for (const entry of VOCABULARY) {
     vocabOut.push({ id: entry.id, name: entry.name, f101: null, nonFood: true });
     continue;
   }
-  const queries = Array.isArray(entry.fndds) ? entry.fndds : [entry.fndds];
-  let match = null, usedQuery = null;
-  for (const q of queries) {
-    match = matchQuery(q);
-    if (match) { usedQuery = q; break; }
+  let per100g; let fdcId; let fdcDesc; let portionList; let usedQuery;
+  if (entry.mix) {
+    const mixed = buildMix(entry.mix);
+    if (!mixed) {
+      unmatched++;
+      reportLines.push(`UNMATCHED  ${entry.id}  (mixture: ${entry.mix.map(([q]) => q).join(' + ')})`);
+      continue;
+    }
+    ({ per100g, fdcId, portions: portionList } = mixed);
+    fdcDesc = mixed.desc;
+    usedQuery = 'mix';
+  } else {
+    const queries = Array.isArray(entry.fndds) ? entry.fndds : [entry.fndds];
+    let match = null;
+    for (const q of queries) {
+      match = matchQuery(q);
+      if (match) { usedQuery = q; break; }
+    }
+    if (!match) {
+      unmatched++;
+      reportLines.push(`UNMATCHED  ${entry.id}  (queries: ${queries.join(' | ')})`);
+      continue;
+    }
+    per100g = nutrientsByFood.get(match.fdcId) ?? {};
+    fdcId = Number(match.fdcId);
+    fdcDesc = match.desc;
+    portionList = portionsByFood.get(match.fdcId) ?? [];
   }
-  if (!match) {
-    unmatched++;
-    reportLines.push(`UNMATCHED  ${entry.id}  (queries: ${queries.join(' | ')})`);
-    continue;
-  }
-  const per100g = nutrientsByFood.get(match.fdcId) ?? {};
   const prior = priorsFor(entry);
-  const portionList = portionsByFood.get(match.fdcId) ?? [];
   dbFoods[entry.id] = {
     name: entry.name,
-    fdcId: Number(match.fdcId),
-    fdcDesc: match.desc,
+    fdcId,
+    fdcDesc,
     aliases: entry.syn ?? [],
     per100g: Object.fromEntries(Object.entries(per100g).map(([k, v]) => [k, roundPer100g(v)])),
     portions: portionList,
@@ -162,7 +214,7 @@ for (const entry of VOCABULARY) {
   const f101 = entry.f101 != null ? f101Index.get(entry.f101) : null;
   if (entry.f101 != null && f101 == null) throw new Error(`bad f101 label: ${entry.f101}`);
   vocabOut.push({ id: entry.id, name: entry.name, f101, nonFood: false });
-  reportLines.push(`${entry.id.padEnd(26)} ${String(per100g.kcal ?? '??').padStart(5)} kcal/100g  ← [${usedQuery}] ${match.desc}`);
+  reportLines.push(`${entry.id.padEnd(26)} ${String(roundPer100g(per100g.kcal) ?? '??').padStart(5)} kcal/100g  ← [${usedQuery}] ${fdcDesc}`);
 }
 
 // --------------------------- validation gate ---------------------------

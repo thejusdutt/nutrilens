@@ -1,5 +1,9 @@
 /* NutriLens app styles — light/dark via CSS custom properties. */
 *, *::before, *::after { box-sizing: border-box; }
+/* `hidden` is the app's one way of saying "not now", and half the components
+   set display themselves — without this, hiding a flex container silently
+   does nothing. */
+[hidden] { display: none !important; }
 
 :root {
   --bg: #f6f7f9;
@@ -108,7 +112,16 @@ main { max-width: 1080px; margin: 0 auto; padding: clamp(12px, 3vw, 24px); }
 @media (min-width: 860px) { .analyze-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); align-items: start; } }
 .photo-stack { position: relative; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); background: var(--surface-2); }
 .photo-stack canvas { width: 100%; display: block; }
-#overlay-canvas { position: absolute; inset: 0; height: 100%; cursor: crosshair; }
+#overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+/* On a phone a portrait photo fills the screen and pushes the calorie count —
+   the whole point of the screen — below the fold. Cap its height and let the
+   width follow, so the picture keeps its shape and the tap coordinates keep
+   mapping straight onto it. */
+@media (max-width: 859px) {
+  .photo-pane { display: flex; flex-direction: column; align-items: center; }
+  .photo-stack { max-height: 46vh; width: fit-content; max-width: 100%; }
+  .photo-stack canvas { max-height: 46vh; width: auto; max-width: 100%; }
+}
 .photo-hint { color: var(--muted); font-size: 12.5px; text-align: center; margin: 8px 0 0; }
 .spinner-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; background: rgb(0 0 0 / .45); color: #fff; font-weight: 600; }
 .spinner-overlay[hidden] { display: none; }
@@ -126,16 +139,101 @@ main { max-width: 1080px; margin: 0 auto; padding: clamp(12px, 3vw, 24px); }
 .candidate .pct { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
 .candidate b { font-weight: 600; }
 
-/* Whole-plate meal builder */
-#btn-whole-plate { margin: 0 0 12px; }
-.meal-items { display: flex; flex-direction: column; gap: 8px; }
-.meal-item { display: grid; grid-template-columns: 26px minmax(0,1fr) 88px auto auto; gap: 8px; align-items: center; }
-.meal-item .dot { width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-.meal-item select.mi-food { min-width: 0; padding: 6px 8px; font-size: 13.5px; }
-.meal-item .mi-grams { width: 88px; padding: 6px 8px; font-variant-numeric: tabular-nums; }
-.meal-item .mi-kcal { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; font-size: 13.5px; }
-.meal-item .mi-del { border: none; background: none; color: var(--muted); padding: 2px 6px; }
-@media (max-width: 480px) { .meal-item { grid-template-columns: 22px minmax(0,1fr) 74px auto auto; } }
+/* ---------------------------------------------------------------------------
+   The plate editor
+   Every value here is a guess, so the design leads with the total, then makes
+   each guess correctable in one tap. Dish colour (--dish) is set per row and
+   matches the numbered badge drawn on the photo, which is the only thing tying
+   a list row to a place on the plate.
+   --------------------------------------------------------------------------- */
+.plate-card { padding-top: 0; overflow: hidden; }
+.plate-summary {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline;
+  justify-content: space-between;
+  margin: 0 -16px 14px; padding: 14px 16px 12px;
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.plate-kcal { font-size: 30px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.plate-kcal-unit { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.plate-count { font-size: 12.5px; color: var(--muted); margin-left: 10px; }
+.plate-macros { display: flex; gap: 14px; }
+.plate-macro { display: flex; flex-direction: column; line-height: 1.25; font-size: 11.5px; color: var(--muted); }
+.plate-macro b { font-size: 13.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.plate-macro::before { content: ""; display: block; width: 22px; height: 3px; border-radius: 2px; background: var(--macro); margin-bottom: 4px; }
+
+.meal-items { display: flex; flex-direction: column; }
+.dish {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 4px 10px; align-items: start;
+  padding: 11px 0; border-top: 1px solid var(--border);
+}
+.dish:first-child { border-top: none; padding-top: 2px; }
+.dish-pin {
+  width: 21px; height: 21px; border-radius: 50%; background: var(--dish); color: #fff;
+  font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  margin-top: 3px;
+}
+.dish-main { min-width: 0; display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.dish-name {
+  border: none; background: none; padding: 0; text-align: left;
+  font-size: 15px; font-weight: 650; line-height: 1.3;
+  display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
+  border-bottom: 1px dashed var(--border);
+}
+.dish-name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dish-name:hover { border-bottom-color: var(--accent); color: var(--accent); }
+.dish-swap { color: var(--muted); font-size: 12px; flex: none; }
+.dish-name:hover .dish-swap { color: var(--accent); }
+.dish-flag {
+  border: none; background: var(--warn-soft); color: var(--warn);
+  font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+}
+.dish-right { display: flex; align-items: center; gap: 2px; }
+.dish-kcal { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; white-space: nowrap; }
+.dish-del { border: none; background: none; color: var(--muted); padding: 4px 2px 4px 8px; font-size: 13px; }
+.dish-del:hover { color: var(--warn); }
+
+.portion-ctl { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.portion-ctl .step { border: none; border-radius: 0; background: none; padding: 4px 11px; font-size: 16px; line-height: 1; color: var(--muted); }
+.portion-ctl .step:hover { background: var(--surface-2); color: var(--text); }
+.portion-read {
+  border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  border-radius: 0; background: none; padding: 3px 12px; text-align: left;
+  display: flex; flex-direction: column; line-height: 1.25; min-width: 0;
+}
+.portion-read b { font-size: 12.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16ch; }
+.portion-g { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.portion-read:hover { background: var(--surface-2); }
+
+.plate-hint { color: var(--muted); font-size: 12.5px; margin: 12px 0 0; }
+.plate-actions { display: flex; gap: 8px; margin-top: 12px; }
+.plate-actions button { flex: 1; }
+button.ghost { background: none; color: var(--muted); font-size: 13px; }
+button.ghost:hover { background: var(--surface-2); color: var(--text); }
+
+/* Fix-a-dish sheet */
+.fix-sheet { display: flex; flex-direction: column; gap: 10px; }
+.fix-sheet input[type="search"] { width: 100%; }
+.fix-list { display: flex; flex-direction: column; }
+.fix-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border: none; border-radius: 0; background: none; text-align: left;
+  padding: 11px 4px; border-bottom: 1px solid var(--border);
+}
+.fix-row:last-child { border-bottom: none; }
+.fix-row:hover { background: var(--surface-2); }
+.fix-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fix-text b { font-weight: 600; }
+.fix-kcal { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.empty { padding: 18px 4px; text-align: center; }
+.gram-sheet { display: flex; flex-direction: column; gap: 12px; }
+.gram-row { display: flex; align-items: center; gap: 8px; }
+.gram-row input { width: 120px; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 480px) {
+  .dish { grid-template-columns: 21px minmax(0, 1fr) auto; }
+  .plate-kcal { font-size: 26px; }
+}
 
 .correction { position: relative; margin-bottom: 12px; }
 .correction input { width: 100%; }

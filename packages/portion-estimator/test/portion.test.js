@@ -53,7 +53,8 @@ describe('PortionEstimator', () => {
     // Plate radius 200 px → 26cm/400px = 0.065 cm/px on both axes (top-down).
     const plate = { cx: 0, cy: 0, rx: 200, ry: 200, confidence: 0.9 };
     // Geometric estimate: 40,000 px² → 169 cm²; h=2, rho=1 → 338 g. Serving 250 g.
-    // Log-domain blend (w=0.65) must land strictly between the two, nearer the geometry.
+    // The size factor is (observed share / expected share)^w, so the answer
+    // must land strictly between the two, nearer the geometry.
     const est = estimator.estimate({
       areaPx: 40000, imageWidth: 800, imageHeight: 600, plate,
       prior: { heightCm: 2, densityGml: 1, servingG: 250 },
@@ -64,6 +65,74 @@ describe('PortionEstimator', () => {
     expect(est.grams - 250).toBeGreaterThan(338 - est.grams); // closer to the geometric side
     expect(est.low).toBeLessThan(est.grams);
     expect(est.high).toBeGreaterThan(est.grams);
+  });
+
+  it('a typical-looking helping of a known food weighs its typical serving', () => {
+    // Occupancy exactly as predicted for a 250 g serving ⇒ factor 1, whatever
+    // the weight on the geometry. This is the anchor the whole model hangs on.
+    const plate = { cx: 0, cy: 0, rx: 200, ry: 200, confidence: 0.9 };
+    const prior = { heightCm: 2, densityGml: 1, servingG: 250 };
+    const plateAreaCm2 = Math.PI * 13 * 13;
+    const expectedShare = prior.servingG / (prior.heightCm * prior.densityGml * plateAreaCm2);
+    const est = estimator.estimate({
+      areaPx: expectedShare * Math.PI * 200 * 200,
+      imageWidth: 800, imageHeight: 600, plate, prior,
+    });
+    expect(est.sizeFactor).toBeCloseTo(1, 2);
+    expect(est.grams).toBe(250);
+  });
+
+  it('never moves a portion more than 2.5x from its typical serving', () => {
+    // A bowl rim mistaken for a dinner plate is a 2.6x area error, and an
+    // unbounded factor turned that into a 22 g naan and a 605 g omelette.
+    const prior = { heightCm: 1, densityGml: 0.5, servingG: 120 };
+    const huge = estimator.estimate({
+      areaPx: 120000, imageWidth: 800, imageHeight: 600,
+      plate: { rx: 200, ry: 200, confidence: 0.9 }, prior,
+    });
+    const tiny = estimator.estimate({
+      areaPx: 50, imageWidth: 800, imageHeight: 600,
+      plate: { rx: 200, ry: 200, confidence: 0.9 }, prior,
+    });
+    expect(huge.grams).toBeLessThanOrEqual(120 * 2.5);
+    expect(tiny.grams).toBeGreaterThanOrEqual(120 / 2.5);
+  });
+
+  it('ignores an ellipse the food fills — that is a bowl, not a plate', () => {
+    // A bowl rim carries no depth information, and depth is where the mass is.
+    const plate = { cx: 0, cy: 0, rx: 200, ry: 200, confidence: 1 };
+    const prior = { heightCm: 4, densityGml: 1, servingG: 200 };
+    const plateAreaPx = Math.PI * 200 * 200;
+    const brimful = estimator.estimate({
+      areaPx: 0.9 * plateAreaPx, imageWidth: 800, imageHeight: 600, plate, prior,
+    });
+    const partial = estimator.estimate({
+      areaPx: 0.3 * plateAreaPx, imageWidth: 800, imageHeight: 600, plate, prior,
+    });
+    expect(brimful.method).toBe('bowl-scale');
+    expect(partial.method).toBe('plate-scale');
+    // The bowl reading must stay far nearer the serving statistic.
+    expect(Math.abs(brimful.grams - 200)).toBeLessThan(200);
+  });
+
+  it('is deterministic: the same photo gives the same plate, every time', () => {
+    const w = 320, h = 240;
+    const data = new Uint8ClampedArray(w * h * 4).fill(235);
+    for (let i = 3; i < data.length; i += 4) data[i] = 255;
+    for (let a = 0; a < Math.PI * 2; a += 0.002) {
+      for (let t = -1.5; t <= 1.5; t += 0.5) {
+        const x = Math.round(160 + (110 + t) * Math.cos(a));
+        const y = Math.round(120 + (70 + t) * Math.sin(a));
+        if (x >= 0 && x < w && y >= 0 && y < h) {
+          const o = (y * w + x) * 4;
+          data[o] = 30; data[o + 1] = 30; data[o + 2] = 30;
+        }
+      }
+    }
+    const img = { data, width: w, height: h };
+    const a = detectPlateEllipse(img);
+    const b = detectPlateEllipse(img);
+    expect(b).toEqual(a);
   });
 
   it('is monotonic in mask area', () => {
@@ -82,7 +151,7 @@ describe('PortionEstimator', () => {
       areaPx: 4e6, imageWidth: 4000, imageHeight: 3000, plate,
       prior: { heightCm: 2, densityGml: 1, servingG: 250 },
     });
-    expect(est.areaCm2).toBeLessThanOrEqual(Math.ceil(0.9 * plateAreaCm2));
+    expect(est.areaCm2).toBeLessThanOrEqual(Math.ceil(0.95 * plateAreaCm2));
   });
 
   it('foreshortened plate increases per-pixel area scale', () => {
@@ -97,9 +166,31 @@ describe('PortionEstimator', () => {
     expect(tilted.grams).toBeGreaterThan(flat.grams);
   });
 
-  it('falls back to serving prior without a plate', () => {
+  it('without a plate, reads size against the frame instead', () => {
+    const prior = { servingG: 250 };
+    const arg = { imageWidth: 800, imageHeight: 600, plate: null, prior };
+    const small = estimator.estimate({ ...arg, areaPx: 0.10 * 800 * 600 });
+    const large = estimator.estimate({ ...arg, areaPx: 0.70 * 800 * 600 });
+    expect(small.method).toBe('frame-scale');
+    expect(small.grams).toBeLessThan(250);
+    expect(large.grams).toBeGreaterThan(250);
+  });
+
+  it('splits the frame between the dishes sharing it', () => {
+    // One dish filling 15% of a four-dish photo is a normal helping; the same
+    // 15% in a single-dish photo is a small one.
+    const arg = {
+      areaPx: 0.15 * 800 * 600, imageWidth: 800, imageHeight: 600,
+      plate: null, prior: { servingG: 250 },
+    };
+    const alone = estimator.estimate({ ...arg, dishCount: 1 });
+    const crowded = estimator.estimate({ ...arg, dishCount: 4 });
+    expect(crowded.grams).toBeGreaterThan(alone.grams);
+  });
+
+  it('falls back to the serving statistic when there is no mask at all', () => {
     const est = estimator.estimate({
-      areaPx: 40000, imageWidth: 800, imageHeight: 600, plate: null,
+      areaPx: 0, imageWidth: 800, imageHeight: 600, plate: null,
       prior: { servingG: 250 },
     });
     expect(est.method).toBe('serving-prior');

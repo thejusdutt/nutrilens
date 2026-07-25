@@ -14,6 +14,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NUTRIENT_MAP, roundPer100g } from '../nutrient-map.mjs';
+import { VOCABULARY } from '../vocabulary.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const dbPath = join(root, 'app/public/data/nutrition-db.json');
@@ -79,18 +80,59 @@ d('shipped database vs USDA FNDDS source', () => {
 
   const ids = Object.keys(db.foods);
 
+  // A handful of dishes have no single FNDDS row that describes them as served
+  // (see `mix` in tools/build-nutrition-db.mjs). Their values are still built
+  // only from FNDDS rows, so they are checked against the recomputed mixture
+  // rather than against one row.
+  const mixById = new Map(VOCABULARY.filter((v) => v.mix).map((v) => [v.id, v.mix]));
+  const descToId = new Map();
+  for (const [fdcId, desc] of foodDesc) descToId.set(desc, fdcId);
+
+  /** Recompute a mixture's per-100 g straight from the source rows. */
+  function mixedSource(mix) {
+    const out = {};
+    for (const [query, share] of mix) {
+      if (query === 'water') continue;
+      const fdcId = descToId.get(query);
+      if (!fdcId) return null; // mixture names must be exact FNDDS descriptions
+      for (const [k, v] of Object.entries(srcNutrients.get(fdcId) ?? {})) {
+        out[k] = (out[k] ?? 0) + v * share;
+      }
+    }
+    return out;
+  }
+
+  it('mixture foods name real FNDDS rows and sum to their declared recipe', () => {
+    const bad = [];
+    for (const [id, mix] of mixById) {
+      const shares = mix.reduce((a, [, s]) => a + s, 0);
+      if (Math.abs(shares - 1) > 1e-9) bad.push(`${id}: mixture shares sum to ${shares}, not 1`);
+      const src = mixedSource(mix);
+      if (!src) { bad.push(`${id}: a mixture component is not an exact FNDDS description`); continue; }
+      for (const [key, value] of Object.entries(db.foods[id].per100g)) {
+        const expected = roundPer100g(src[key] ?? 0);
+        if (value !== expected) bad.push(`${id}.${key}: db ${value} vs mixture ${expected}`);
+      }
+    }
+    expect(bad, bad.slice(0, 10).join('; ')).toEqual([]);
+  });
+
   it('every food points at a real FNDDS entry with the recorded description', () => {
     for (const id of ids) {
       const f = db.foods[id];
       const desc = foodDesc.get(String(f.fdcId));
       expect(desc, `${id}: fdcId ${f.fdcId} not in food.csv`).toBeTruthy();
-      expect(f.fdcDesc, `${id}`).toBe(desc);
+      // Mixtures record the recipe in fdcDesc and point fdcId at their largest
+      // component, so the description is deliberately not that row's name.
+      if (mixById.has(id)) expect(f.fdcDesc, `${id}`).toMatch(/^mixture: /);
+      else expect(f.fdcDesc, `${id}`).toBe(desc);
     }
   });
 
   it('every per-100 g value equals its source amount exactly', () => {
     const bad = [];
     for (const id of ids) {
+      if (mixById.has(id)) continue; // checked against the recipe instead
       const src = srcNutrients.get(String(db.foods[id].fdcId)) ?? {};
       for (const [key, value] of Object.entries(db.foods[id].per100g)) {
         if (src[key] == null) { bad.push(`${id}.${key}=${value} has no source row`); continue; }
@@ -104,6 +146,7 @@ d('shipped database vs USDA FNDDS source', () => {
   it('no source nutrient is silently dropped', () => {
     const missing = [];
     for (const id of ids) {
+      if (mixById.has(id)) continue;
       const src = srcNutrients.get(String(db.foods[id].fdcId)) ?? {};
       for (const key of Object.keys(src)) {
         if (db.foods[id].per100g[key] == null) missing.push(`${id}.${key} (FNDDS has ${src[key]})`);

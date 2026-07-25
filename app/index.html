@@ -125,17 +125,23 @@
         </div>
         <div class="result-pane">
           <div id="nonfood-warning" class="warning" hidden>🤔 This doesn’t look like food. Top guesses below — tap one if it’s right, or search manually.</div>
-          <button id="btn-whole-plate" class="wide">↻ Re-scan whole plate</button>
-          <div id="meal-card" class="card" hidden>
-            <div class="card-head">
-              <h3>On this plate</h3>
-              <span id="meal-count" class="tag"></span>
+          <div id="meal-card" class="card plate-card" hidden>
+            <div class="plate-summary">
+              <div>
+                <span id="plate-kcal" class="plate-kcal">0</span><span class="plate-kcal-unit">kcal</span>
+                <span id="meal-count" class="plate-count"></span>
+              </div>
+              <div id="plate-macros" class="plate-macros"></div>
             </div>
             <div id="meal-items" class="meal-items"></div>
-            <p class="muted">Adjust grams or fix a name — totals update instantly. Tap the photo to add anything that was missed.</p>
+            <p class="plate-hint">Tap a dish to change it, or step the portion up and down. Tap the photo to add anything that was missed.</p>
+            <div class="plate-actions">
+              <button id="btn-add-dish" class="ghost">+ Add a dish</button>
+              <button id="btn-whole-plate" class="ghost">↻ Scan again</button>
+            </div>
           </div>
           <div id="candidates" class="candidates"></div>
-          <div class="correction">
+          <div class="correction" id="correction">
             <input id="search-input" type="search" placeholder="Wrong? Search any food…" autocomplete="off" />
             <div id="search-results" class="search-results" hidden></div>
           </div>
@@ -155,10 +161,10 @@
           </div>
           <div id="nutrition-card" class="card" hidden>
             <div class="card-head">
-              <h3>Nutrition</h3>
+              <h3 id="nutrition-title">Nutrition</h3>
               <span id="confidence-tag" class="tag"></span>
             </div>
-            <div class="kcal-hero">
+            <div class="kcal-hero" id="kcal-hero">
               <span id="kcal-value">–</span>
               <span class="kcal-unit">kcal</span>
               <span id="kcal-range" class="kcal-range"></span>

@@ -29,6 +29,29 @@ export { detectPlateEllipse, leastSquaresEllipse } from './plate-detector.js';
 export const DEFAULT_PLATE_DIAMETER_CM = 26;
 
 /**
+ * Minimum plate-rim angular coverage before the ellipse is trusted as a scale
+ * reference. Below this the "plate" is usually a bowl rim, a pan edge or an
+ * accident of food texture.
+ */
+export const MIN_PLATE_CONFIDENCE = 0.7;
+
+/**
+ * How much of the frame a single dish occupies in a typical food photo —
+ * the reference point when there is no plate to measure against. People
+ * frame food to fill the shot, so this is high.
+ */
+export const TYPICAL_FRAME_OCCUPANCY = 0.38;
+
+/** Furthest the geometry may move a portion from the food's typical serving. */
+export const MAX_SERVING_FACTOR = 2.5;
+
+/**
+ * Food covering at least this share of the detected ellipse means the ellipse
+ * is the food's own bowl, not a plate underneath it.
+ */
+export const BOWL_FILL_RATIO = 0.62;
+
+/**
  * @typedef {Object} FoodPrior
  * @property {number} [heightCm=2.2]   Typical pile height of this food on a plate.
  * @property {number} [densityGml=0.8] Bulk density in g/cm³ (FAO/INFOODS-informed).
@@ -47,6 +70,8 @@ export class PortionEstimator {
     this.plateDiameterCm = opts.plateDiameterCm ?? DEFAULT_PLATE_DIAMETER_CM;
     this.minGrams = opts.minGrams ?? 10;
     this.maxGrams = opts.maxGrams ?? 1500;
+    this.minPlateConfidence = opts.minPlateConfidence ?? MIN_PLATE_CONFIDENCE;
+    this.maxFactor = opts.maxFactor ?? MAX_SERVING_FACTOR;
   }
 
   /**
@@ -60,54 +85,93 @@ export class PortionEstimator {
    * @param {number} p.imageHeight
    * @param {import('./plate-detector.js').PlateEllipse|null} [p.plate]
    * @param {FoodPrior} [p.prior]
-   * @returns {{grams:number, low:number, high:number, method:'plate-scale'|'serving-prior', areaCm2:number|null, plateConfidence:number|null}}
+   * @param {number} [p.dishCount=1] How many dishes share this photo — see
+   *   the frame-scale branch; ignored when a plate anchors the scale.
+   * @returns {{grams:number, low:number, high:number, method:'plate-scale'|'bowl-scale'|'frame-scale'|'serving-prior', areaCm2:number|null, plateConfidence:number|null, sizeFactor:number}}
    */
-  estimate({ areaPx, imageWidth, imageHeight, plate = null, prior = {} }) {
+  estimate({ areaPx, imageWidth, imageHeight, plate = null, prior = {}, dishCount = 1 }) {
     const heightCm = prior.heightCm ?? 2.2;
     const densityGml = prior.densityGml ?? 0.8;
     const servingG = prior.servingG ?? 300;
     const spread = prior.spread ?? 1.55;
+    const usePlate = !!plate && plate.confidence >= this.minPlateConfidence && areaPx > 0;
 
-    if (plate && plate.confidence > 0.3 && areaPx > 0) {
-      // Areas on the plate plane scale by the product of the two axis scales.
-      const cmPerPxMajor = this.plateDiameterCm / (2 * plate.rx);
-      const cmPerPxMinor = this.plateDiameterCm / (2 * plate.ry);
-      let areaCm2 = areaPx * cmPerPxMajor * cmPerPxMinor;
-      // Food on a plate cannot exceed the plate's own surface: a mask that
-      // "measures" more than that is segmentation bleed or a bad ellipse fit.
+    // One model, two reference frames. In both, the answer is the food's own
+    // typical serving scaled by how large this helping looks *relative to what
+    // a typical helping looks like* — which is how a person reads a photo
+    // ("that's a big dosa, call it one and a half"). Geometry sets the factor;
+    // it never sets the mass outright.
+    let ratio = null;   // observed share of the reference area
+    let expected = null; // share a typical serving of this food would occupy
+    let w; let method;
+
+    if (usePlate) {
+      // Share of the plate's surface the food covers. Note the metric scale
+      // cancels out of ratio/expected — the plate diameter prior only ever
+      // affects `areaCm2`, which is reported, not used.
+      const plateAreaPx = Math.PI * plate.rx * plate.ry;
       const plateAreaCm2 = Math.PI * (this.plateDiameterCm / 2) ** 2;
-      areaCm2 = Math.min(areaCm2, 0.9 * plateAreaCm2);
-
-      const gArea = this._clamp(areaCm2 * heightCm * densityGml);
-      // Shrinkage toward the population serving prior (log-domain blend).
-      // The pure geometric model is unbiased in area but noisy in the height×
-      // density assumption; USDA serving statistics are biased toward the mean
-      // but low-variance. Their log-linear combination has lower expected
-      // error than either alone — and stops one bad mask from claiming a
-      // 3,000-kcal plate. Weight follows how much we trust the geometry.
-      const w = plate.confidence > 0.6 ? 0.65 : 0.5;
-      const grams = this._clamp(Math.exp(w * Math.log(gArea) + (1 - w) * Math.log(servingG)));
-
-      const s = spread * (plate.confidence > 0.6 ? 1 : 1.2);
+      ratio = Math.min(areaPx / plateAreaPx, 0.95);
+      expected = Math.min(0.95, servingG / (heightCm * densityGml * plateAreaCm2));
+      // Trust geometry more when the rim is fully evidenced.
+      w = plate.confidence >= 0.75 ? 0.6 : 0.45;
+      method = 'plate-scale';
+      // Food covering nearly the whole ellipse means the ellipse is the food's
+      // own container, not a plate it is sitting on — a bowl rim traced round a
+      // bowl of dal. That outline says nothing about depth, which is where all
+      // the mass is, so the area reading carries almost no information and a
+      // 200 g serving was being read as 500 g. Fall back toward the statistic.
+      if (ratio >= BOWL_FILL_RATIO) { w = 0.2; method = 'bowl-scale'; }
+    } else if (areaPx > 0 && imageWidth && imageHeight) {
+      // No usable plate: the frame itself is the only reference. It says
+      // nothing about absolute size, but a dish filling 70% of the shot really
+      // is a bigger helping than one filling 15%, so it still carries signal —
+      // just weakly, hence the low weight.
+      ratio = Math.min(areaPx / (imageWidth * imageHeight), 0.95);
+      // Split the frame between the dishes sharing it. A thali of four fills
+      // more of the shot than a single bowl does, but not four times as much —
+      // people step back. Sub-linear growth (√n) keeps a single dish at the
+      // full reference while stopping every dish on a crowded plate from being
+      // judged small and logged at half its weight.
+      expected = TYPICAL_FRAME_OCCUPANCY / Math.sqrt(Math.max(1, dishCount));
+      w = 0.35;
+      method = 'frame-scale';
+    } else {
+      const s = 2.0; // wide band — nothing in the image anchors the scale
       return {
-        grams: Math.round(grams),
-        low: Math.round(this._clamp(grams / s)),
-        high: Math.round(this._clamp(grams * s)),
-        method: 'plate-scale',
-        areaCm2: Math.round(areaCm2),
-        plateConfidence: plate.confidence,
+        grams: Math.round(this._clamp(servingG)),
+        low: Math.round(this._clamp(servingG / s)),
+        high: Math.round(this._clamp(servingG * s)),
+        method: 'serving-prior',
+        areaCm2: null,
+        plateConfidence: plate?.confidence ?? null,
+        sizeFactor: 1,
       };
     }
 
-    // Fallback: population prior for a typical serving of this food.
-    const s = 2.0; // wide band — nothing in the image anchors the scale
+    // Bounded because the inputs are unreliable in ways the maths cannot see:
+    // a bowl rim and a dinner plate both fit an ellipse, but one is 16 cm and
+    // the other 26 cm — a 2.6× area error. Letting the factor run free is how
+    // a naan became 22 g and half an omelette became 605 g. Real helpings of a
+    // known dish live within about 2.5× of its typical serving; outside that
+    // the photo is telling us something the model cannot represent, and the
+    // honest answer is the serving statistic with a wide band.
+    const raw = (ratio / expected) ** w;
+    const sizeFactor = Math.min(this.maxFactor, Math.max(1 / this.maxFactor, raw));
+    const grams = this._clamp(servingG * sizeFactor);
+    const clamped = Math.abs(Math.log(raw / sizeFactor)) > 1e-6;
+    const s = spread * (method === 'plate-scale' && !clamped ? 1 : 1.25);
+
     return {
-      grams: Math.round(this._clamp(servingG)),
-      low: Math.round(this._clamp(servingG / s)),
-      high: Math.round(this._clamp(servingG * s)),
-      method: 'serving-prior',
-      areaCm2: null,
+      grams: Math.round(grams),
+      low: Math.round(this._clamp(grams / s)),
+      high: Math.round(this._clamp(grams * s)),
+      method,
+      areaCm2: usePlate
+        ? Math.round(ratio * Math.PI * (this.plateDiameterCm / 2) ** 2)
+        : null,
       plateConfidence: plate?.confidence ?? null,
+      sizeFactor: Number(sizeFactor.toFixed(2)),
     };
   }
 

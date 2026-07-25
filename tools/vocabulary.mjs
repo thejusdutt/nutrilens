@@ -51,7 +51,10 @@ export const VOCABULARY = [
   { id: 'bread-pudding', name: 'Bread pudding', cat: 'dessert', f101: 'bread_pudding', fndds: 'Bread pudding', serve: 150 },
   { id: 'breakfast-burrito', name: 'Breakfast burrito', cat: 'sandwich', f101: 'breakfast_burrito', syn: ['egg breakfast burrito'], fndds: ['Burrito with egg', 'Burrito, NFS'], serve: 220 },
   { id: 'bruschetta', name: 'Bruschetta', cat: 'flat', f101: 'bruschetta', syn: ['tomato bruschetta'], fndds: ['Bruschetta'], h: 3, serve: 90 },
-  { id: 'caesar-salad', name: 'Caesar salad', cat: 'salad', f101: 'caesar_salad', fndds: ['Caesar salad'], serve: 180 },
+  // FNDDS only lists caesar salad *without* dressing (77 kcal/100 g). Nobody
+  // eats it that way, and the undressed row made a restaurant caesar look like
+  // a bowl of lettuce. Composed at the ratio a kitchen actually uses.
+  { id: 'caesar-salad', name: 'Caesar salad', cat: 'salad', f101: 'caesar_salad', mix: [['Caesar salad, with romaine, no dressing', 0.84], ['Caesar dressing', 0.16]], serve: 180 },
   { id: 'cannoli', name: 'Cannoli', cat: 'pastry', f101: 'cannoli', fndds: ['Cannoli', 'Cream puff'], serve: 90 },
   { id: 'caprese-salad', name: 'Caprese salad', cat: 'salad', f101: 'caprese_salad', syn: ['tomato mozzarella salad'], fndds: ['Tomato and mozzarella', 'Mozzarella'], rho: 0.7, serve: 160 },
   { id: 'carrot-cake', name: 'Carrot cake', cat: 'cake', f101: 'carrot_cake', fndds: 'Carrot cake', serve: 110 },
@@ -72,7 +75,7 @@ export const VOCABULARY = [
   { id: 'cupcakes', name: 'Cupcakes', cat: 'cake', f101: 'cup_cakes', syn: ['frosted cupcake'], fndds: ['Cupcake'], serve: 70 },
   { id: 'deviled-eggs', name: 'Deviled eggs', cat: 'egg', f101: 'deviled_eggs', fndds: ['Deviled egg'], serve: 80 },
   { id: 'donuts', name: 'Donuts', cat: 'pastry', f101: 'donuts', syn: ['glazed doughnut'], fndds: ['Doughnut, NFS', 'Doughnut'], serve: 65 },
-  { id: 'dumplings', name: 'Dumplings', cat: 'pile', f101: 'dumplings', syn: ['steamed dumplings', 'chinese dumplings', 'dim sum'], fndds: ['Dumpling, meat', 'Dumpling, no meat'], rho: 0.9, serve: 150 },
+  { id: 'dumplings', name: 'Dumplings', cat: 'pile', f101: 'dumplings', syn: ['steamed dumplings', 'chinese dumplings', 'dim sum', 'momos', 'pleated steamed dumplings on a plate'], fndds: ['Wonton, dumpling or pot sticker, steamed', 'Dumpling, no meat'], rho: 0.9, serve: 180 },
   { id: 'edamame', name: 'Edamame', cat: 'vegetable', f101: 'edamame', syn: ['edamame soybeans in pods'], fndds: ['Edamame'], serve: 100 },
   { id: 'eggs-benedict', name: 'Eggs Benedict', cat: 'egg', f101: 'eggs_benedict', fndds: ['Egg, Benedict'], serve: 260 },
   { id: 'escargots', name: 'Escargots', cat: 'seafood', f101: 'escargots', syn: ['snails in garlic butter'], fndds: ['Escargot'], serve: 90 },
@@ -92,7 +95,7 @@ export const VOCABULARY = [
   { id: 'grilled-cheese-sandwich', name: 'Grilled cheese sandwich', cat: 'sandwich', f101: 'grilled_cheese_sandwich', fndds: ['Grilled cheese sandwich'], h: 4, serve: 120 },
   { id: 'grilled-salmon', name: 'Grilled salmon', cat: 'seafood', f101: 'grilled_salmon', syn: ['salmon fillet'], fndds: ['Salmon, grilled', 'Salmon, baked or broiled', 'Salmon, cooked'], h: 3, serve: 170 },
   { id: 'guacamole', name: 'Guacamole', cat: 'snack', f101: 'guacamole', fndds: ['Guacamole, NFS', 'Guacamole'], rho: 0.95, h: 3, serve: 100 },
-  { id: 'gyoza', name: 'Gyoza', cat: 'pile', f101: 'gyoza', syn: ['japanese pan-fried dumplings', 'potstickers'], fndds: ['Dumpling, meat'], h: 2, rho: 0.9, serve: 140 },
+  { id: 'gyoza', name: 'Gyoza', cat: 'pile', f101: 'gyoza', syn: ['japanese pan-fried dumplings', 'potstickers'], fndds: ['Wonton, dumpling or pot sticker, fried'], h: 2, rho: 0.9, serve: 140 },
   { id: 'hamburger', name: 'Hamburger', cat: 'sandwich', f101: 'hamburger', syn: ['burger', 'cheeseburger'], fndds: ['Cheeseburger, from fast food, 1 medium patty', 'Hamburger, from fast food', 'Hamburger, NFS'], serve: 230 },
   { id: 'hot-and-sour-soup', name: 'Hot and sour soup', cat: 'soup', f101: 'hot_and_sour_soup', fndds: ['Hot and sour soup'], serve: 350 },
   { id: 'hot-dog', name: 'Hot dog', cat: 'sandwich', f101: 'hot_dog', syn: ['hot dog in a bun'], fndds: ['Hot dog sandwich, NFS', 'Frankfurter'], h: 4.5, serve: 150 },
@@ -145,11 +148,17 @@ export const VOCABULARY = [
   // ============================= Indian =============================
   { id: 'biryani', name: 'Biryani', cat: 'pile', syn: ['chicken biryani', 'hyderabadi dum biryani with saffron rice and fried onions', 'layered spiced basmati rice dish with meat'], fndds: ['Biryani with chicken', 'Biryani with meat'], serve: 300 },
   { id: 'plain-rice', name: 'Steamed rice', cat: 'pile', syn: ['plain white rice', 'boiled rice'], fndds: ['Rice, white, cooked, NS as to fat', 'Rice, white, cooked'], rho: 0.85, serve: 200 },
-  { id: 'dosa', name: 'Dosa', cat: 'flat', syn: ['masala dosa', 'south indian dosa crepe'], fndds: ['Dosa'], h: 0.5, rho: 0.5, serve: 120 },
+  { id: 'dosa', name: 'Dosa (plain)', cat: 'flat', syn: ['plain dosa', 'south indian dosa crepe', 'thin crisp rolled rice crepe', 'paper roast dosa'], fndds: ['Dosa, plain'], h: 0.5, rho: 0.5, serve: 110 },
+  // FNDDS distinguishes the plain crepe from the filled one, and so must we:
+  // a masala dosa is 184 kcal/100 g against the plain crepe's 210, but weighs
+  // half as much again because of the potato inside. Reporting one as the
+  // other is a 40% error on the commonest South Indian order there is.
+  { id: 'masala-dosa', name: 'Masala dosa', cat: 'flat', syn: ['masala dosa with potato filling', 'dosa stuffed with spiced potato masala', 'folded dosa with filling'], fndds: ['Dosa, with filling'], h: 2.2, rho: 0.6, serve: 180 },
   { id: 'idli', name: 'Idli', cat: 'pile', syn: ['south indian steamed idli'], fndds: ['Idli'], h: 2.5, rho: 0.8, serve: 120 },
   { id: 'vada', name: 'Vada', cat: 'snack', syn: ['crispy golden ring shaped south indian medu vada', 'indian fried lentil doughnut'], fndds: ['Vada'], serve: 90 },
   { id: 'chapati', name: 'Chapati / Roti', cat: 'flat', syn: ['roti', 'indian flatbread chapati'], fndds: ['Roti', 'Chapati', 'Tortilla, flour'], h: 0.35, rho: 0.7, serve: 45 },
-  { id: 'naan', name: 'Naan', cat: 'flat', syn: ['indian naan bread'], fndds: ['Naan'], h: 0.8, rho: 0.5, serve: 90 },
+  { id: 'naan', name: 'Naan', cat: 'flat', syn: ['indian naan bread', 'butter naan with coriander and nigella seeds'], fndds: ['Bread, naan'], h: 0.8, rho: 0.5, serve: 100 },
+  { id: 'poori', name: 'Poori', cat: 'flat', syn: ['puri', 'puffed deep fried indian bread', 'golden round puffed poori'], fndds: ['Bread, puri'], h: 3, rho: 0.35, serve: 45 },
   { id: 'paratha', name: 'Paratha', cat: 'flat', syn: ['flaky layered indian paratha flatbread with golden brown spots', 'lachha paratha'], fndds: ['Paratha'], h: 0.6, rho: 0.7, serve: 80 },
   { id: 'dal', name: 'Dal', cat: 'soup', syn: ['indian lentil dal curry', 'dal tadka'], fndds: ['Dal', 'Lentil curry'], serve: 200 },
   { id: 'palak-paneer', name: 'Palak paneer', cat: 'pile', syn: ['indian spinach and cottage cheese curry'], fndds: ['Palak paneer', 'Spinach, creamed'], rho: 1.0, serve: 220 },
@@ -167,7 +176,13 @@ export const VOCABULARY = [
   { id: 'jalebi', name: 'Jalebi', cat: 'dessert', syn: ['indian jalebi sweet spirals'], fndds: ['Jalebi', 'Funnel cake'], rho: 0.7, serve: 70 },
   { id: 'kheer', name: 'Kheer', cat: 'dessert', syn: ['indian rice pudding kheer'], fndds: ['Rice pudding'], rho: 1.05, serve: 150 },
   { id: 'lassi', name: 'Lassi', cat: 'drink', syn: ['indian yogurt lassi drink', 'mango lassi'], fndds: ['Lassi', 'Yogurt, liquid', 'Kefir'], serve: 250 },
-  { id: 'chutney', name: 'Chutney', cat: 'snack', syn: ['coconut chutney', 'tomato chutney', 'red chutney', 'mint chutney', 'indian chutney dip'], fndds: ['Chutney'], h: 2, rho: 1.0, serve: 30 },
+  { id: 'chutney', name: 'Chutney (sweet)', cat: 'snack', syn: ['mango chutney', 'sweet tamarind chutney', 'dark brown tamarind dipping sauce'], fndds: ['Chutney'], h: 2, rho: 1.0, serve: 30 },
+  // FNDDS has no coconut chutney; its only "Chutney" is a sweet mango relish
+  // at 246 kcal/100 g, which is nothing like the white coconut paste served
+  // with every dosa. Composed from fresh coconut instead — see `mix` in
+  // tools/build-nutrition-db.mjs.
+  { id: 'coconut-chutney', name: 'Coconut chutney', cat: 'snack', syn: ['white coconut chutney', 'south indian coconut chutney', 'bowl of white coconut chutney with mustard seeds'], mix: [['Coconut, fresh', 0.45], ['water', 0.55]], h: 2, rho: 1.0, serve: 40 },
+  { id: 'green-chutney', name: 'Green chutney', cat: 'snack', syn: ['coriander mint chutney', 'bright green indian chutney dip'], mix: [['Cilantro, raw', 0.5], ['water', 0.5]], h: 2, rho: 1.0, serve: 30 },
   { id: 'sambar', name: 'Sambar', cat: 'soup', syn: ['sambhar', 'south indian sambar lentil vegetable stew'], fndds: ['Sambar, vegetable stew'], serve: 150 },
   { id: 'yogurt-plain', name: 'Yogurt (curd)', cat: 'dessert', syn: ['plain yogurt', 'curd', 'dahi', 'bowl of white yogurt'], fndds: ['Yogurt, NFS'], rho: 1.03, h: 2.5, serve: 100 },
 

@@ -39,13 +39,18 @@ export function microRow(n) {
  * @param {Record<string, {value:number, unit:string, name:string, pctDV:number|null}>} nutrients
  * @param {{kcalRange?:string, confText?:string, confWarn?:boolean}} [opts]
  */
-export function fillNutritionCard(nodes, nutrients, { kcalRange = '', confText, confWarn = false } = {}) {
+export function fillNutritionCard(nodes, nutrients, {
+  kcalRange = '', confText, confWarn = false, hero = true,
+} = {}) {
   nodes.card.hidden = false;
   if (nodes.tag) {
     nodes.tag.textContent = confText ?? '';
     nodes.tag.className = confWarn ? 'tag warn' : 'tag';
   }
   const kcal = nutrients.kcal;
+  // The photo flow already shows the total at the top of the plate card;
+  // repeating it here just makes the reader check whether they match.
+  if (nodes.hero) nodes.hero.hidden = !hero;
   nodes.kcal.textContent = kcal ? Math.round(kcal.value) : '–';
   if (nodes.range) nodes.range.textContent = kcalRange;
 

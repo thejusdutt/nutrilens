@@ -17,6 +17,7 @@ import {
 } from '@nutrilens/food-recognition';
 import { SlimSamSegmenter } from '@nutrilens/food-segmentation';
 import { detectPlateEllipse } from '@nutrilens/portion-estimator';
+import { proposeRegions } from '@nutrilens/plate-analyzer';
 import { loadModelBytes, MODEL_CACHE } from '../model-cache.js';
 
 ort.env.wasm.wasmPaths = '/ort/';
@@ -124,64 +125,19 @@ async function loadSegmenter() {
 const asRaw = (m) => ({ data: new Uint8ClampedArray(m.data), width: m.width, height: m.height });
 
 /**
- * Whole-plate discovery: prompt SAM with a grid of points, keep distinct,
- * plausibly-food-sized masks. Regions are deduplicated by bbox overlap and
- * containment so one dish doesn't appear five times.
- * @returns [{ mask:Uint8Array, areaPx, areaFraction, iou, bbox, point }]
+ * Whole-plate discovery: prompt SAM with the grid from the plate analyzer and
+ * keep distinct, plausibly-food-sized masks plus the single largest one.
+ * Proposal geometry, dedupe and thresholds live in @nutrilens/plate-analyzer
+ * so the evaluation harness scores the same code the app runs.
+ * @returns {{regions:object[], dominant:object|null}}
  */
-async function autoSegment(seg, width, height, plate, onProgress) {
-  // Sample points inside the plate ellipse when we have one (that's where the
-  // main dish lives) PLUS a coarse full-frame grid: side bowls (chutneys,
-  // sambar, dips) sit OUTSIDE the plate rim and would otherwise never be
-  // probed. Duplicate hits are collapsed by the dedupe below.
-  const pts = [];
-  const N = 4;
-  if (plate && plate.confidence > 0.3) {
-    for (let gy = 0; gy < N; gy++) {
-      for (let gx = 0; gx < N; gx++) {
-        const a = ((gx + 0.5) / N) * Math.PI * 2;
-        const r = Math.sqrt((gy + 0.5) / N) * 0.8;
-        pts.push({ x: plate.cx + r * plate.rx * Math.cos(a), y: plate.cy + r * plate.ry * Math.sin(a) });
-      }
-    }
-  }
-  const M = plate && plate.confidence > 0.3 ? 3 : N; // coarse frame grid (dense when no plate)
-  for (let gy = 0; gy < M; gy++) {
-    for (let gx = 0; gx < M; gx++) {
-      pts.push({ x: width * (0.1 + 0.8 * (gx + 0.5) / M), y: height * (0.1 + 0.8 * (gy + 0.5) / M) });
-    }
-  }
-  const candidates = [];
-  for (let i = 0; i < pts.length; i++) {
-    const p = pts[i];
-    if (p.x < 0 || p.y < 0 || p.x >= width || p.y >= height) continue;
-    try {
-      const m = await seg.segment([p]);
-      if (m.bbox && m.iou > 0.7 && m.areaFraction > 0.008 && m.areaFraction < 0.45) {
-        candidates.push({ ...m, point: p });
-      }
-    } catch { /* skip failed prompts */ }
-    onProgress?.(i + 1, pts.length);
-  }
-  // Greedy dedupe, SMALLEST first: dishes sit on the plate, so a mask that
-  // contains an already-kept smaller mask is almost always the plate surface
-  // (or a merged multi-dish blob) — the small distinct regions must win.
-  candidates.sort((a, b) => a.areaPx - b.areaPx);
-  const kept = [];
-  for (const c of candidates) {
-    const dup = kept.some((k) => {
-      const ix = Math.max(0, Math.min(c.bbox.x1, k.bbox.x1) - Math.max(c.bbox.x0, k.bbox.x0));
-      const iy = Math.max(0, Math.min(c.bbox.y1, k.bbox.y1) - Math.max(c.bbox.y0, k.bbox.y0));
-      const inter = ix * iy;
-      const areaC = (c.bbox.x1 - c.bbox.x0) * (c.bbox.y1 - c.bbox.y0);
-      const areaK = (k.bbox.x1 - k.bbox.x0) * (k.bbox.y1 - k.bbox.y0);
-      return inter / Math.min(areaC, areaK) > 0.55; // overlap or containment
-    });
-    if (!dup) kept.push(c);
-    if (kept.length >= 6) break;
-  }
-  return kept;
-}
+const autoSegment = (seg, width, height, plate, onProgress) => proposeRegions({
+  segment: (points) => seg.segment(points),
+  width,
+  height,
+  plate,
+  onProgress,
+});
 
 let initPromise = null;
 
@@ -223,19 +179,21 @@ self.onmessage = async (e) => {
         postMessage({ type: 'sam-encoding', id: msg.id });
         await seg.setImage(raw);
       }
-      const regions = await autoSegment(seg, dims.width, dims.height, plate,
+      const { regions, dominant } = await autoSegment(seg, dims.width, dims.height, plate,
         (done, total) => postMessage({ type: 'auto-progress', id: msg.id, done, total }));
-      postMessage(
-        {
-          type: 'auto-segmented',
-          id: msg.id,
-          plate,
-          width: dims.width,
-          height: dims.height,
-          regions: regions.map((r) => ({ mask: r.mask.buffer, areaPx: r.areaPx, areaFraction: r.areaFraction, iou: r.iou, bbox: r.bbox, point: r.point })),
-        },
-        regions.map((r) => r.mask.buffer),
-      );
+      // The dominant mask usually IS one of the regions; copy it so the two
+      // never share a buffer that transfer would then neuter under one of them.
+      const wire = (r) => ({ mask: r.mask.slice().buffer, areaPx: r.areaPx, areaFraction: r.areaFraction, iou: r.iou, bbox: r.bbox, point: r.point });
+      const payload = {
+        type: 'auto-segmented',
+        id: msg.id,
+        plate,
+        width: dims.width,
+        height: dims.height,
+        regions: regions.map(wire),
+        dominant: dominant ? wire(dominant) : null,
+      };
+      postMessage(payload, [...payload.regions.map((r) => r.mask), ...(payload.dominant ? [payload.dominant.mask] : [])]);
     }
   } catch (err) {
     postMessage({ type: 'error', id: msg.id, message: err?.message ?? String(err) });

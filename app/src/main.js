@@ -4,16 +4,20 @@
  * my-food screens live in their own modules and are wired up at the bottom.
  */
 import { toRawImage, crop } from '@nutrilens/image-preprocess';
-import { overlayMask } from '@nutrilens/food-segmentation';
-import { PortionEstimator, maskAreaInsideEllipse } from '@nutrilens/portion-estimator';
+import { overlayMask, outlineMask } from '@nutrilens/food-segmentation';
+import { PortionEstimator, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
+import { buildPlate } from '@nutrilens/plate-analyzer';
+import { renderPlate, openAddDish, REGION_COLORS } from './plate-ui.js';
 import { makeEntry, normalizeEntry, toCSV } from '@nutrilens/diary';
 import { saveMeal, listMeals, dateKey } from './db.js';
 import {
   getProfile, setProfile, dailyGoal, suggestSlot, macroPctSum, macroKcal,
   ACTIVITY, RATE,
 } from './goals.js';
-import { $, el, fill, fmt, show, view, toast, emit, on, openSheet, closeSheet } from './ui.js';
+import {
+  $, el, fill, fmt, show, view, toast, emit, on, openSheet, closeSheet, MACRO_COLORS,
+} from './ui.js';
 import { initFoods, food as foodById, servingsFor, nutrients as nutrientsFor } from './foods.js';
 import { fillNutritionCard } from './nutrients-ui.js';
 import { renderToday, diaryDate, setDiaryDate, openAddMenu } from './today.js';
@@ -259,6 +263,7 @@ function resetResultUI() {
   $('search-results').hidden = true;
   $('search-input').value = '';
   $('meal-card').hidden = true;
+  $('correction').hidden = false;
   $('btn-whole-plate').disabled = false;
   $('btn-whole-plate').hidden = false;
   $('btn-save').textContent = '💾 Add to diary';
@@ -339,7 +344,8 @@ const plateCm = () => Number(localStorage.getItem('plateCm') ?? 26);
 function drawOverlay() {
   const { raw, seg } = state;
   const viewImg = { data: new Uint8ClampedArray(raw.data), width: raw.width, height: raw.height };
-  overlayMask(seg.mask, viewImg, [46, 204, 113], 0.4);
+  overlayMask(seg.mask, viewImg, [46, 204, 113], 0.14);
+  outlineMask(seg.mask, viewImg, [46, 204, 113], Math.max(2, Math.round(raw.width / 320)));
   const octx = $('overlay-canvas').getContext('2d');
   octx.putImageData(new ImageData(viewImg.data, raw.width, raw.height), 0, 0);
   if (state.plate) {
@@ -444,7 +450,7 @@ function currentGrams() { return state.userGrams ?? state.portion?.grams ?? 100;
 
 /** Food pixels that actually lie on the plate — bleed outside the rim is background. */
 function foodAreaPx(mask, w, h, fallbackAreaPx) {
-  if (state.plate && state.plate.confidence > 0.3 && mask) {
+  if (state.plate && state.plate.confidence >= MIN_PLATE_CONFIDENCE && mask) {
     return maskAreaInsideEllipse(mask, w, h, state.plate);
   }
   return fallbackAreaPx;
@@ -496,6 +502,7 @@ $('portion-select').addEventListener('change', (e) => {
 const CARD_NODES = () => ({
   card: $('nutrition-card'), tag: $('confidence-tag'), kcal: $('kcal-value'),
   range: $('kcal-range'), macros: $('macro-bars'), micros: $('micro-table'),
+  hero: $('kcal-hero'), title: $('nutrition-title'),
 });
 
 function renderNutritionCard() {
@@ -511,7 +518,9 @@ function renderNutritionCard() {
   const conf = state.candidates.find((c) => c.id === id)?.prob ?? 1;
   const level = conf >= 0.6 ? 'high' : conf >= 0.3 ? 'medium' : 'low';
   const kcal = r.nutrients.kcal;
-  fillNutritionCard(CARD_NODES(), r.nutrients, {
+  const nodes = CARD_NODES();
+  nodes.title.textContent = 'Nutrition';
+  fillNutritionCard(nodes, r.nutrients, {
     kcalRange: kcal && !manual && kcal.low !== kcal.high ? `(${Math.round(kcal.low)}–${Math.round(kcal.high)})` : '',
     confText: state.candidates[0]?.sources?.manual ? 'manual' : `${level} confidence · ${(conf * 100).toFixed(0)}%`,
     confWarn: level === 'low',
@@ -521,11 +530,16 @@ function renderNutritionCard() {
 // ---------------------------------------------------------------------------
 // Whole-plate mode
 // ---------------------------------------------------------------------------
-const REGION_COLORS = [
-  [46, 204, 113], [79, 142, 247], [232, 161, 60], [224, 93, 123], [176, 111, 216], [52, 199, 190],
-];
-
 $('btn-whole-plate').onclick = () => analyzeWholePlate();
+$('btn-add-dish').onclick = () => openAddDish((id) => {
+  const f = foodById(id);
+  state.meal.items.push({
+    id, grams: f.prior?.servingG ?? 100, prob: 1,
+    candidates: [{ id, name: f.name, prob: 1 }], region: null,
+  });
+  drawMealOverlay();
+  renderMeal();
+});
 
 async function analyzeWholePlate({ auto = false } = {}) {
   if (!state.raw) return;
@@ -547,27 +561,17 @@ async function analyzeWholePlate({ auto = false } = {}) {
     state.imageEncoded = true;
     if (detectPlate) state.plate = m.plate ?? null;
 
-    const estimator = new PortionEstimator({ plateDiameterCm: plateCm() });
-    const items = [];
-    for (let i = 0; i < m.regions.length; i++) {
-      const region = { ...m.regions[i], mask: new Uint8Array(m.regions[i].mask) };
-      setSpinner(`Identifying item ${i + 1} of ${m.regions.length}…`);
-      const b = region.bbox;
-      const pad = Math.round(Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.15);
-      const cropped = crop(state.raw, b.x0 - pad, b.y0 - pad, (b.x1 - b.x0) + 2 * pad, (b.y1 - b.y0) + 2 * pad);
-      const { result } = await rpcImage({ type: 'recognize', image: rawToMsg(cropped) });
-      const candidates = result.top.filter((t) => engine.food(t.id));
-      if (!result.isFood || !candidates.length || candidates[0].prob < 0.18) continue;
-      const foodRec = engine.food(candidates[0].id);
-      const est = estimator.estimate({
-        areaPx: foodAreaPx(region.mask, state.raw.width, state.raw.height, region.areaPx),
-        imageWidth: state.raw.width,
-        imageHeight: state.raw.height,
-        plate: state.plate,
-        prior: foodRec.prior,
-      });
-      items.push({ id: candidates[0].id, grams: est.grams, prob: candidates[0].prob, candidates, region });
-    }
+    const items = await buildPlate({
+      image: state.raw,
+      regions: m.regions.map((r) => ({ ...r, mask: new Uint8Array(r.mask) })),
+      dominant: m.dominant ? { ...m.dominant, mask: new Uint8Array(m.dominant.mask) } : null,
+      imageTop: state.candidates,
+      plate: state.plate,
+      classify: async (img) => (await rpcImage({ type: 'recognize', image: rawToMsg(img) })).result,
+      foodById: (id) => engine.food(id),
+      estimator: new PortionEstimator({ plateDiameterCm: plateCm() }),
+      onProgress: (done, total) => setSpinner(`Identifying item ${Math.min(done + 1, total)} of ${total}…`),
+    });
     if (!items.length) {
       btn.disabled = false;
       if (auto) {
@@ -581,7 +585,12 @@ async function analyzeWholePlate({ auto = false } = {}) {
     fill($('candidates'));
     $('portion-card').hidden = true;
     $('nonfood-warning').hidden = true;
-    btn.hidden = true;
+    // Every dish name is now its own "change this" button, so the free-text
+    // correction box below the list has nothing left to correct.
+    $('correction').hidden = true;
+    // The rescan button now lives inside the plate card as a secondary action,
+    // so it stays available: a bad scan is exactly when you want to retry.
+    btn.disabled = false;
     drawMealOverlay();
     renderMeal();
   } catch (err) {
@@ -600,7 +609,16 @@ async function analyzeWholePlate({ auto = false } = {}) {
 function drawMealOverlay() {
   const { raw, meal } = state;
   const viewImg = { data: new Uint8ClampedArray(raw.data), width: raw.width, height: raw.height };
-  meal.items.forEach((it, i) => { if (it.region) overlayMask(it.region.mask, viewImg, REGION_COLORS[i % REGION_COLORS.length], 0.38); });
+  // Tint faintly, then outline: the point of the overlay is to show what was
+  // measured, and a heavy fill hides the very food the user is checking.
+  meal.items.forEach((it, i) => {
+    if (!it.region) return;
+    overlayMask(it.region.mask, viewImg, REGION_COLORS[i % REGION_COLORS.length], 0.14);
+  });
+  const stroke = Math.max(2, Math.round(raw.width / 320));
+  meal.items.forEach((it, i) => {
+    if (it.region) outlineMask(it.region.mask, viewImg, REGION_COLORS[i % REGION_COLORS.length], stroke);
+  });
   const octx = $('overlay-canvas').getContext('2d');
   octx.putImageData(new ImageData(viewImg.data, raw.width, raw.height), 0, 0);
   const fontPx = Math.max(16, Math.round(raw.width / 40));
@@ -625,53 +643,29 @@ function renderMeal() {
   const meal = state.meal;
   $('meal-card').hidden = false;
   $('meal-count').textContent = `${meal.items.length} item${meal.items.length > 1 ? 's' : ''}`;
-  fill($('meal-items'), meal.items.map((it, i) => {
-    const [r, g, b] = REGION_COLORS[i % REGION_COLORS.length];
-    const kcalEl = el('span.mi-kcal', null, itemKcal(it));
-    const sel = el('select.mi-food', { title: `${(it.prob * 100).toFixed(0)}% confidence` });
-    const seen = new Set();
-    for (const c of [{ id: it.id }, ...it.candidates]) {
-      if (seen.has(c.id)) continue;
-      seen.add(c.id);
-      sel.append(el('option', { value: c.id }, foodById(c.id)?.name ?? c.id));
-    }
-    sel.value = it.id;
-    sel.onchange = () => {
-      it.id = sel.value;
-      if (it.region) {
-        const estimator = new PortionEstimator({ plateDiameterCm: plateCm() });
-        it.grams = estimator.estimate({
-          areaPx: foodAreaPx(it.region.mask, state.raw.width, state.raw.height, it.region.areaPx),
-          imageWidth: state.raw.width, imageHeight: state.raw.height,
-          plate: state.plate, prior: foodById(it.id).prior,
-        }).grams;
-      } else {
-        it.grams = foodById(it.id).prior?.servingG ?? 100;
-      }
-      renderMeal();
-    };
-    const grams = el('input.mi-grams', {
-      type: 'number', min: 5, max: 1500, step: 5, value: it.grams, 'aria-label': 'grams',
-      oninput: (e) => {
-        it.grams = Math.max(1, Number(e.target.value) || 0);
-        renderMealNutrition();
-        kcalEl.textContent = itemKcal(it);
-      },
-    });
-    return el('div.meal-item', null,
-      el('span.dot', { style: `background:rgb(${r},${g},${b})` }, i + 1),
-      sel, grams, kcalEl,
-      el('button.mi-del', {
-        title: 'Remove item',
-        onclick: () => {
-          meal.items.splice(i, 1);
-          if (!meal.items.length) { resetResultUI(); drawPhoto(); return; }
-          drawMealOverlay();
-          renderMeal();
-        },
-      }, '✕'));
-  }));
+  renderPlate($('meal-items'), meal, {
+    onChanged: ({ rerender = false } = {}) => {
+      if (!meal.items.length) { resetResultUI(); drawPhoto(); return; }
+      drawMealOverlay();
+      if (rerender) renderMeal(); else renderMealNutrition();
+    },
+    reestimate: (it) => reestimateItem(it),
+  });
   renderMealNutrition();
+}
+
+/** Grams for a dish the user just renamed: re-measure its mask under the new food's priors. */
+function reestimateItem(it) {
+  const food = foodById(it.id);
+  if (!it.region) return food?.prior?.servingG ?? 100;
+  return new PortionEstimator({ plateDiameterCm: plateCm() }).estimate({
+    areaPx: foodAreaPx(it.region.mask, state.raw.width, state.raw.height, it.region.areaPx),
+    imageWidth: state.raw.width,
+    imageHeight: state.raw.height,
+    plate: state.plate,
+    prior: food.prior,
+    dishCount: state.meal?.items.length ?? 1,
+  }).grams;
 }
 
 const itemKcal = (it) => `${Math.round((foodById(it.id).per100g.kcal ?? 0) * it.grams / 100)} kcal`;
@@ -680,9 +674,19 @@ function renderMealNutrition() {
   const meal = state.meal;
   if (!meal?.items.length) return;
   const totals = engine.aggregate(meal.items.map((it) => ({ id: it.id, grams: it.grams })), foodById);
-  fillNutritionCard(CARD_NODES(), totals.nutrients, {
-    confText: `plate total · ${meal.items.length} item${meal.items.length > 1 ? 's' : ''}`,
-  });
+  const v = (k) => totals.nutrients[k]?.value ?? 0;
+
+  // The summary carries the number people came for, above the detail. It
+  // updates on every portion tap, so it has to be cheap to redraw.
+  $('plate-kcal').textContent = fmt.kcal(v('kcal'));
+  $('meal-count').textContent = `${meal.items.length} item${meal.items.length > 1 ? 's' : ''}`;
+  const macros = [['Protein', 'protein'], ['Carbs', 'carbs'], ['Fat', 'fat']];
+  fill($('plate-macros'), macros.map(([label, key]) => el('span.plate-macro', { style: `--macro: ${MACRO_COLORS[key]}` },
+    el('b', null, `${fmt.g(v(key))} g`), el('span', null, label))));
+
+  const nodes = CARD_NODES();
+  nodes.title.textContent = 'Full breakdown';
+  fillNutritionCard(nodes, totals.nutrients, { hero: false, confText: 'every nutrient on this plate' });
 }
 
 // ---------------------------------------------------------------------------

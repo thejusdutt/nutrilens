@@ -1,0 +1,14 @@
+{
+  "name": "@nutrilens/plate-analyzer",
+  "version": "1.0.0",
+  "description": "Turns promptable-segmentation region proposals plus a whole-image food distribution into a plate of named dishes with per-dish mass",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "license": "MIT",
+  "dependencies": {
+    "@nutrilens/image-preprocess": "1.0.0",
+    "@nutrilens/portion-estimator": "1.0.0"
+  },
+  "keywords": ["food", "portion", "segmentation", "multi-dish", "plate"]
+}

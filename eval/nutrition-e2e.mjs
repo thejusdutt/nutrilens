@@ -152,11 +152,35 @@ try {
   }, sel);
 
   /** Empty the meal card so the single-dish flow is on screen. */
-  const leaveMealMode = async () => {
+  /** Reduce the plate to a single row, so one dish can be driven at a time. */
+  const keepOneDish = async () => {
     for (let i = 0; i < 12; i++) {
-      if (!(await clickIn('.mi-del'))) break;
+      const n = await page.evaluate(() => document.querySelectorAll('.dish').length);
+      if (n <= 1) break;
+      await page.evaluate(() => document.querySelectorAll('.dish .dish-del')[1].click());
       await new Promise((r) => setTimeout(r, 250));
     }
+  };
+
+  /** Rename one plate row through the "What is this?" sheet. */
+  const changeDish = async (index, id) => {
+    const name = db.foods[id].name;
+    await page.evaluate((i) => document.querySelectorAll('.dish .dish-name')[i].click(), index);
+    await page.waitForSelector('.fix-sheet input[type="search"]');
+    await page.evaluate((n) => {
+      const el = document.querySelector('.fix-sheet input[type="search"]');
+      el.value = n;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, name);
+    await new Promise((r) => setTimeout(r, 250));
+    const clicked = await page.evaluate((n) => {
+      const btn = [...document.querySelectorAll('.fix-row')].find((b) => b.querySelector('b')?.textContent.trim() === n);
+      if (!btn) return false;
+      btn.click();
+      return true;
+    }, name);
+    if (!clicked) throw new Error(`fix sheet did not offer "${name}"`);
+    await new Promise((r) => setTimeout(r, 400));
   };
 
   /** Pick a food by its display name through the correction search box. */
@@ -178,12 +202,40 @@ try {
     await waitFor(() => document.getElementById('analyze-spinner').hidden, `portion for ${id}`);
   };
 
-  const setSlider = (grams) => page.evaluate((g) => {
-    const s = document.getElementById('portion-slider');
-    s.value = String(g);
-    s.dispatchEvent(new Event('input', { bubbles: true }));
-    return Number(s.value);
-  }, grams);
+  /** Add a dish to the plate through the "Add a dish" sheet. */
+  const addDish = async (id) => {
+    const name = db.foods[id].name;
+    await page.evaluate(() => document.getElementById('btn-add-dish').click());
+    await page.waitForSelector('.fix-sheet input[type="search"]');
+    await page.evaluate((n) => {
+      const el = document.querySelector('.fix-sheet input[type="search"]');
+      el.value = n;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, name);
+    await new Promise((r) => setTimeout(r, 250));
+    const clicked = await page.evaluate((n) => {
+      const btn = [...document.querySelectorAll('.fix-row')].find((b) => b.querySelector('b')?.textContent.trim() === n);
+      if (!btn) return false;
+      btn.click();
+      return true;
+    }, name);
+    if (!clicked) throw new Error(`add-dish search did not offer "${name}"`);
+    await new Promise((r) => setTimeout(r, 350));
+  };
+
+  /** Set one plate row to an exact weight through the gram-entry sheet. */
+  const setDishGrams = async (index, grams) => {
+    await page.evaluate((i) => document.querySelectorAll('.dish .portion-read')[i].click(), index);
+    await page.waitForSelector('.grams-input');
+    await page.evaluate((g) => {
+      const el = document.querySelector('.grams-input');
+      el.value = String(g);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, grams);
+    await page.evaluate(() => [...document.querySelectorAll('.sheet button')]
+      .find((b) => b.textContent.includes('Use this weight')).click());
+    await new Promise((r) => setTimeout(r, 250));
+  };
 
   const readCard = () => page.evaluate(() => ({
     kcal: document.getElementById('kcal-value').textContent.trim(),
@@ -199,30 +251,25 @@ try {
 
   // ---------------- A. single food, many portion sizes ----------------
   await upload('smoke_0_beignets.jpg');
-  await leaveMealMode();
+  await keepOneDish();
 
   for (const id of FOODS) {
-    await pickFood(id);
-    for (const grams of [10, 250, 1500]) { // slider min / mid / max, step 5
-      const applied = await setSlider(grams);
-      if (applied !== grams) throw new Error(`slider refused ${grams} (got ${applied})`);
+    await changeDish(0, id);
+    for (const grams of [10, 250, 1500]) {
+      await setDishGrams(0, grams);
       check(`${id} @ ${grams} g`, await readCard(), expected(id, grams));
     }
-    // Household measure: exercises non-round gram weights straight from FNDDS.
-    const measure = await page.evaluate(() => {
-      const sel = document.getElementById('portion-select');
-      const opt = [...sel.options].find((o) => o.value && Number(o.value) !== 100);
-      if (!opt) return null;
-      sel.value = opt.value;
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
-      return { grams: Number(opt.value), label: opt.textContent };
+    // Household measures put non-round gram weights straight from FNDDS
+    // through the arithmetic — the serving stepper moves in exactly those.
+    const stepped = await page.evaluate(() => {
+      document.querySelector('.dish .portion-ctl .step:last-child').click();
+      return Number(document.querySelector('.dish').dataset.grams);
     });
-    if (measure) {
-      check(`${id} @ ${measure.label}`, await readCard(), expected(id, measure.grams));
-      check(`${id} grams readout`, await page.$eval('#portion-grams', (e) => e.value || e.textContent.trim()), String(measure.grams));
-    }
+    await new Promise((r) => setTimeout(r, 250));
+    check(`${id} @ one step up (${stepped} g)`, await readCard(), expected(id, stepped));
+    check(`${id} grams readout`, await page.$eval('.dish .portion-g', (e) => e.textContent.trim()), `${stepped} g`);
   }
-  console.log(`A. single-food rendering: ${FOODS.length} foods × 3 portions + household measures`);
+  console.log(`A. single-food rendering: ${FOODS.length} foods × 3 portions + a stepped serving`);
 
   // ---------------- B. multi-item plate totals ----------------
   await clickIn('#btn-back');
@@ -231,20 +278,14 @@ try {
   if (!inMeal) throw new Error('multi_plate.jpg did not enter whole-plate mode');
 
   // Add two known foods, then set every item's grams to an awkward value.
-  for (const id of ['plain-rice', 'dal']) await pickFood(id);
-  const items = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll('.meal-item')];
-    rows.forEach((row, i) => {
-      const g = row.querySelector('.mi-grams');
-      g.value = String(35 + i * 47); // 35, 82, 129, …
-      g.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    return rows.map((row) => ({
-      id: row.querySelector('.mi-food').value,
-      grams: Number(row.querySelector('.mi-grams').value),
-      kcal: row.querySelector('.mi-kcal').textContent.trim(),
-    }));
-  });
+  for (const id of ['plain-rice', 'dal']) await addDish(id);
+  const rowCount = await page.evaluate(() => document.querySelectorAll('.dish').length);
+  for (let i = 0; i < rowCount; i++) await setDishGrams(i, 35 + i * 47); // 35, 82, 129, …
+  const items = await page.evaluate(() => [...document.querySelectorAll('.dish')].map((row) => ({
+    id: row.dataset.id,
+    grams: Number(row.dataset.grams),
+    kcal: row.querySelector('.dish-kcal').textContent.trim(),
+  })));
   if (items.length < 3) throw new Error(`expected ≥3 plate items, got ${items.length}`);
   for (const it of items) {
     check(`plate item ${it.id} @ ${it.grams} g kcal`, it.kcal,

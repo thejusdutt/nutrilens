@@ -58,14 +58,15 @@ try {
     if (Date.now() - t0 > 300000) throw new Error('timed out waiting for nutrition card');
   }
   const result = await page.evaluate(() => ({
-    // meal-first flow: items live in the meal card; fall back to single-dish UI
-    topCandidate: document.querySelector('.meal-item .mi-food')?.selectedOptions[0]?.textContent
+    // meal-first flow: dishes live in the plate card; fall back to single-dish UI
+    topCandidate: document.querySelector('.dish .dish-name span')?.textContent
       ?? document.querySelector('.candidate b')?.textContent,
-    kcal: document.getElementById('kcal-value').textContent,
-    grams: document.querySelector('.meal-item .mi-grams')?.value
+    kcal: document.getElementById('plate-kcal')?.textContent
+      ?? document.getElementById('kcal-value').textContent,
+    grams: document.querySelector('.dish')?.dataset.grams
       ?? document.getElementById('portion-grams').value,
-    confidence: document.getElementById('confidence-tag').textContent,
-    mealItems: document.querySelectorAll('.meal-item').length,
+    portion: document.querySelector('.dish .portion-read b')?.textContent,
+    mealItems: document.querySelectorAll('.dish').length,
     macroRows: document.querySelectorAll('.macro-row').length,
     microRows: document.querySelectorAll('.micro-row').length,
     nonFoodHidden: document.getElementById('nonfood-warning').hidden,
@@ -74,8 +75,10 @@ try {
   console.log(JSON.stringify(result, null, 2));
 
   // Diary save round-trip: a photo of a plate logs one entry per dish.
-  await page.click('#btn-save');
-  await page.waitForFunction(() => document.getElementById('btn-save').textContent.includes('✓'));
+  // Click through the DOM: the button sits below the fold in a scrolling
+  // pane, and puppeteer's own click refuses when the hit point is covered.
+  await page.evaluate(() => document.getElementById('btn-save').click());
+  await page.waitForFunction(() => document.getElementById('btn-save').textContent.includes('✓'), { timeout: 20000 });
   await page.evaluate(() => document.querySelector('.tab-btn[data-view="diary"]').click());
   await page.waitForSelector('.diary-entry', { timeout: 8000 });
   const logged = await page.evaluate(() => ({
@@ -89,7 +92,7 @@ try {
   await page.screenshot({ path: join(root, 'eval/results/browser-smoke.png') });
 
   const ok = result.topCandidate?.toLowerCase().includes('beignet')
-    && Number(result.kcal) > 50 && result.macroRows >= 4 && result.microRows >= 10
+    && Number(result.kcal.replace(/,/g, '')) > 50 && result.macroRows >= 4 && result.microRows >= 10
     && logged.entries >= 1 && Number(logged.food.replace(/\D/g, '')) > 0;
   console.log(ok ? 'BROWSER SMOKE PASS' : 'BROWSER SMOKE FAIL');
   process.exitCode = ok ? 0 : 1;

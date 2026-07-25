@@ -61,10 +61,15 @@ export function detectPlateEllipse(img, opts = {}) {
   // Plausibility bounds for a plate in frame.
   const minR = 0.18 * Math.min(w, h), maxRx = 0.62 * w, maxRy = 0.62 * h;
 
+  // Seeded, not Math.random(): RANSAC on a fixed image must give a fixed
+  // answer. With a global PRNG the same photo produced a different plate
+  // ellipse on every analysis, which moved every portion and every calorie
+  // downstream — the app would quote two different numbers for one picture.
+  const rand = mulberry32(opts.seed ?? 0x9e3779b9);
   let best = null, bestScore = 0;
   const idx = new Uint32Array(4);
   for (let it = 0; it < iterations; it++) {
-    for (let k = 0; k < 4; k++) idx[k] = (Math.random() * nPts) | 0;
+    for (let k = 0; k < 4; k++) idx[k] = (rand() * nPts) | 0;
     const M = [], rhs = [1, 1, 1, 1];
     for (let k = 0; k < 4; k++) {
       const x = pts[idx[k] * 2], y = pts[idx[k] * 2 + 1];
@@ -100,14 +105,53 @@ export function detectPlateEllipse(img, opts = {}) {
   const refined = leastSquaresEllipse(inlierPts) ?? best;
 
   const inlierRatio = best.inliers / nPts;
-  // Confidence: how completely the rim is supported (inliers vs circumference in px).
-  const support = Math.min(1, best.inliers / (Math.PI * (refined.rx + refined.ry) * 0.5));
-  const confidence = Math.max(0, Math.min(1, 0.25 + 0.75 * support));
+  const coverage = angularCoverage(inlierPts, refined);
+  // Confidence is angular coverage, not inlier count.
+  //
+  // Counting inliers against the circumference saturates: any busy food photo
+  // puts enough strong edges in a ±3.5% annulus to reach the ceiling, so every
+  // image — a collage with no plate, a naan filling the frame — scored 1.0 and
+  // got priced with a 26 cm scale it had no right to. What actually separates
+  // a plate rim from a coincidence is that a rim is supported *all the way
+  // round*: measure the fraction of angular sectors that contain an inlier.
+  // A real rim covers 0.7–1.0 of them, a lucky arc through food texture ~0.3.
+  const confidence = Math.max(0, Math.min(1, coverage));
 
   return {
     cx: refined.cx / scale, cy: refined.cy / scale,
     rx: refined.rx / scale, ry: refined.ry / scale,
-    inlierRatio, confidence,
+    inlierRatio, coverage, confidence,
+  };
+}
+
+/**
+ * Fraction of angular sectors around an ellipse that contain at least one
+ * inlier — how much of the rim is actually evidenced.
+ * @param {number[]} flatPts inlier points, [x0,y0,x1,y1,…]
+ * @param {{cx:number,cy:number,rx:number,ry:number}} e
+ * @param {number} [bins=72] 5° sectors
+ */
+export function angularCoverage(flatPts, e, bins = 72) {
+  if (flatPts.length < 8) return 0;
+  const seen = new Uint8Array(bins);
+  for (let i = 0; i < flatPts.length; i += 2) {
+    const a = Math.atan2((flatPts[i + 1] - e.cy) / e.ry, (flatPts[i] - e.cx) / e.rx);
+    seen[Math.min(bins - 1, Math.floor(((a + Math.PI) / (2 * Math.PI)) * bins))] = 1;
+  }
+  let n = 0;
+  for (let i = 0; i < bins; i++) n += seen[i];
+  return n / bins;
+}
+
+/** @private mulberry32 — small, fast, well-distributed seeded PRNG. */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 

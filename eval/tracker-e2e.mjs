@@ -366,6 +366,11 @@ try {
   check('completing the day projects five weeks ahead', /5 weeks|stay about the same/.test(projection), true);
 
   // ---- 10. copy a meal to another day -------------------------------------
+  // Snapshot the source day: what "copy" means is that tomorrow's breakfast
+  // ends up identical to today's. Asserting a fixed count made this depend on
+  // what time of day the suite happened to run, since quick add and barcode
+  // both file into whichever meal is current.
+  const breakfastToday = (await diary()).sections.breakfast;
   await page.evaluate(() => document.querySelector('.meal-section[data-slot="breakfast"] .icon-btn.small').click());
   await page.waitForSelector('.sheet .stack');
   await clickIn('#copy-to-day');   // target date is prefilled with tomorrow
@@ -373,7 +378,8 @@ try {
   await page.evaluate(() => [...document.querySelectorAll('.diary-date-nav .icon-btn')].at(-1).click());
   await sleep(700);
   const tomorrow = await diary();
-  check('copied meal lands on the next day', tomorrow.sections.breakfast.length, 1);
+  check('copied meal lands on the next day, entry for entry',
+    JSON.stringify(tomorrow.sections.breakfast), JSON.stringify(breakfastToday));
   check('copy keeps the same calories', tomorrow.sections.breakfast[0].kcal, d.sections.breakfast[0].kcal);
   await page.evaluate(() => document.querySelector('.diary-date-nav .icon-btn').click());
   await sleep(600);

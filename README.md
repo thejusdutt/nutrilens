@@ -10,6 +10,42 @@ in airplane mode.
 
 ![pipeline](docs/img/pipeline.svg)
 
+## Does the number match what a person sees?
+
+That is the only question a food tracker is judged on, so it has its own
+benchmark: `npm run test:vision` runs the shipped pipeline end to end over 19
+photographed plates and scores the dish names and the calories against what a
+careful human reader says is on them (`eval/vision-truth.json`).
+
+| | before | now |
+|---|---|---|
+| Calories inside the accepted band | 10 / 19 | **16 / 19** |
+| Calories within 25% | 13 / 19 | **19 / 19** |
+| Mean calorie error | 31.7% | **2.2%** |
+| Dishes named correctly | 54.7% | **75.0%** |
+| Dishes invented that were not there | 26 | **15** |
+| Median time per photo | 16.9 s | **10.1 s** |
+
+What moved the numbers, in order of size:
+
+1. **Plate detection was always "certain".** Confidence came from counting
+   edge inliers against the rim's circumference, which saturates on any busy
+   food photo — a collage with no plate in it scored 1.0 and got priced with a
+   26 cm ruler. It now measures *angular coverage*: how much of the rim is
+   actually evidenced, all the way round.
+2. **Portions are anchored to the food's own typical serving** and moved by a
+   bounded factor from how large the helping looks, rather than computed from
+   area outright. A bowl rim and a dinner plate both fit an ellipse but differ
+   2.6× in area, and that is how a naan became 22 g and half an omelette 605 g.
+3. **A region crop is a weak classifier input; the whole photo is a strong
+   one.** One corner of a dosa really does look like tempura. Region labels are
+   now re-ranked under the whole-image distribution.
+4. **One dish, one diary line.** Regions that resolve to the same food — or
+   that touch and largely agree about what they are — merge, which fixed both
+   "Dosa 24 g + Dosa 86 g" and the plate that was two stir-fries.
+5. **The plate detector used `Math.random()`**, so the same photo gave
+   different calories on every analysis. It is seeded now.
+
 ## Measured accuracy (see eval/results/ACCURACY_REPORT.md)
 
 | | Food-101 val subsample (2,523 imgs) | Extended Indian set (259 imgs) |
@@ -63,11 +99,15 @@ biryani vs. pulao); see the per-class table in the report.
   user-adjustable (slider + FNDDS household measures).
 - **Nutrition** — USDA FNDDS 2021-2023: 30 nutrients (energy, macros, 11
   minerals, 12 vitamins, cholesterol, fatty-acid classes) per food, %DV, ranges.
+  Dishes FNDDS only lists in a form nobody eats (caesar salad *without*
+  dressing) are composed as mass-weighted mixtures of FNDDS rows, so every
+  value still traces to USDA data — and the provenance test recomputes the
+  recipe to prove it.
 - **PWA** — installable, offline-first service worker, camera/upload/drag-drop/
   paste, tap-to-refine multi-dish flow, IndexedDB storage, CSV export, dark mode.
 - **All inference in a Web Worker** on ONNX Runtime Web (multi-threaded WASM;
   WebGPU opt-in via `?webgpu=1`).
-- **Ten reusable MIT libraries** under `packages/` — each with a clean API,
+- **Eleven reusable MIT libraries** under `packages/` — each with a clean API,
   JSDoc and unit tests, publishable independently.
 - **Automated evaluation** — reproducible accuracy/calibration/latency reports
   on the Food-101 validation split + an extended Indian-food set, running the
@@ -122,6 +162,7 @@ packages/
   barcode/             EAN-13/EAN-8/UPC-A encoder + scanline image decoder
   off-food/            Open Food Facts product → food record (unit-corrected)
   charts/              dependency-free SVG donut/bar/column/line charts
+  plate-analyzer/      region proposals → named dishes with masses (multi-dish logic)
 app/                   the PWA (Vite, vanilla ES modules, Web Worker inference)
   src/today.js         diary screen        src/logfood.js    add-food flow
   src/nutrition-view.js dashboards         src/progress-view.js weight & trends
@@ -134,9 +175,11 @@ docs/                  research, architecture, models, datasets, testing, compat
 ## Tests & evaluation
 
 ```bash
-npm test                   # 176 unit tests across all packages (vitest), including:
+npm test                   # 230 unit tests across all packages (vitest), including:
                            #  · every per-100 g value traced back to the FNDDS CSVs
                            #  · every food × nutrient × 11 portion sizes recomputed
+npm run test:vision        # dish names + calories vs human ground truth on 19
+                           #   photographed plates (the "does it match" benchmark)
 npm run test:nutrition-ui  # rendered kcal/macros/micros/%DV vs an independent
                            #   oracle, across 12 foods, plate totals and the diary
 npm run test:tracker       # every tracker flow end to end: goals, serving-size
@@ -149,7 +192,9 @@ npm run eval               # run both heads over every image (Node, same code as
 npm run eval:report        # ACCURACY_REPORT.md + PERFORMANCE_REPORT.md + fusion sweep
 ```
 
-See [docs/RESEARCH.md](docs/RESEARCH.md) for why each model/database/runtime was
+See [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md) for the
+per-photo scores behind the table above,
+[docs/RESEARCH.md](docs/RESEARCH.md) for why each model/database/runtime was
 chosen, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, and
 [eval/results/](eval/results/) for the generated reports.
 

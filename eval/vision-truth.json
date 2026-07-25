@@ -1,0 +1,282 @@
+{
+  "_readme": [
+    "Ground truth for eval/vision-bench.mjs: what a careful human reader sees on each plate,",
+    "and the energy/macros they would expect a food tracker to report for it.",
+    "",
+    "Every nutrient is a [low, high] BAND, not a point. Portion estimation from a single",
+    "uncalibrated photo is genuinely uncertain — a benchmark demanding one exact number would",
+    "reward overfitting to these 19 photos instead of measuring whether the app is useful.",
+    "The bands are what a dietitian would accept as 'that's the right answer for this photo':",
+    "roughly ±30% around the considered estimate, wider where the serving itself is ambiguous",
+    "(a whole pizza on a board, a pan of rice — you cannot know how much of it is one portion).",
+    "",
+    "dishes[].id must exist in app/public/data/nutrition-db.json. `optional: true` marks a dish",
+    "that is genuinely in the photo but which a reasonable person might not log (tea, a garnish,",
+    "a condiment smear) — it never counts against recall, and naming it is never spurious.",
+    "",
+    "Estimates use FNDDS per-100g values, so a miss here means the pipeline is wrong, not that",
+    "the arithmetic disagrees with a different food database."
+  ],
+
+  "_aliasNote": "Applied to BOTH the expected and the predicted id before comparing. Only for distinctions a person would not make on a photo — every chutney is 'a chutney' — never for foods whose calories differ materially (plain dosa vs masala dosa are separate dishes and must be told apart).",
+  "acceptableAliases": {
+    "chutney": "any-chutney",
+    "coconut-chutney": "any-chutney",
+    "green-chutney": "any-chutney",
+    "medu-vada": "vada",
+    "momo": "dumplings",
+    "gyoza": "dumplings"
+  },
+
+  "images": {
+    "dosa-thali": {
+      "file": "eval/data/extended/dosa/154.jpg",
+      "note": "Steel thali: one very large plain paper-roast dosa rolled into a tube, a bowl of white coconut chutney, a bowl of sambar.",
+      "dishes": [
+        { "id": "dosa", "grams": 110 },
+        { "id": "coconut-chutney", "grams": 50 },
+        { "id": "sambar", "grams": 120 }
+      ],
+      "grams": [200, 400],
+      "kcal": [320, 560],
+      "carbs": [45, 78],
+      "protein": [8, 19],
+      "fat": [9, 26]
+    },
+
+    "masala-dosa": {
+      "file": "eval/data/extended/dosa/130.jpg",
+      "note": "Triangular masala dosa with a green-pea and onion filling on paper, plus three small bowls: red chutney, sambar, white coconut chutney.",
+      "dishes": [
+        { "id": "masala-dosa", "grams": 180 },
+        { "id": "coconut-chutney", "grams": 40 },
+        { "id": "sambar", "grams": 60 }
+      ],
+      "grams": [240, 430],
+      "kcal": [340, 660],
+      "carbs": [50, 96],
+      "protein": [8, 21],
+      "fat": [8, 28]
+    },
+
+    "idli-vada-thali": {
+      "file": "eval/data/extended/idli/10.jpg",
+      "note": "Steel thali: three idli, four medu vada, a bowl of sambar, a bowl of coconut chutney.",
+      "dishes": [
+        { "id": "idli", "grams": 120 },
+        { "id": "vada", "grams": 140 },
+        { "id": "sambar", "grams": 150 },
+        { "id": "coconut-chutney", "grams": 60 }
+      ],
+      "grams": [350, 620],
+      "kcal": [560, 980],
+      "carbs": [70, 130],
+      "protein": [20, 42],
+      "fat": [15, 40]
+    },
+
+    "sliders-watermelon": {
+      "file": "eval/data/extended/hamburger/141.jpg",
+      "note": "Three small chicken-patty sliders in sesame buns with lettuce and tomato, watermelon wedges behind.",
+      "dishes": [
+        { "id": "hamburger", "grams": 270 },
+        { "id": "watermelon", "grams": 150, "optional": true }
+      ],
+      "grams": [250, 480],
+      "kcal": [520, 950],
+      "carbs": [40, 85],
+      "protein": [35, 70],
+      "fat": [25, 60]
+    },
+
+    "fried-rice-bowl": {
+      "file": "eval/data/extended/fried-rice/133.jpg",
+      "note": "A steel bowl filled with egg fried rice with peas, carrot and spring onion. One generous serving.",
+      "dishes": [{ "id": "fried-rice", "grams": 300 }],
+      "grams": [200, 450],
+      "kcal": [350, 780],
+      "carbs": [62, 130],
+      "protein": [7, 20],
+      "fat": [6, 25]
+    },
+
+    "dal-bowl": {
+      "file": "eval/data/extended/dal/108.jpg",
+      "note": "A white bowl of dal makhani garnished with onion rings and coriander.",
+      "dishes": [{ "id": "dal", "grams": 250 }],
+      "grams": [160, 380],
+      "kcal": [230, 500],
+      "carbs": [30, 65],
+      "protein": [14, 30],
+      "fat": [7, 22]
+    },
+
+    "north-indian-thali": {
+      "file": "eval/data/extended/chana-masala/13.jpg",
+      "note": "A full spread: two poori, chana masala, raita, vegetable pulao, two gulab jamun, ice cream, two cutlets, onion-tomato salad, a glass of orange juice. The hardest case in the set — many small dishes, several outside the vocabulary.",
+      "complex": true,
+      "dishes": [
+        { "id": "chana-masala", "grams": 150 },
+        { "id": "pulao", "grams": 150 },
+        { "id": "gulab-jamun", "grams": 80, "optional": true },
+        { "id": "yogurt-plain", "grams": 120, "optional": true },
+        { "id": "orange-juice", "grams": 200, "optional": true }
+      ],
+      "grams": [500, 1100],
+      "kcal": [900, 2000],
+      "carbs": [110, 260],
+      "protein": [25, 60],
+      "fat": [30, 90]
+    },
+
+    "pizza-detroit": {
+      "file": "eval/data/extended/pizza/116.jpg",
+      "note": "Detroit-style pepperoni pizza on a board: one square slice pulled forward, the rest of the tray behind it. A person would log one or two slices.",
+      "ambiguousServing": true,
+      "dishes": [{ "id": "pizza", "grams": 200 }],
+      "grams": [130, 420],
+      "kcal": [330, 1050],
+      "carbs": [40, 130],
+      "protein": [15, 45],
+      "fat": [12, 40]
+    },
+
+    "paratha-pan": {
+      "file": "eval/data/extended/chapati/1.jpg",
+      "note": "A single ghee-brushed paratha in a steel pan, coriander flecks visible.",
+      "dishes": [{ "id": "paratha", "grams": 80 }],
+      "grams": [50, 140],
+      "kcal": [160, 420],
+      "carbs": [22, 60],
+      "protein": [3, 11],
+      "fat": [6, 22]
+    },
+
+    "samosa-chutney": {
+      "file": "eval/data/extended/samosa/106.jpg",
+      "note": "Three samosas on a wooden plate, one broken open; bowls of green coriander chutney and dark tamarind chutney; two clay cups of chai.",
+      "dishes": [
+        { "id": "samosa", "grams": 150 },
+        { "id": "green-chutney", "grams": 60 }
+      ],
+      "grams": [140, 320],
+      "kcal": [400, 800],
+      "carbs": [45, 100],
+      "protein": [5, 16],
+      "fat": [20, 50]
+    },
+
+    "biryani-pan": {
+      "file": "eval/data/cuisine/indian/biryani/0.jpg",
+      "note": "Close-up of a pan of biryani/ghee rice topped with fried onion, cashews and curry leaf. One serving is a fraction of what is visible.",
+      "ambiguousServing": true,
+      "dishes": [{ "id": "biryani", "grams": 250 }],
+      "grams": [150, 450],
+      "kcal": [150, 480],
+      "carbs": [20, 65],
+      "protein": [10, 32],
+      "fat": [3, 20]
+    },
+
+    "collage-pizza-salad-fries": {
+      "file": "eval/data/multi_plate.jpg",
+      "note": "A three-panel composite: prosciutto-rocket pizza, caesar salad, thick-cut chips. No real plate — tests whether the app finds three separate dishes without a plate scale.",
+      "dishes": [
+        { "id": "pizza", "grams": 200 },
+        { "id": "caesar-salad", "grams": 180 },
+        { "id": "french-fries", "grams": 130 }
+      ],
+      "grams": [350, 700],
+      "kcal": [700, 1500],
+      "carbs": [80, 170],
+      "protein": [25, 65],
+      "fat": [30, 80]
+    },
+
+    "caesar-plate": {
+      "file": "eval/data/food101/caesar_salad/6750.jpg",
+      "note": "Caesar salad on a white plate: romaine, shaved parmesan, croutons, an anchovy fillet, creamy dressing.",
+      "dishes": [{ "id": "caesar-salad", "grams": 200 }],
+      "grams": [130, 320],
+      "kcal": [180, 480],
+      "carbs": [10, 32],
+      "protein": [6, 20],
+      "fat": [8, 35]
+    },
+
+    "pancakes-berries": {
+      "file": "eval/data/food101/pancakes/7250.jpg",
+      "note": "A stack of three pancakes under blueberry compote and icing sugar, with whipped cream and a pot of maple syrup.",
+      "dishes": [
+        { "id": "pancakes", "grams": 150 },
+        { "id": "blueberries", "grams": 80, "optional": true }
+      ],
+      "grams": [140, 330],
+      "kcal": [380, 850],
+      "carbs": [50, 120],
+      "protein": [8, 22],
+      "fat": [12, 40]
+    },
+
+    "enchiladas-queso": {
+      "file": "eval/data/cuisine/mexican/enchiladas/0.jpg",
+      "note": "A plate of enchiladas buried under crumbled queso fresco with diced potato around the edge.",
+      "dishes": [{ "id": "enchiladas", "grams": 320 }],
+      "grams": [200, 480],
+      "kcal": [350, 800],
+      "carbs": [28, 70],
+      "protein": [20, 50],
+      "fat": [18, 50]
+    },
+
+    "naan-closeup": {
+      "file": "eval/data/extended/naan/100.jpg",
+      "note": "One butter naan filling the frame, coriander and nigella seeds on top. No plate visible.",
+      "dishes": [{ "id": "naan", "grams": 110 }],
+      "grams": [70, 180],
+      "kcal": [220, 560],
+      "carbs": [35, 90],
+      "protein": [8, 20],
+      "fat": [5, 18]
+    },
+
+    "momos-chutney": {
+      "file": "eval/data/extended/dumplings/126.jpg",
+      "note": "Seven steamed meat momos on a white plate, two cut open, with a glass dish of red tomato chutney.",
+      "dishes": [
+        { "id": "dumplings", "grams": 210 },
+        { "id": "chutney", "grams": 40, "optional": true }
+      ],
+      "grams": [160, 350],
+      "kcal": [230, 620],
+      "carbs": [25, 80],
+      "protein": [10, 35],
+      "fat": [6, 28]
+    },
+
+    "tortilla-espanola": {
+      "file": "eval/data/cuisine/spanish/tortilla-espanola/0.jpg",
+      "note": "Half a thick Spanish potato omelette on a dark glass plate.",
+      "dishes": [{ "id": "tortilla-espanola", "grams": 250 }],
+      "grams": [150, 400],
+      "kcal": [280, 720],
+      "carbs": [15, 55],
+      "protein": [15, 40],
+      "fat": [18, 50]
+    },
+
+    "kungpao-rice": {
+      "file": "eval/data/cuisine/chinese/kung-pao-chicken/0.jpg",
+      "note": "Chicken stir-fry with onion, pepper and cashews spooned over a bed of white rice on a white plate.",
+      "dishes": [
+        { "id": "kung-pao-chicken", "grams": 200 },
+        { "id": "plain-rice", "grams": 180 }
+      ],
+      "grams": [280, 520],
+      "kcal": [400, 800],
+      "carbs": [45, 90],
+      "protein": [20, 45],
+      "fat": [10, 32]
+    }
+  }
+}
