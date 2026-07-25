@@ -12,6 +12,7 @@ import {
 } from '@nutrilens/diary';
 import { exerciseKcal, exerciseMinutes } from '@nutrilens/exercise-db';
 import { donut, barRows } from '@nutrilens/charts';
+import { stackedScale } from './readout.js';
 import {
   $, el, fill, fmt, show, toast, openSheet, closeSheet, emit, on,
   MACRO_COLORS, SLOT_COLORS,
@@ -25,6 +26,7 @@ import { openLogFood, openFoodDetail, openQuickAdd, openMealBuilder } from './lo
 import { openExerciseSheet } from './exercise-view.js';
 import { openBarcodeScanner } from './barcode-scan.js';
 import { openWeightSheet } from './progress-view.js';
+import { iconEl } from './icons.js';
 
 let current = dateKey();
 
@@ -74,36 +76,47 @@ const go = (days) => { current = shiftDate(current, days); renderToday(); };
 
 function streakChip({ days, atRisk }) {
   if (!days) {
-    return el('div.streak-chip.new', { id: 'streak-chip' }, '🔥 Log a food to start a streak');
+    return el('div.streak-chip.new', { id: 'streak-chip' }, 'Log a food to start a streak');
   }
   return el('div.streak-chip', { id: 'streak-chip', class: atRisk ? 'streak-chip at-risk' : 'streak-chip' },
-    `🔥 ${days}-day streak`,
+    `${days}-day streak`,
     atRisk && el('span.muted', null, ' · log today to keep it'));
 }
 
+/**
+ * The day's calories.
+ *
+ * A ruler rather than the ring every tracker draws. The question this card
+ * answers is "how far through the day's allowance am I", which is a position
+ * on a scale — a donut makes you compare two arc lengths to find out. The
+ * track is split into what food and exercise each contributed, so the
+ * arithmetic below it is visible in the bar itself.
+ */
 function caloriesCard(rem, totals, goal) {
-  const eaten = Math.min(totals.kcal, goal.kcal);
-  const slices = [
-    { label: 'Food', value: eaten, color: rem.over ? '#e05d7b' : '#34a86c' },
-    { label: 'Remaining', value: Math.max(0, goal.kcal - totals.kcal), color: 'rgba(130,130,150,.25)' },
+  const over = rem.over;
+  const parts = [
+    { value: Math.min(totals.kcal, goal.kcal), color: over ? 'var(--alert)' : 'var(--accent)' },
   ];
-  return el('div.card.cal-card', { id: 'calories-card', role: 'button', tabindex: '0', onclick: () => show('nutrition'), onkeydown: enterKey(() => show('nutrition')) },
-    el('div.cal-ring', {
-      html: donut({
-        slices, size: 132, thickness: 14, title: 'Calories',
-        center: fmt.kcal(rem.left), sub: rem.over ? 'over' : 'remaining',
-      }),
-    }),
+  return el('div.card.cal-card', {
+    id: 'calories-card', role: 'button', tabindex: '0',
+    'aria-label': `${Math.round(rem.left)} kcal ${over ? 'over' : 'remaining'}. Open the nutrition dashboard.`,
+    onclick: () => show('nutrition'),
+    onkeydown: enterKey(() => show('nutrition')),
+  },
+  el('div.readout', null,
+    el('div.readout-line', null,
+      el('span', { class: over ? 'readout-figure over' : 'readout-figure', id: 'rem-left' }, rem.left.toLocaleString()),
+      el('span.readout-unit', null, over ? 'kcal over' : 'kcal left'),
+      el('span.readout-band', null, `of ${goal.kcal.toLocaleString()}`)),
+    el('div', { html: stackedScale(parts, goal.kcal, 12) }),
     el('div.cal-math', null,
       mathCell('rem-goal', goal.kcal, 'Goal'),
       el('span.op', null, '−'),
       mathCell('rem-food', rem.foodKcal, 'Food'),
       el('span.op', null, '+'),
-      mathCell('rem-exercise', rem.exerciseKcal, 'Exercise'),
-      el('span.op', null, '='),
-      el('div', { class: rem.over ? 'rem-result over' : 'rem-result' },
-        el('b', { id: 'rem-left' }, rem.left.toLocaleString()), el('span', null, 'Remaining'))));
+      mathCell('rem-exercise', rem.exerciseKcal, 'Exercise'))));
 }
+
 const mathCell = (id, value, label) => el('div', null, el('b', { id }, Math.round(value).toLocaleString()), el('span', null, label));
 const enterKey = (fn) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
 
@@ -168,7 +181,7 @@ function entryRow(entry, date) {
     el('button.de-del', {
       title: 'Remove', 'aria-label': `Remove ${entry.foodName}`,
       onclick: async () => { await deleteMeal(entry.id); emit('diary', { date }); toast('Entry removed'); },
-    }, '✕'));
+    }, iconEl('close', { size: 14 })));
 }
 
 /** Per-meal tools: copy from another day, copy to another day, clear. */
@@ -227,7 +240,7 @@ function openMealMenu(slot, entries, date) {
 function exerciseSection(exercise, day, burned, date) {
   return el('div.card.meal-section', { id: 'exercise-section' },
     el('div.meal-section-head', null,
-      el('h3', null, '🏃 Exercise'),
+      el('h3', null, 'Exercise'),
       el('span.kcal', null, burned ? `${fmt.kcal(burned)} kcal · ${exerciseMinutes(exercise)} min` : '')),
     exercise.map((e) => el('div.diary-entry', null,
       el('button.de-name', { onclick: () => openExerciseSheet({ date, existing: e }) },
@@ -239,7 +252,7 @@ function exerciseSection(exercise, day, burned, date) {
           await deleteExercise(e.id);
           emit('diary', { date });
         },
-      }, '✕'))),
+      }, iconEl('close', { size: 14 })))),
     el('button.meal-log', { onclick: () => openExerciseSheet({ date }) }, '＋ Log exercise'));
 }
 
@@ -248,7 +261,7 @@ function habitsCard(day, profile) {
   return el('div.card.habits', null,
     el('div.card-head', null, el('h3', null, 'Healthy habits')),
     el('div.habit-row', null,
-      el('span.habit-label', null, '💧 Water'),
+      el('span.habit-label', null, iconEl('water'), ' Water'),
       el('span.habit-value', { id: 'water-count' }, `${glasses} / ${profile.waterGoal}`),
       el('span.muted', null, 'glasses'),
       el('div.habit-actions', null,
@@ -256,7 +269,7 @@ function habitsCard(day, profile) {
         el('button.icon-btn', { id: 'water-plus', 'aria-label': 'One glass more', onclick: () => bumpWater(day, 1) }, '+'))),
     el('div.water-track', null, Array.from({ length: profile.waterGoal }, (_, i) => el('span', { class: i < glasses ? 'drop full' : 'drop' }))),
     el('div.habit-row', null,
-      el('span.habit-label', null, '👣 Steps'),
+      el('span.habit-label', null, iconEl('steps'), ' Steps'),
       el('input.habit-input', {
         id: 'steps-input', type: 'number', min: '0', step: '100', value: String(day.steps || 0),
         'aria-label': 'Steps today',
@@ -264,7 +277,7 @@ function habitsCard(day, profile) {
       }),
       el('span.muted', null, `/ ${profile.stepGoal.toLocaleString()}`)),
     el('div.habit-row', null,
-      el('span.habit-label', null, '⚖️ Weight'),
+      el('span.habit-label', null, iconEl('scale'), ' Weight'),
       el('input.habit-input', {
         id: 'weight-kg', type: 'number', min: '20', max: '400', step: '0.1',
         value: day.weightKg ?? '', placeholder: '—', 'aria-label': 'Weight today (kg)',
@@ -288,7 +301,7 @@ async function bumpWater(day, delta) {
 
 function notesCard(day) {
   return el('details.card.notes', { open: !!day.note },
-    el('summary', null, '📝 Notes'),
+    el('summary', null, 'Notes'),
     el('textarea', {
       id: 'day-note', rows: '3', placeholder: 'How did today go?', value: day.note ?? '',
       onchange: async (e) => { await setDay({ ...day, note: e.target.value }); toast('Note saved'); },
@@ -296,7 +309,7 @@ function notesCard(day) {
 }
 
 /**
- * "Complete this entry" — the ritual that closes a day, with the five-week
+ * "Finish today" — the ritual that closes a day, with the five-week
  * projection that makes today's number mean something.
  */
 function completeCard({ date, day, goal, totals, credited, profile, entries }) {
@@ -308,7 +321,7 @@ function completeCard({ date, day, goal, totals, credited, profile, entries }) {
   return el('div.card.complete-card', null,
     day.completed
       ? el('div.stack', null,
-        el('p.done', null, `✓ Diary completed for ${date === dateKey() ? 'today' : fmt.date(date)}`),
+        el('p.done', null, iconEl('check'), ` Diary completed for ${date === dateKey() ? 'today' : fmt.date(date)}`),
         el('p.projection', { id: 'projection' }, projectionText(projection)),
         el('button.wide', { onclick: async () => { await setDay({ ...day, completed: false }); emit('day', { date }); } }, 'Reopen day'))
       : el('div.stack', null,
@@ -319,7 +332,7 @@ function completeCard({ date, day, goal, totals, credited, profile, entries }) {
             emit('day', { date });
             toast('Nice work — day complete');
           },
-        }, canComplete ? 'Complete this entry' : 'Log a food to complete the day'),
+        }, canComplete ? 'Finish today' : 'Log a food to complete the day'),
         canComplete && el('p.muted.tiny', null, 'See what today would mean in five weeks.')));
 }
 
@@ -328,7 +341,7 @@ const projectionText = (p) => (p.direction === 'maintain'
   : `If every day were like today, you would ${p.direction} ${Math.abs(p.changeKg)} kg in ${p.weeks} weeks — about ${p.weightKg} kg.`);
 
 // ---------------------------------------------------------------------------
-/** The ＋ button: every way into the diary, in one place. */
+/** The add button: every way into the diary, in one place. */
 export function openAddMenu({ onPhoto }) {
   const date = current;
   // The meal defaults to whatever fits the clock, the same guess the meal
@@ -337,12 +350,12 @@ export function openAddMenu({ onPhoto }) {
   openSheet({
     title: 'Add to diary',
     body: el('div.add-menu', null,
-      el('button', { id: 'add-search', onclick: () => { closeSheet(); openLogFood({ date, slot, onPhoto }); } }, '🔎 Search foods'),
-      el('button', { id: 'add-photo', onclick: () => { closeSheet(); onPhoto?.(); } }, '📷 Scan a meal photo'),
-      el('button', { id: 'add-barcode', onclick: () => { closeSheet(); openBarcodeScanner({ date, slot }); } }, '🏷️ Scan a barcode'),
-      el('button', { id: 'add-quick', onclick: () => { closeSheet(); openQuickAdd({ date, slot }); } }, '⚡ Quick add calories'),
-      el('button', { id: 'add-exercise', onclick: () => { closeSheet(); openExerciseSheet({ date }); } }, '🏃 Log exercise'),
-      el('button', { id: 'add-weight', onclick: () => { closeSheet(); openWeightSheet(); } }, '⚖️ Log weight')),
+      el('button', { id: 'add-search', onclick: () => { closeSheet(); openLogFood({ date, slot, onPhoto }); } }, iconEl('search'), ' Search foods'),
+      el('button', { id: 'add-photo', onclick: () => { closeSheet(); onPhoto?.(); } }, iconEl('camera'), ' Photograph a meal'),
+      el('button', { id: 'add-barcode', onclick: () => { closeSheet(); openBarcodeScanner({ date, slot }); } }, iconEl('barcode'), ' Scan a barcode'),
+      el('button', { id: 'add-quick', onclick: () => { closeSheet(); openQuickAdd({ date, slot }); } }, iconEl('quick'), ' Quick add calories'),
+      el('button', { id: 'add-exercise', onclick: () => { closeSheet(); openExerciseSheet({ date }); } }, iconEl('exercise'), ' Log exercise'),
+      el('button', { id: 'add-weight', onclick: () => { closeSheet(); openWeightSheet(); } }, iconEl('scale'), ' Log weight')),
   });
 }
 

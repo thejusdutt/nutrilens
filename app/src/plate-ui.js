@@ -12,13 +12,28 @@
 import { el, fill, fmt, openSheet, closeSheet } from './ui.js';
 import { food as foodById, servingsFor, search } from './foods.js';
 import { bestServing, niceCount, stepFor } from './servings.js';
+import { iconEl } from './icons.js';
 
 /** Below this fused probability a dish is flagged for the user to confirm. */
 const UNSURE_BELOW = 0.5;
 
-/** Per-dish colours, matching the numbered badges drawn on the photo. */
+/**
+ * Per-dish colours: the mask outline on the photo and the numbered badge beside
+ * the dish name, which are the only thing tying a row to a place on the plate.
+ *
+ * Two constraints, both measured rather than judged by eye. Each has to carry a
+ * white numeral, so each is at least 4.5:1 against white — the previous set ran
+ * as low as 2.09:1, which put an unreadable number on three of six dishes. And
+ * each has to stay distinct drawn over food, so they are spaced around the hue
+ * circle while staying in the same pigment world as the macro colours.
+ */
 export const REGION_COLORS = [
-  [46, 204, 113], [79, 142, 247], [232, 161, 60], [224, 93, 123], [176, 111, 216], [52, 199, 190],
+  [15, 122, 108],   // spinach   5.2:1
+  [44, 95, 191],    // steel     6.0:1
+  [168, 91, 12],    // turmeric  5.0:1
+  [147, 38, 90],    // beet      7.9:1
+  [91, 63, 168],    // violet    7.7:1
+  [79, 107, 35],    // olive     6.1:1
 ];
 export const rgbOf = (i) => `rgb(${REGION_COLORS[i % REGION_COLORS.length].join(',')})`;
 
@@ -83,7 +98,7 @@ function dishRow(it, i, plate, hooks) {
           plate.items.splice(i, 1);
           hooks.onChanged({ rerender: true });
         },
-      }, '✕')),
+      }, iconEl('close', { size: 14 }))),
   );
   return row;
 }

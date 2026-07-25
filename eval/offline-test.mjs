@@ -42,10 +42,15 @@ try {
     document.getElementById('btn-prefetch').closest('details')?.setAttribute('open', '');
     document.getElementById('btn-prefetch').click();
   });
+  // Wait for either terminal state, not just success: watching only for the
+  // happy label means a failed download burns the full timeout and then reports
+  // "waiting failed", which says nothing about what actually went wrong.
   await page.waitForFunction(
-    () => document.getElementById('btn-prefetch').textContent.startsWith('✓'),
+    () => /Available offline|Failed/.test(document.getElementById('btn-prefetch').textContent),
     { timeout: 300000, polling: 1000 },
   );
+  const prefetch = await page.$eval('#btn-prefetch', (n) => n.textContent);
+  if (!prefetch.includes('Available offline')) throw new Error(`prefetch did not finish: ${prefetch}`);
   console.log('phase 1: models prefetched, SW active ✓');
 
   // --- Phase 2: go fully offline, reload ---

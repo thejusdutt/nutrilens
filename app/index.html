@@ -23,8 +23,8 @@
     </div>
     <div class="topbar-actions">
       <span id="offline-badge" class="badge" hidden>offline</span>
-      <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
-      <button id="btn-theme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+      <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings"><span class="i" data-icon="settings"></span></button>
+      <button id="btn-theme" class="icon-btn" title="Switch between light and dark" aria-label="Switch between light and dark"><span class="i" data-icon="theme"></span></button>
     </div>
   </header>
 
@@ -53,13 +53,13 @@
     <section id="view-more" class="view" hidden>
       <h2>More</h2>
       <div class="menu-list">
-        <button id="more-myfoods">🍱 My foods, meals &amp; recipes</button>
-        <button id="more-photo">📷 Scan a meal photo</button>
-        <button id="more-barcode">🏷️ Scan a barcode</button>
-        <button id="more-exercise">🏃 Log exercise</button>
-        <button id="more-weight">⚖️ Log weight</button>
-        <button id="more-export">⬇️ Export diary (CSV)</button>
-        <button id="more-settings">⚙️ Settings &amp; goals</button>
+        <button id="more-myfoods"><span class="i" data-icon="library"></span> My foods, meals and recipes</button>
+        <button id="more-photo"><span class="i" data-icon="camera"></span> Photograph a meal</button>
+        <button id="more-barcode"><span class="i" data-icon="barcode"></span> Scan a barcode</button>
+        <button id="more-exercise"><span class="i" data-icon="exercise"></span> Log exercise</button>
+        <button id="more-weight"><span class="i" data-icon="scale"></span> Log weight</button>
+        <button id="more-export"><span class="i" data-icon="download"></span> Export the diary as CSV</button>
+        <button id="more-settings"><span class="i" data-icon="settings"></span> Settings and goals</button>
       </div>
       <p class="muted tiny">Everything runs on this device. Nothing is uploaded, and there is no account.</p>
     </section>
@@ -69,12 +69,12 @@
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button"
            aria-label="Add a food photo: drop, paste, browse or use the camera">
         <div class="drop-inner">
-          <div class="drop-emoji">🍽️</div>
+          <div class="drop-emoji" aria-hidden="true"></div>
           <p class="drop-title">Snap or drop a food photo</p>
           <p class="drop-sub">Recognition runs on this device — no photo ever leaves it.</p>
           <div class="drop-actions">
-            <button id="btn-camera" class="primary">📷 Camera</button>
-            <button id="btn-browse">🖼️ Browse</button>
+            <button id="btn-camera" class="primary"><span class="i" data-icon="camera"></span> Camera</button>
+            <button id="btn-browse"><span class="i" data-icon="image"></span> Choose a file</button>
           </div>
         </div>
         <input id="file-input" type="file" accept="image/*" hidden />
@@ -91,9 +91,9 @@
       <div class="camera-wrap">
         <video id="camera-video" autoplay playsinline muted></video>
         <div class="camera-controls">
-          <button id="btn-cam-cancel" class="icon-btn big" aria-label="Cancel">✕</button>
+          <button id="btn-cam-cancel" class="icon-btn big" aria-label="Cancel"><span class="i" data-icon="close" data-icon-size="22"></span></button>
           <button id="btn-shutter" class="shutter" aria-label="Take photo"></button>
-          <button id="btn-cam-flip" class="icon-btn big" aria-label="Flip camera">🔄</button>
+          <button id="btn-cam-flip" class="icon-btn big" aria-label="Switch camera"><span class="i" data-icon="flip" data-icon-size="22"></span></button>
         </div>
       </div>
     </section>
@@ -105,8 +105,8 @@
         <div class="scan-guide" aria-hidden="true"></div>
         <p id="scan-status" class="scan-status">Starting camera…</p>
         <div class="camera-controls">
-          <button id="scan-cancel" class="icon-btn big" aria-label="Cancel">✕</button>
-          <button id="scan-manual">⌨️ Type the number</button>
+          <button id="scan-cancel" class="icon-btn big" aria-label="Cancel"><span class="i" data-icon="close" data-icon-size="22"></span></button>
+          <button id="scan-manual"><span class="i" data-icon="keyboard"></span> Type the number</button>
         </div>
       </div>
     </section>
@@ -124,7 +124,7 @@
           <p class="photo-hint">Tap a dish in the photo to re-analyze that spot.</p>
         </div>
         <div class="result-pane">
-          <div id="nonfood-warning" class="warning" hidden>🤔 This doesn’t look like food. Top guesses below — tap one if it’s right, or search manually.</div>
+          <div id="nonfood-warning" class="warning" hidden>This does not look like food. Pick one of the guesses below, or search for it.</div>
           <div id="meal-card" class="card plate-card" hidden>
             <div class="plate-summary">
               <div>
@@ -176,12 +176,12 @@
             </details>
             <div class="save-row">
               <select id="save-slot" aria-label="Meal">
-                <option value="breakfast">🌅 Breakfast</option>
-                <option value="lunch">☀️ Lunch</option>
-                <option value="dinner">🌙 Dinner</option>
-                <option value="snacks">🍿 Snacks</option>
+                <option value="breakfast">Breakfast</option>
+                <option value="lunch">Lunch</option>
+                <option value="dinner">Dinner</option>
+                <option value="snacks">Snacks</option>
               </select>
-              <button id="btn-save" class="primary">💾 Add to diary</button>
+              <button id="btn-save" class="primary">Add to diary</button>
             </div>
           </div>
         </div>
@@ -203,7 +203,7 @@
           <label for="p-weight">Weight (kg) <input id="p-weight" type="number" min="30" max="300" step="0.1" /></label>
           <label for="p-start-weight">Starting weight (kg) <input id="p-start-weight" type="number" min="30" max="300" step="0.1" placeholder="—" /></label>
           <label for="p-goal-weight">Goal weight (kg) <input id="p-goal-weight" type="number" min="30" max="300" step="0.1" placeholder="—" /></label>
-          <label for="p-activity">Activity <select id="p-activity"></select></label>
+          <label for="p-activity" class="wide">Activity <select id="p-activity"></select></label>
           <label for="p-rate">Weekly goal <select id="p-rate"></select></label>
           <label for="p-custom">Calorie override <input id="p-custom" type="number" min="1000" max="6000" step="10" placeholder="auto" /></label>
           <label for="p-water">Water goal (glasses) <input id="p-water" type="number" min="1" max="20" step="1" /></label>
@@ -245,14 +245,14 @@
       <details class="card">
         <summary><h3>Offline models</h3></summary>
         <p class="muted">Download the recognition models once to use the camera with no network at all (~180 MB).</p>
-        <button id="btn-prefetch" class="primary">⬇️ Download all models</button>
+        <button id="btn-prefetch" class="primary"><span class="i" data-icon="download"></span> Download all models</button>
         <progress id="prefetch-progress" max="1" value="0" hidden></progress>
         <p id="storage-status" class="muted tiny"></p>
       </details>
 
       <details class="card">
         <summary><h3>Your data</h3></summary>
-        <button id="btn-export">⬇️ Export diary as CSV</button>
+        <button id="btn-export"><span class="i" data-icon="download"></span> Export the diary as CSV</button>
         <p class="muted tiny">A plain CSV of every entry with daily totals. It never leaves your device unless you share it.</p>
       </details>
 
@@ -267,11 +267,11 @@
   </main>
 
   <nav class="tabbar" aria-label="Main">
-    <button class="tab-btn" data-view="diary"><span aria-hidden="true">📔</span>Today</button>
-    <button class="tab-btn" data-view="nutrition"><span aria-hidden="true">📊</span>Nutrition</button>
-    <button class="fab" id="btn-add" aria-label="Add to diary"><span aria-hidden="true">＋</span></button>
-    <button class="tab-btn" data-view="progress"><span aria-hidden="true">📈</span>Progress</button>
-    <button class="tab-btn" data-view="more"><span aria-hidden="true">⋯</span>More</button>
+    <button class="tab-btn" data-view="diary"><span class="i" data-icon="diary" data-icon-size="20"></span> Today</button>
+    <button class="tab-btn" data-view="nutrition"><span class="i" data-icon="nutrition" data-icon-size="20"></span> Nutrition</button>
+    <button class="fab" id="btn-add" aria-label="Add to diary"><span class="i" data-icon="plus" data-icon-size="22"></span></button>
+    <button class="tab-btn" data-view="progress"><span class="i" data-icon="progress" data-icon-size="20"></span> Progress</button>
+    <button class="tab-btn" data-view="more"><span class="i" data-icon="more" data-icon-size="20"></span> More</button>
   </nav>
 
   <div id="sheet-host" class="sheet-host" hidden></div>

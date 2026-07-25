@@ -14,6 +14,7 @@ import {
 import { openFoodDetail, openCreateFood, openMealBuilder } from './logfood.js';
 import { suggestSlot } from './goals.js';
 import { diaryDate } from './today.js';
+import { iconEl } from './icons.js';
 
 const TABS = [
   ['foods', 'My foods'],
@@ -46,7 +47,9 @@ export function renderMyFoods() {
   }[state.tab]();
 
   fill($('myfoods-root'),
-    el('h2', null, 'My food'),
+    // Not "My foods": that is the name of the first tab inside this screen, and
+    // a screen and one of its tabs should not answer to the same words.
+    el('h2', null, 'Food library'),
     el('div.tabs', { role: 'tablist' }, TABS.map(([id, label]) => el('button.tab', {
       role: 'tab', class: id === state.tab ? 'tab active' : 'tab', 'aria-selected': id === state.tab,
       dataset: { tab: id },
@@ -77,11 +80,11 @@ function itemRow(f, { subtitle, onEdit, onDelete }) {
     },
     el('b', null, f.name),
     el('span.muted', null, [subtitle, `${fmt.kcal(kcalFor(f, serving.grams))} kcal / ${serving.label}`].filter(Boolean).join(' · '))),
-    onEdit && el('button.icon-btn.small', { title: 'Edit', 'aria-label': `Edit ${f.name}`, onclick: onEdit }, '✎'),
+    onEdit && el('button.icon-btn.small', { title: 'Edit', 'aria-label': `Edit ${f.name}`, onclick: onEdit }, iconEl('edit', { size: 15 })),
     onDelete && el('button.icon-btn.small', {
       title: 'Delete', 'aria-label': `Delete ${f.name}`,
       onclick: () => confirmDelete(f.name, onDelete),
-    }, '🗑'));
+    }, iconEl('trash', { size: 15 })));
 }
 
 function confirmDelete(name, onDelete) {

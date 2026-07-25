@@ -111,8 +111,17 @@ export function macroPctSum(profile = getProfile()) {
 }
 
 /**
- * Daily target for any nutrient: an explicit user goal, else the FDA Daily Value
- * from the database, else null (tracked but untargeted).
+ * Daily target for any nutrient: an explicit user goal, else the day's own
+ * calorie and macro targets, else the FDA Daily Value from the database, else
+ * null (tracked but untargeted).
+ *
+ * The middle step matters. Calories, protein, carbs and fat are the four the
+ * user has already set on the Settings screen, and the Today screen states
+ * those numbers all day. Falling straight through to the Daily Value made the
+ * Nutrients table answer "2,000 kcal / 50 g protein" while Today answered
+ * "2,507 / 125" — the same app giving two targets for the same nutrient, with
+ * only a footnote to explain it.
+ *
  * @param {string} key
  * @param {{rdi:number|null}} meta
  * @param {object} [profile]
@@ -120,6 +129,9 @@ export function macroPctSum(profile = getProfile()) {
 export function nutrientGoal(key, meta, profile = getProfile()) {
   const custom = profile.nutrientGoals?.[key];
   if (Number.isFinite(custom) && custom > 0) return custom;
+  const own = dailyGoal(profile);
+  if (key === 'kcal') return own.kcal;
+  if (key in own.macros) return own.macros[key];
   return meta?.rdi ?? null;
 }
 
@@ -131,9 +143,6 @@ export function suggestSlot(d = new Date()) {
   if (h >= 17 && h < 22) return 'dinner';
   return 'snacks';
 }
-
-export const SLOTS = ['breakfast', 'lunch', 'dinner', 'snacks'];
-export const SLOT_LABEL = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner', snacks: '🍿 Snacks' };
 
 /** Weight goal progress, for the Progress screen. */
 export function weightProgress(profile = getProfile()) {

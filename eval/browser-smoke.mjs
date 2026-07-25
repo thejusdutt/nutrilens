@@ -78,7 +78,9 @@ try {
   // Click through the DOM: the button sits below the fold in a scrolling
   // pane, and puppeteer's own click refuses when the hit point is covered.
   await page.evaluate(() => document.getElementById('btn-save').click());
-  await page.waitForFunction(() => document.getElementById('btn-save').textContent.includes('✓'), { timeout: 20000 });
+  // "Added" is the confirmation; "Add to diary" is the idle label, and does not
+  // contain it, so this cannot pass before the save lands.
+  await page.waitForFunction(() => document.getElementById('btn-save').textContent.includes('Added'), { timeout: 20000 });
   await page.evaluate(() => document.querySelector('.tab-btn[data-view="diary"]').click());
   await page.waitForSelector('.diary-entry', { timeout: 8000 });
   const logged = await page.evaluate(() => ({

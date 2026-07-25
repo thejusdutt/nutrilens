@@ -31,6 +31,11 @@ const SHELL_ASSETS = [
   '/icons/icon-512.png',
   '/assets/index.js',
   '/assets/index.css',
+  // The type system is not decoration: without these the app falls back to a
+  // system font offline, and every figure loses the tabular alignment the
+  // layout depends on.
+  '/fonts/instrument-sans.woff2',
+  '/fonts/martian-mono.woff2',
   '/assets/inference-worker.js',
   // ONNX Runtime web runtime (needed to run any model offline)
   '/ort/ort-wasm-simd-threaded.wasm',

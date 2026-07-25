@@ -11,7 +11,7 @@
  */
 import { dayTotals, macroEnergy, normalizeEntry, dateRange, shiftDate, SLOTS, SLOT_LABEL } from '@nutrilens/diary';
 import { donut, barRows, stackedColumns } from '@nutrilens/charts';
-import { $, el, fill, fmt, MACRO_COLORS, SLOT_COLORS, on } from './ui.js';
+import { $, el, fill, fmt, MACRO_COLORS, SLOT_COLORS, cssVar, on } from './ui.js';
 import { listMealsByDate, listMealsBetween, dateKey } from './db.js';
 import { getProfile, dailyGoal, nutrientGoal } from './goals.js';
 import { nutrientMeta } from './foods.js';
@@ -57,7 +57,7 @@ function caloriesTab({ dayEntries, weekEntries, week, goal }) {
   if (state.span === 'day') {
     const totals = dayTotals(dayEntries);
     const slices = SLOTS.map((slot, i) => ({
-      label: SLOT_LABEL[slot].replace(/^\W+\s*/, ''),
+      label: SLOT_LABEL[slot],
       value: totals.bySlot[slot].kcal,
       color: SLOT_COLORS[i],
     }));
@@ -75,7 +75,7 @@ function caloriesTab({ dayEntries, weekEntries, week, goal }) {
       el('div.card', null,
         el('div.card-head', null, el('h3', null, 'Against goal')),
         el('div', { html: barRows({
-          bars: [{ label: 'Calories', value: logged, goal: goal.kcal, color: logged > goal.kcal ? '#e05d7b' : '#34a86c', text: `${fmt.kcal(logged)} / ${fmt.kcal(goal.kcal)}` }],
+          bars: [{ label: 'Calories', value: logged, goal: goal.kcal, color: cssVar(logged > goal.kcal ? '--alert' : '--m-fiber'), text: `${fmt.kcal(logged)} / ${fmt.kcal(goal.kcal)}` }],
           width: 320, title: 'Calories against goal',
         }) })));
   }
@@ -84,7 +84,7 @@ function caloriesTab({ dayEntries, weekEntries, week, goal }) {
   const columns = week.map((d) => ({
     label: fmt.dayShort(d),
     segments: SLOTS.map((slot, i) => ({
-      label: `${SLOT_LABEL[slot].replace(/^\W+\s*/, '')} ${fmt.date(d)}`,
+      label: `${SLOT_LABEL[slot]} ${fmt.date(d)}`,
       value: dayTotals(byDate.get(d) ?? []).bySlot[slot].kcal,
       color: SLOT_COLORS[i],
     })),
@@ -97,7 +97,7 @@ function caloriesTab({ dayEntries, weekEntries, week, goal }) {
       el('div.chart-wrap', { id: 'cal-week', html: stackedColumns({ columns, width: 340, height: 170, goal: goal.kcal, title: 'Calories per day this week' }) }),
       el('div.legend', null, SLOTS.map((slot, i) => el('div.legend-row', null,
         el('span.swatch', { style: `background:${SLOT_COLORS[i]}` }),
-        el('span', null, SLOT_LABEL[slot].replace(/^\W+\s*/, '')))))),
+        el('span', null, SLOT_LABEL[slot]))))),
     el('div.card.stat-row', null,
       stat('Total', `${fmt.kcal(weekKcal)} kcal`),
       stat('Average / logged day', daysLogged ? `${fmt.kcal(weekKcal / daysLogged)} kcal` : '—'),
@@ -178,7 +178,9 @@ function nutrientsTab({ dayEntries, weekEntries, profile }) {
         el('h3', null, state.span === 'day' ? 'Today’s nutrients' : 'This week’s nutrients'),
         el('span.tag', null, state.span === 'day' ? 'vs daily goal' : 'vs 7× daily goal')),
       nutrientGoalTable(totals, meta, (key, m) => nutrientGoal(key, m, profile), { days })),
-    el('p.muted.tiny', null, 'Targets are FDA Daily Values unless you set your own in Settings.'));
+    el('p.muted.tiny', null,
+      'Calories and macros use the goals you set in Settings. '
+      + 'Every other nutrient uses the FDA Daily Value.'));
 }
 
 // ---------------------------------------------------------------------------

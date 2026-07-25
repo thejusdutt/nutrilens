@@ -3,6 +3,16 @@
 export const $ = (id) => document.getElementById(id);
 
 /**
+ * The sheet's close mark, drawn rather than typed.
+ *
+ * Inlined here instead of imported from ./icons.js: that module imports `el`
+ * from this one, and a module cycle for the sake of one glyph is a worse trade
+ * than eight duplicated path characters.
+ */
+const CLOSE_MARK = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"'
+  + ' stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+/**
  * App-wide change notifications. Logging food from a sheet has to refresh
  * whichever screens are behind it, and they should not have to know who logged.
  * Events: 'diary' (entries changed), 'day' (water/notes/weight), 'foods'
@@ -117,7 +127,7 @@ function renderSheet() {
         el('button.icon-btn', {
           onclick: () => closeSheet(),
           'aria-label': sheetStack.length > 1 ? 'Back' : 'Close',
-        }, sheetStack.length > 1 ? '‹' : '✕'),
+        }, sheetStack.length > 1 ? '‹' : el('span.i', { html: CLOSE_MARK })),
         el('h2', null, spec.title),
         spec.actions ?? el('span.sheet-spacer')),
       el('div.sheet-body', null, spec.body)),
@@ -148,7 +158,28 @@ export const fmt = {
 };
 
 /** Colours shared by cards and charts, resolved from the stylesheet. */
+/**
+ * Macro colours, from food pigments rather than a UI palette: beetroot,
+ * turmeric, olive, spinach, blackcurrant. These are the literal values of the
+ * --m-* tokens in styles.css — charts are drawn into SVG strings that cannot
+ * read custom properties, so the two have to be kept in step by hand, and a
+ * mismatch shows up as a legend swatch that disagrees with its own bar.
+ */
 export const MACRO_COLORS = {
-  protein: '#4f8ef7', carbs: '#e8a13c', fat: '#e05d7b', fiber: '#34a86c', sugars: '#b06fd8',
+  protein: '#8c2c58', carbs: '#a85b0c', fat: '#5e7233', fiber: '#2c6b5c', sugars: '#6b4a9e',
 };
-export const SLOT_COLORS = ['#f5a524', '#4f8ef7', '#7c5cd6', '#34a86c'];
+/** Meal slots, in the order they are eaten: dawn through night. */
+export const SLOT_COLORS = ['#c98a2b', '#a85b0c', '#6b4a9e', '#2c6b5c'];
+/**
+ * Read a design token as a literal colour.
+ *
+ * Charts are built as SVG strings and handed to the DOM, so they cannot inherit
+ * a custom property for a fill — the value has to be resolved before the string
+ * is built. Doing that here means a chart follows the theme instead of carrying
+ * a hex that only suits one of them.
+ */
+export const cssVar = (name, fallback = '') => (
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+);
+/** Ink for chart furniture, matched to the theme at call time. */
+export const chartInk = () => cssVar('--ink-2', '#5c6874');

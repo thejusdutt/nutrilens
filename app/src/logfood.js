@@ -16,6 +16,7 @@ import { food as foodById, search as searchFoods, servingsFor, nutrients, kcalFo
 import { saveMeal, listMeals, dateKey, updateMeal } from './db.js';
 import { macroRow, macroSummary } from './nutrients-ui.js';
 import { openBarcodeScanner } from './barcode-scan.js';
+import { iconEl } from './icons.js';
 
 /** Remembered serving choice per food, so repeat logging is one tap. */
 const lastServing = new Map();
@@ -174,9 +175,9 @@ export async function openLogFood({ date, slot, onPhoto }) {
         el('input', { type: 'date', value: state.date, 'aria-label': 'Date', onchange: (e) => { state.date = e.target.value || state.date; } })),
       searchInput,
       el('div.log-actions', null,
-        el('button', { onclick: () => { closeSheet({ all: true }); onPhoto?.(state); } }, '📷 Photo'),
-        el('button', { onclick: () => openBarcodeScanner({ date: state.date, slot: state.slot }) }, '🔎 Barcode'),
-        el('button', { onclick: () => openQuickAdd({ date: state.date, slot: state.slot }) }, '⚡ Quick add'),
+        el('button', { onclick: () => { closeSheet({ all: true }); onPhoto?.(state); } }, iconEl('camera'), ' Photo'),
+        el('button', { onclick: () => openBarcodeScanner({ date: state.date, slot: state.slot }) }, iconEl('barcode'), ' Barcode'),
+        el('button', { onclick: () => openQuickAdd({ date: state.date, slot: state.slot }) }, iconEl('quick'), ' Quick add'),
         el('button', { onclick: () => openCreateFood({ onSaved: (id) => log(id, { slot: state.slot }) }) }, '＋ New food')),
       tabs,
       results),
@@ -471,7 +472,7 @@ export function openMealBuilder({ kind = 'meal', existing, seedItems = [], onSav
           },
         }),
         el('span.muted', null, 'g'),
-        el('button.mi-del', { title: 'Remove', onclick: () => { state.items.splice(i, 1); renderItems(); } }, '✕')))
+        el('button.mi-del', { title: 'Remove', onclick: () => { state.items.splice(i, 1); renderItems(); } }, iconEl('close', { size: 14 }))))
       : el('p.muted.empty', null, 'No ingredients yet — search above to add some.'));
     renderTotals();
   }

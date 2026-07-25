@@ -27,7 +27,12 @@ import { renderMyFoods } from './myfoods.js';
 import { openExerciseSheet } from './exercise-view.js';
 import { initBarcodeView, openBarcodeScanner, closeBarcodeScanner } from './barcode-scan.js';
 import { loadModelBytes } from './model-cache.js';
+import { hydrateIcons } from './icons.js';
 import InferenceWorker from './workers/inference-worker.js?worker';
+
+// The static markup declares its icons by name; draw them before anything else,
+// so the chrome is never briefly a row of empty boxes.
+hydrateIcons();
 
 // ---------------------------------------------------------------------------
 // Theme + offline badge + service worker
@@ -251,7 +256,7 @@ async function startAnalysis(blob) {
 
 function showError(text) {
   const node = $('nonfood-warning');
-  node.textContent = `⚠️ ${text}`;
+  node.textContent = text;
   node.hidden = false;
 }
 
@@ -266,7 +271,7 @@ function resetResultUI() {
   $('correction').hidden = false;
   $('btn-whole-plate').disabled = false;
   $('btn-whole-plate').hidden = false;
-  $('btn-save').textContent = '💾 Add to diary';
+  $('btn-save').textContent = 'Add to diary';
   state.meal = null;
   const octx = $('overlay-canvas').getContext('2d');
   octx.clearRect(0, 0, octx.canvas.width, octx.canvas.height);
@@ -344,8 +349,11 @@ const plateCm = () => Number(localStorage.getItem('plateCm') ?? 26);
 function drawOverlay() {
   const { raw, seg } = state;
   const viewImg = { data: new Uint8ClampedArray(raw.data), width: raw.width, height: raw.height };
-  overlayMask(seg.mask, viewImg, [46, 204, 113], 0.14);
-  outlineMask(seg.mask, viewImg, [46, 204, 113], Math.max(2, Math.round(raw.width / 320)));
+  // The first dish colour, not a literal: a hard-coded green here disagreed
+  // with the badge the plate list draws for the same region.
+  const [dish] = REGION_COLORS;
+  overlayMask(seg.mask, viewImg, dish, 0.14);
+  outlineMask(seg.mask, viewImg, dish, Math.max(2, Math.round(raw.width / 320)));
   const octx = $('overlay-canvas').getContext('2d');
   octx.putImageData(new ImageData(viewImg.data, raw.width, raw.height), 0, 0);
   if (state.plate) {
@@ -723,8 +731,8 @@ $('btn-save').onclick = async () => {
   }
   pendingSlot = null;
   emit('diary', { date });
-  $('btn-save').textContent = '✓ Added';
-  setTimeout(() => { $('btn-save').textContent = '💾 Add to diary'; }, 1600);
+  $('btn-save').textContent = 'Added';
+  setTimeout(() => { $('btn-save').textContent = 'Add to diary'; }, 1600);
   renderRecent();
 };
 
@@ -813,11 +821,11 @@ function renderGoalSummary() {
   const p = getProfile();
   const g = dailyGoal(p);
   const notes = [];
-  if (g.floored) notes.push(`⚠️ raised to the ${1200} kcal minimum`);
-  if (p.macroMode === 'percent' && macroPctSum(p) !== 100) notes.push('⚠️ macro percentages must add up to 100');
+  if (g.floored) notes.push(`raised to the ${1200} kcal minimum`);
+  if (p.macroMode === 'percent' && macroPctSum(p) !== 100) notes.push('macro percentages must add up to 100');
   if (p.macroMode === 'grams') {
     const implied = macroKcal(g.macros);
-    if (Math.abs(implied - g.kcal) > 50) notes.push(`⚠️ these grams are ${implied.toLocaleString()} kcal, not ${g.kcal.toLocaleString()}`);
+    if (Math.abs(implied - g.kcal) > 50) notes.push(`these grams are ${implied.toLocaleString()} kcal, not ${g.kcal.toLocaleString()}`);
   }
   fill($('goal-summary'),
     el('span', null, `Maintenance ≈ ${g.tdee.toLocaleString()} kcal · daily goal `),
@@ -914,7 +922,7 @@ $('btn-prefetch').onclick = async () => {
   $('btn-prefetch').textContent = 'Downloading models…';
   try {
     await swPrefetch((p) => { prog.value = p; });
-    $('btn-prefetch').textContent = '✓ Available offline';
+    $('btn-prefetch').textContent = 'Available offline';
   } catch (err) {
     $('btn-prefetch').textContent = `Failed: ${err.message} — retry`;
     $('btn-prefetch').disabled = false;

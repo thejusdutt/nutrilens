@@ -8,7 +8,7 @@
  */
 import { dateRange, shiftDate, normalizeEntry, dayTotals } from '@nutrilens/diary';
 import { lineChart, barRows } from '@nutrilens/charts';
-import { $, el, fill, fmt, openSheet, closeSheet, toast, emit, on } from './ui.js';
+import { $, el, fill, fmt, openSheet, closeSheet, toast, emit, on, cssVar } from './ui.js';
 import { listMeasurements, setMeasurement, getMeasurement, listMealsBetween, dateKey, getDay, setDay } from './db.js';
 import { getProfile, setProfile, dailyGoal, weightProgress } from './goals.js';
 
@@ -52,25 +52,25 @@ export async function renderProgress() {
         el('h3', null, 'Weight'),
         el('button.link', { id: 'log-weight', onclick: () => openWeightSheet() }, 'Log weight')),
       el('div.chart-wrap', { id: 'weight-chart', html: lineChart({
-        points: weightPoints, width: 340, height: 170, color: '#4f8ef7',
+        points: weightPoints, width: 340, height: 170, color: cssVar('--m-sugars'),
         goal: profile.goalWeightKg ?? undefined, title: 'Weight trend',
       }) }),
       progress
         ? el('div.stack', null,
           el('div', { html: barRows({
-            bars: [{ label: 'To goal', value: progress.doneKg, goal: progress.totalKg, color: '#34a86c', text: `${progress.doneKg} / ${progress.totalKg} kg` }],
+            bars: [{ label: 'To goal', value: progress.doneKg, goal: progress.totalKg, color: cssVar('--m-fiber'), text: `${progress.doneKg} / ${progress.totalKg} kg` }],
             width: 320, title: 'Progress to goal weight',
           }) }),
           el('p.muted', { id: 'weight-summary' },
             `Started ${progress.startWeightKg} kg · now ${progress.weightKg} kg · goal ${progress.goalWeightKg} kg`
-            + (progress.remainingKg > 0 ? ` · ${progress.remainingKg} kg to go` : ' · goal reached 🎉')))
+            + (progress.remainingKg > 0 ? ` · ${progress.remainingKg} kg to go` : ' · goal reached')))
         : el('p.muted', null, 'Set a starting and goal weight in Settings to track progress toward it.'),
       latest && el('p.muted.tiny', null, `Last weigh-in ${fmt.date(latest.date)}`)),
 
     el('div.card', null,
       el('div.card-head', null, el('h3', null, 'Calories per day'), el('span.tag', null, `goal ${fmt.kcal(goal.kcal)}`)),
       el('div.chart-wrap', { id: 'kcal-chart', html: lineChart({
-        points: kcalPoints, width: 340, height: 170, color: '#34a86c',
+        points: kcalPoints, width: 340, height: 170, color: cssVar('--accent'),
         goal: goal.kcal, title: 'Calories per day', area: false,
       }) }),
       el('p.muted.tiny', null, `${kcalPoints.filter((p) => p.value != null).length} of ${state.days} days logged`)),
@@ -87,12 +87,15 @@ function measurementTable(measurements) {
   const recent = [...measurements].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
   if (!recent.length) return el('p.muted', null, 'Nothing recorded yet.');
   const cols = MEASURES.filter(([key]) => recent.some((m) => m[key] != null));
-  return el('table.nutrient-table.measure-table', null,
-    el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Date'),
-      cols.map(([, label, unit]) => el('th', { scope: 'col' }, `${label} (${unit})`)))),
-    el('tbody', null, recent.map((m) => el('tr', null,
-      el('th', { scope: 'row' }, fmt.date(m.date)),
-      cols.map(([key]) => el('td', null, m[key] != null ? String(m[key]) : '—'))))));
+  // One column per measurement the user actually records, so this table has no
+  // fixed width — it scrolls in its own card rather than widening the page.
+  return el('div.table-scroll', null,
+    el('table.nutrient-table.measure-table', null,
+      el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Date'),
+        cols.map(([, label, unit]) => el('th', { scope: 'col' }, `${label} (${unit})`)))),
+      el('tbody', null, recent.map((m) => el('tr', null,
+        el('th', { scope: 'row' }, fmt.date(m.date)),
+        cols.map(([key]) => el('td', null, m[key] != null ? String(m[key]) : '—')))))));
 }
 
 /** Log today's weight — the one measurement people take often. */

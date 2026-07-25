@@ -28,7 +28,7 @@
  */
 
 export const SLOTS = ['breakfast', 'lunch', 'dinner', 'snacks'];
-export const SLOT_LABEL = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner', snacks: '🍿 Snacks' };
+export const SLOT_LABEL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
 
 /** Calories per gram of each energy-bearing macro (Atwater). */
 export const KCAL_PER_G = { protein: 4, carbs: 4, fat: 9 };

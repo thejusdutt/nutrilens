@@ -11,6 +11,7 @@ import { ACTIVITIES, searchActivities, activity, makeExerciseEntry, kcalBurnedNe
 import { el, fill, fmt, openSheet, closeSheet, toast, emit } from './ui.js';
 import { saveExercise, deleteExercise } from './db.js';
 import { getProfile } from './goals.js';
+import { iconEl } from './icons.js';
 
 /**
  * @param {{date:string, existing?:object}} p
@@ -69,7 +70,7 @@ export function openExerciseSheet({ date, existing }) {
     strength.hidden = !(a && a.type === 'strength');
     fill(picked, a
       ? el('div.chip.selected', null, `${a.name} · ${a.met} MET`,
-        el('button.chip-x', { title: 'Change', onclick: () => { state.activityId = null; state.custom = false; update(); } }, '✕'))
+        el('button.chip-x', { title: 'Change', onclick: () => { state.activityId = null; state.custom = false; update(); } }, iconEl('close', { size: 13 })))
       : el('p.muted.tiny', null, 'Pick an activity below, or add a custom one.'));
     const kcal = a ? (state.kcalOverride ?? kcalBurnedNet({ met: a.met, minutes: state.minutes, weightKg: profile.weightKg })) : 0;
     fill(estimate,

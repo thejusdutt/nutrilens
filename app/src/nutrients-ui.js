@@ -85,15 +85,21 @@ export function nutrientGoalTable(totals, meta, goalFor, { days = 1 } = {}) {
       el('td.pct', null, pct != null ? `${Math.round(pct)}%` : '—'),
       el('td.meter', null, el('span.meter-track', null,
         el('span.meter-fill', {
-          style: `width:${Math.min(100, pct ?? 0)}%;background:${pct >= 100 ? 'var(--good)' : 'var(--accent)'}`,
+          // `--good` never existed, so a meter that reached its target rendered with
+          // no fill at all — the one state worth showing was the one that vanished.
+          style: `width:${Math.min(100, pct ?? 0)}%;background:${pct >= 100 ? 'var(--m-fiber)' : 'var(--accent)'}`,
         })))));
   }
-  return el('table.nutrient-table', null,
-    el('thead', null, el('tr', null,
-      el('th', { scope: 'col' }, 'Nutrient'),
-      el('th', { scope: 'col' }, 'Total'),
-      el('th', { scope: 'col' }, 'Goal'),
-      el('th', { scope: 'col' }, '%'),
-      el('th', { scope: 'col' }, ''))),
-    el('tbody', null, rows));
+  // Wrapped so the table scrolls inside its own card rather than dragging the
+  // whole page sideways. Four columns of nutrient names and figures do not fit
+  // a 320px screen, and clipping the % column silently is the worst outcome.
+  return el('div.table-scroll', null,
+    el('table.nutrient-table', null,
+      el('thead', null, el('tr', null,
+        el('th', { scope: 'col' }, 'Nutrient'),
+        el('th', { scope: 'col' }, 'Total'),
+        el('th', { scope: 'col' }, 'Goal'),
+        el('th', { scope: 'col' }, '%'),
+        el('th', { scope: 'col' }, ''))),
+      el('tbody', null, rows)));
 }

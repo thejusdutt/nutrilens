@@ -167,15 +167,17 @@ app/                   the PWA (Vite, vanilla ES modules, Web Worker inference)
   src/today.js         diary screen        src/logfood.js    add-food flow
   src/nutrition-view.js dashboards         src/progress-view.js weight & trends
   src/foods.js         one lookup over USDA + your foods + products + recipes
+  src/readout.js       tick scales — the signature chart element
+  src/icons.js         the drawn icon set (the only place an icon path lives)
 tools/                 build-time pipelines: asset fetch, FNDDS→DB, embeddings, icons
 eval/                  dataset fetch + evaluation harness + report generation
-docs/                  research, architecture, models, datasets, testing, compat
+docs/                  research, architecture, models, datasets, testing, compat, design
 ```
 
 ## Tests & evaluation
 
 ```bash
-npm test                   # 230 unit tests across all packages (vitest), including:
+npm test                   # 252 unit tests across all packages (vitest), including:
                            #  · every per-100 g value traced back to the FNDDS CSVs
                            #  · every food × nutrient × 11 portion sizes recomputed
 npm run test:vision        # dish names + calories vs human ground truth on 19
@@ -195,8 +197,9 @@ npm run eval:report        # ACCURACY_REPORT.md + PERFORMANCE_REPORT.md + fusion
 See [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md) for the
 per-photo scores behind the table above,
 [docs/RESEARCH.md](docs/RESEARCH.md) for why each model/database/runtime was
-chosen, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, and
-[eval/results/](eval/results/) for the generated reports.
+chosen, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design,
+[docs/DESIGN.md](docs/DESIGN.md) for the palette, type, icon and layout rules,
+and [eval/results/](eval/results/) for the generated reports.
 
 ## Privacy & disclaimer
 

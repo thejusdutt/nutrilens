@@ -153,7 +153,7 @@ function openProduct(foodRecord, barcode, ctx, provenance) {
           el('div.ds-kcal', null, el('b', null, Math.round(per.kcal ?? 0)), ' kcal / 100 g'),
           el('div.muted', null, `P ${Math.round(per.protein ?? 0)} · C ${Math.round(per.carbs ?? 0)} · F ${Math.round(per.fat ?? 0)} g`)),
         foodRecord.quality && foodRecord.quality.nutrientCount < 6
-          && el('p.warning', null, '⚠️ This product record is sparse — check the numbers against the packet.'),
+          && el('p.warning', null, 'This product record is sparse. Check the numbers against the packet.'),
         el('button.primary.wide', {
           onclick: () => openFoodDetail({ foodId: foodRecord.id, date: ctx.date, slot: ctx.slot }),
         }, 'Choose serving and add'),
