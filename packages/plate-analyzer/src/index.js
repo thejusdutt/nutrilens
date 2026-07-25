@@ -38,10 +38,44 @@ export const DEFAULTS = {
   maxItems: 10,
   /** bbox overlap (over the smaller box) above which two proposals are the same thing. */
   dedupeOverlap: 0.55,
+  /**
+   * Frame-grid resolution used when a plate was found, and how far in from each
+   * edge that grid stays. See proposePoints.
+   *
+   * 4 / 0.05 reaches the cropped side bowls that 3 / 0.1 never probes, and cost
+   * far more than it bought: on the 19-photo benchmark, recall 75.0% → 68.0%,
+   * spurious dishes 15 → 21, mean kcal error 2.2% → 10.5%. The extra probes
+   * land on tablecloth and background, and the classifier answers anyway —
+   * baklava, panna cotta, apple pie, a grilled cheese sandwich. Probing more of
+   * the frame needs a way to reject what the extra probes find first.
+   */
+  frameGrid: 3,
+  frameInset: 0.1,
   /** Merge regions that resolve to the same food into one diary line. */
   mergeSameFood: true,
   /** Shared top-candidate probability mass above which two touching regions are one dish. */
   mergeOverlap: 0.3,
+  /**
+   * Absorb a region whose mask lies this far inside another region's mask.
+   *
+   * Touching plus agreeing labels catches a dish split in two. It cannot catch
+   * a patch *inside* a dish that reads as a different food — the filling and
+   * tempering showing through a dosa coming back as an omelette, the browned
+   * centre of a pancake stack as yogurt. Those never share a candidate list
+   * with their host, so the label test can only fail. Containment is the right
+   * signal: food sitting wholly within another dish's outline is part of it.
+   *
+   * Masks only, never bounding boxes. The box version was tried — a small box
+   * wholly inside a big one, area-guarded at 0.35 — because the segmenter often
+   * cuts the patch out of its host and leaves a hole where it sat, which the
+   * mask test cannot see through. It fails on the dish it was meant to help:
+   * a large dosa's box encloses the chutney and sambar bowls beside it, so
+   * masala-dosa went from 3/3 dishes to 1/3, reporting the dosa alone and
+   * dropping both bowls. A dish's box says nothing about what is part of it.
+   *
+   * Set to 0 to disable.
+   */
+  containedFraction: 0.75,
   /** Bounding boxes within this fraction of their own size count as touching. */
   touchPad: 0.08,
   /**
@@ -83,7 +117,8 @@ export const DEFAULTS = {
  * @param {{width:number, height:number, plate?:{cx:number,cy:number,rx:number,ry:number,confidence:number}|null, grid?:number}} p
  * @returns {{x:number,y:number}[]}
  */
-export function proposePoints({ width, height, plate = null, grid = 4 }) {
+export function proposePoints({ width, height, plate = null, grid = 4, options = {} }) {
+  const o = { ...DEFAULTS, ...options };
   const pts = [];
   const hasPlate = !!plate && plate.confidence >= MIN_PLATE_CONFIDENCE;
   if (hasPlate) {
@@ -95,10 +130,20 @@ export function proposePoints({ width, height, plate = null, grid = 4 }) {
       }
     }
   }
-  const m = hasPlate ? 3 : grid; // coarse frame grid; dense when there is no plate to anchor on
+  // Frame grid, for everything that is not on the plate. Dense when there is no
+  // plate to anchor on.
+  //
+  // Known gap: at 3 × 10% the leftmost probe lands at 23% of the width, so a
+  // side bowl cropped by the frame edge — the normal way a South Indian plate
+  // is photographed, bowls crowding in from the side — is never prompted, and
+  // so cannot be missed by the classifier because it was never offered to it.
+  // Widening this is measurably worse today; see DEFAULTS.frameGrid.
+  const m = hasPlate ? o.frameGrid : grid;
+  const inset = o.frameInset;
+  const at = (i, n, size) => size * (inset + (1 - 2 * inset) * (i + 0.5) / n);
   for (let gy = 0; gy < m; gy++) {
     for (let gx = 0; gx < m; gx++) {
-      pts.push({ x: width * (0.1 + 0.8 * (gx + 0.5) / m), y: height * (0.1 + 0.8 * (gy + 0.5) / m) });
+      pts.push({ x: at(gx, m, width), y: at(gy, m, height) });
     }
   }
   return pts.filter((p) => p.x >= 0 && p.y >= 0 && p.x < width && p.y < height);
@@ -176,7 +221,7 @@ export function isSingleDish(namedRegions, imageTop, minProb = DEFAULTS.singleDi
  */
 export async function proposeRegions({ segment, width, height, plate = null, onProgress, options = {} }) {
   const o = { ...DEFAULTS, ...options };
-  const pts = proposePoints({ width, height, plate });
+  const pts = proposePoints({ width, height, plate, options: o });
   const candidates = [];
   let dominant = null;
   for (let i = 0; i < pts.length; i++) {
@@ -262,10 +307,49 @@ export function unionMask(a, b) {
   return { mask: out, areaPx };
 }
 
-/** Merge two named regions, keeping the more confident label. */
-function joinItems(a, b) {
-  const [keep, other] = a.prob >= b.prob ? [a, b] : [b, a];
-  const out = { ...keep, prob: Math.max(a.prob, b.prob) };
+/**
+ * How much of the smaller mask lies inside the larger one, 0–1.
+ *
+ * Deliberately asymmetric on area: a 20 px garnish sitting inside a 4000 px
+ * dosa is 100% contained, while the dosa is 0.5% contained in the garnish. The
+ * question worth asking is always "is the small thing part of the big one".
+ */
+export function maskContainment(a, b) {
+  if (!a?.mask || !b?.mask || a.mask.length !== b.mask.length) return 0;
+  const [inner, outer] = (a.areaPx ?? 0) <= (b.areaPx ?? 0) ? [a, b] : [b, a];
+  if (!(inner.areaPx > 0)) return 0;
+  let both = 0;
+  for (let i = 0; i < inner.mask.length; i++) if (inner.mask[i] & outer.mask[i] & 1) both++;
+  return both / inner.areaPx;
+}
+
+/**
+ * Is the smaller region a part of the larger one rather than a dish of its own?
+ * @param {object|null} a @param {object|null} b @param {object} o resolved options
+ */
+export function isPartOf(a, b, o = DEFAULTS) {
+  return o.containedFraction > 0 && maskContainment(a, b) >= o.containedFraction;
+}
+
+/**
+ * Merge two named regions.
+ *
+ * The surviving label is normally the more confident one. When one region
+ * contains the other, the container wins instead, however sure the smaller
+ * patch is of itself: a confident "omelette" reading of the filling inside a
+ * dosa is confidently describing a part, and the part does not get to rename
+ * the whole.
+ */
+function joinItems(a, b, o = DEFAULTS) {
+  const enclosing = isPartOf(a.region, b.region, o)
+    ? ((a.region.areaPx ?? 0) >= (b.region.areaPx ?? 0) ? a : b)
+    : null;
+  const [keep, other] = enclosing
+    ? (enclosing === a ? [a, b] : [b, a])
+    : (a.prob >= b.prob ? [a, b] : [b, a]);
+  // An absorbed part does not lend its confidence to the whole: a sure reading
+  // of the filling says nothing about how sure we are of the dish around it.
+  const out = { ...keep, prob: enclosing ? keep.prob : Math.max(a.prob, b.prob) };
   if (keep.region && other.region) {
     const u = unionMask(keep.region.mask, other.region.mask);
     out.region = {
@@ -315,10 +399,13 @@ export function candidateOverlap(a, b, depth = 4) {
 export function mergeSameFood(items, opts = {}) {
   const mergeOverlap = opts.mergeOverlap ?? DEFAULTS.mergeOverlap;
   const touchPad = opts.touchPad ?? DEFAULTS.touchPad;
+  const o = { ...DEFAULTS, ...opts };
   const same = (a, b) => (
     a.id === b.id
     || (touches(a.region, b.region, touchPad)
       && candidateOverlap(a.candidates ?? [], b.candidates ?? []) >= mergeOverlap)
+    // Geometry alone, no label agreement required — that is the whole point.
+    || isPartOf(a.region, b.region, o)
   );
 
   // Run to a fixed point. "Same dish" is transitive but the pairwise test is
@@ -332,7 +419,7 @@ export function mergeSameFood(items, opts = {}) {
     for (const it of out) {
       const at = next.findIndex((o) => same(o, it));
       if (at < 0) next.push(it);
-      else next[at] = joinItems(next[at], it);
+      else next[at] = joinItems(next[at], it, o);
     }
     if (next.length === out.length) return next;
     out = next;

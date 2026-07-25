@@ -153,6 +153,9 @@ d('nutrition arithmetic across every food', () => {
     relClose(one.nutrients.kcal.value, engine.forPortion('pizza', 250).nutrients.kcal.value, 'single item');
   });
 
+  // Every food × every portion × every nutrient is a few hundred thousand
+  // assertions. It runs in about two seconds idle and blows the 5s default on a
+  // busy machine, which reads as a failure in the engine and is not one.
   it('never returns NaN, Infinity or a negative amount', () => {
     for (const id of ids) {
       for (const grams of GRAM_CASES) {
@@ -162,7 +165,7 @@ d('nutrition arithmetic across every food', () => {
         }
       }
     }
-  });
+  }, 30000);
 
   it('rounds for display the way the UI does, without drift', () => {
     // The UI shows Math.round(kcal) and macros at one decimal; the saved diary

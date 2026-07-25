@@ -3,7 +3,7 @@ import { PortionEstimator } from '@nutrilens/portion-estimator';
 import {
   proposePoints, proposeRegions, dedupeRegions, bboxOverlap, fuseWithGlobal,
   mergeSameFood, candidateOverlap, touches, unionMask, isSingleDish,
-  pickWholeMask, buildPlate, DEFAULTS,
+  pickWholeMask, buildPlate, maskContainment, DEFAULTS,
 } from '../src/index.js';
 
 const W = 100;
@@ -30,6 +30,19 @@ describe('proposePoints', () => {
     expect(inside.length).toBeGreaterThan(8);
     // Side bowls sit outside the rim; without frame points they are never found.
     expect(pts.length).toBeGreaterThan(inside.length);
+  });
+
+  it('leaves the outer margin of the frame unprobed', () => {
+    // Documented, not endorsed. A side bowl cropped by the frame edge lives
+    // nearer the edge than this and is never offered to the segmenter, which is
+    // one way a chutney goes unlogged. Widening the grid to reach it (4×4 at a
+    // 5% inset) cost more than it bought — see DEFAULTS.frameGrid for the
+    // numbers — so the gap stands until there is a way to reject what the extra
+    // probes find.
+    const plate = { cx: 60, cy: 50, rx: 35, ry: 35, confidence: 1 };
+    const pts = proposePoints({ width: W, height: H, plate });
+    const outside = pts.filter((p) => ((p.x - 60) / 35) ** 2 + ((p.y - 50) / 35) ** 2 > 1);
+    expect(Math.min(...outside.map((p) => p.x))).toBeGreaterThan(W * 0.2);
   });
 
   it('keeps every point in bounds', () => {
@@ -146,6 +159,73 @@ describe('mergeSameFood', () => {
     ];
     const ids = (list) => mergeSameFood(list).map((i) => i.id).sort();
     expect(ids(xs)).toEqual(ids([...xs].reverse()));
+  });
+
+  it('absorbs a patch lying inside a dish, whatever it thinks it is', () => {
+    // The filling and tempering showing through a masala dosa, read as an
+    // omelette. It shares no candidate with the dosa, so only geometry can
+    // catch it — and it is wholly inside the dosa's outline.
+    const dosa = item('dosa', 0.52, region(0, 0, 80, 80));
+    const patch = item('omelette', 0.91, region(30, 30, 44, 44));
+    const merged = mergeSameFood([dosa, patch]);
+    expect(merged).toHaveLength(1);
+    // The container names the result even though the patch was far surer.
+    expect(merged[0].id).toBe('dosa');
+    expect(merged[0].prob).toBeCloseTo(0.52);
+    // Absorbing a patch already inside the dish adds no area, so no grams.
+    expect(merged[0].region.areaPx).toBe(6400);
+  });
+
+  it('keeps a side bowl that merely overlaps the plate', () => {
+    // A chutney bowl half over the rim is not contained by the dosa, and two
+    // dishes on one plate must stay two lines.
+    const dosa = item('dosa', 0.8, region(0, 0, 60, 60));
+    const bowl = item('coconut-chutney', 0.7, region(50, 50, 90, 90));
+    expect(mergeSameFood([dosa, bowl])).toHaveLength(2);
+  });
+
+  it('keeps a side bowl whose box falls inside a large dish', () => {
+    // A dosa spanning the frame with a chutney bowl beside it: the bowl's box
+    // is entirely within the dosa's, and the two are still two dishes. Judging
+    // this by boxes took masala-dosa from 3/3 dishes to 1/3 on the benchmark,
+    // swallowing both the chutney and the sambar.
+    const dosa = region(0, 0, 90, 90);
+    for (let y = 10; y < 30; y++) {
+      for (let x = 10; x < 30; x++) { dosa.mask[y * 100 + x] = 0; dosa.areaPx--; }
+    }
+    const bowl = region(10, 10, 30, 30);
+    expect(bboxOverlap(bowl.bbox, dosa.bbox)).toBe(1);   // the box says "inside"
+    expect(maskContainment(bowl, dosa)).toBe(0);         // the mask says otherwise
+    expect(mergeSameFood([
+      { id: 'dosa', prob: 0.8, region: dosa, candidates: [{ id: 'dosa', prob: 0.8 }] },
+      item('coconut-chutney', 0.7, bowl),
+    ])).toHaveLength(2);
+  });
+
+  it('leaves contained patches alone when the rule is switched off', () => {
+    const dosa = item('dosa', 0.52, region(0, 0, 80, 80));
+    const patch = item('omelette', 0.91, region(30, 30, 44, 44));
+    expect(mergeSameFood([dosa, patch], { containedFraction: 0 })).toHaveLength(2);
+  });
+});
+
+describe('maskContainment', () => {
+  it('asks whether the small thing is inside the big one, not the reverse', () => {
+    const big = region(0, 0, 80, 80);
+    const small = region(30, 30, 44, 44);
+    expect(maskContainment(small, big)).toBeCloseTo(1);
+    // Argument order must not change the answer.
+    expect(maskContainment(big, small)).toBeCloseTo(1);
+  });
+
+  it('scores partial overlap by the smaller region', () => {
+    // Half of the 20×20 square lies inside the 40×40 one.
+    expect(maskContainment(region(0, 0, 40, 40), region(30, 0, 50, 20))).toBeCloseTo(0.5);
+  });
+
+  it('is zero for disjoint regions and for a missing mask', () => {
+    expect(maskContainment(region(0, 0, 10, 10), region(50, 50, 60, 60))).toBe(0);
+    expect(maskContainment(null, region(0, 0, 10, 10))).toBe(0);
   });
 });
 

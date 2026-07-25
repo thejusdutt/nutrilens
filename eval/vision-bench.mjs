@@ -43,6 +43,18 @@ for (let i = 0; i < args.length; i++) {
   overrides[k] = v === 'true' ? true : v === 'false' ? false : Number(v);
 }
 
+// Refuse anything not understood. A bare `--containedFraction=0` used to be
+// skipped in silence, so the run reported the defaults under the name of the
+// setting it was meant to be testing — two benchmark runs that looked like an
+// A/B and were the same configuration twice.
+const KNOWN = new Set(['--only', '--json', '--set']);
+for (let i = 0; i < args.length; i++) {
+  if (KNOWN.has(args[i])) { i++; continue; }
+  console.error(`unknown argument: ${args[i]}`);
+  console.error('usage: vision-bench [--only <id>] [--json <path>] [--set key=value]...');
+  process.exit(2);
+}
+
 const truth = JSON.parse(readFileSync(join(root, 'eval/vision-truth.json'), 'utf8'));
 const db = JSON.parse(readFileSync(join(root, 'app/public/data/nutrition-db.json'), 'utf8'));
 const engine = new NutritionEngine(db);
