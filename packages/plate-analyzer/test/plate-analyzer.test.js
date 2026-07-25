@@ -3,7 +3,7 @@ import { PortionEstimator } from '@nutrilens/portion-estimator';
 import {
   proposePoints, proposeRegions, dedupeRegions, bboxOverlap, fuseWithGlobal,
   mergeSameFood, candidateOverlap, touches, unionMask, isSingleDish,
-  pickWholeMask, buildPlate, maskContainment, DEFAULTS,
+  pickWholeMask, buildPlate, maskContainment, regionCrop, DEFAULTS,
 } from '../src/index.js';
 
 const W = 100;
@@ -206,6 +206,31 @@ describe('mergeSameFood', () => {
     const dosa = item('dosa', 0.52, region(0, 0, 80, 80));
     const patch = item('omelette', 0.91, region(30, 30, 44, 44));
     expect(mergeSameFood([dosa, patch], { containedFraction: 0 })).toHaveLength(2);
+  });
+});
+
+describe('regionCrop', () => {
+  const img = (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) });
+
+  it('slides a padded box back into frame at full size', () => {
+    // A bowl against the left edge. The padded box starts at a negative x; the
+    // crop must keep its width and move right, not lose the overhang.
+    const out = regionCrop(img(200, 200), { x0: 0, y0: 60, x1: 40, y1: 160 });
+    const pad = Math.round(100 * DEFAULTS.cropPad);
+    expect(out.width).toBe(40 + 2 * pad);
+    expect(out.height).toBe(100 + 2 * pad);
+  });
+
+  it('slides back from the far edge too', () => {
+    const out = regionCrop(img(200, 200), { x0: 160, y0: 40, x1: 200, y1: 140 });
+    const pad = Math.round(100 * DEFAULTS.cropPad);
+    expect(out.width).toBe(40 + 2 * pad);
+  });
+
+  it('clips only when the padded box is larger than the image', () => {
+    const out = regionCrop(img(50, 50), { x0: 0, y0: 0, x1: 50, y1: 50 });
+    expect(out.width).toBe(50);
+    expect(out.height).toBe(50);
   });
 });
 

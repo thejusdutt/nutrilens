@@ -7,7 +7,7 @@ import { toRawImage, crop } from '@nutrilens/image-preprocess';
 import { overlayMask, outlineMask } from '@nutrilens/food-segmentation';
 import { PortionEstimator, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
-import { buildPlate } from '@nutrilens/plate-analyzer';
+import { buildPlate, regionCrop } from '@nutrilens/plate-analyzer';
 import { renderPlate, openAddDish, REGION_COLORS } from './plate-ui.js';
 import { makeEntry, normalizeEntry, toCSV } from '@nutrilens/diary';
 import { saveMeal, listMeals, dateKey } from './db.js';
@@ -399,9 +399,9 @@ async function addMealItemAt(x, y) {
     const m = await rpcImage({ type: 'segment', points: [{ x, y }] }); // image already encoded
     const region = { mask: new Uint8Array(m.mask), areaPx: m.areaPx, bbox: m.bbox };
     if (!region.bbox) return;
-    const b = region.bbox;
-    const pad = Math.round(Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.15);
-    const cropped = crop(state.raw, b.x0 - pad, b.y0 - pad, (b.x1 - b.x0) + 2 * pad, (b.y1 - b.y0) + 2 * pad);
+    // Same crop the automatic pass uses, from the same helper — tapping a spot
+    // should not name it differently from finding it.
+    const cropped = regionCrop(state.raw, region.bbox);
     const { result } = await rpcImage({ type: 'recognize', image: rawToMsg(cropped) });
     const candidates = result.top.filter((t) => engine.food(t.id));
     if (!candidates.length) return;

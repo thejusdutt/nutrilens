@@ -6,43 +6,49 @@ careful human reader says is on each plate (eval/vision-truth.json).
 
 Bands, not point values: portion estimation from one uncalibrated photo is
 genuinely uncertain, and a benchmark demanding an exact number would reward
-overfitting to these 19 photos.
+overfitting to these 20 photos.
 
 | metric | value |
 |---|---|
-| images | 19 |
-| dish recall | 75.0% |
+| images | 20 |
+| dish recall | 73.8% |
 | spurious dishes | 15 |
-| kcal mean abs error | 2.2% (in band 16/19, within 25% 19/19) |
-| carbs mean abs error | 5.9% (in band 13/19, within 25% 18/19) |
-| protein mean abs error | 7.1% (in band 15/19, within 25% 17/19) |
-| fat mean abs error | 8.9% (in band 15/19, within 25% 17/19) |
-| grams mean abs error | 12.6% (in band 14/19, within 25% 18/19) |
-| median time per photo | 11.2 s |
+| kcal mean abs error | 2.1% (in band 17/20, within 25% 20/20) |
+| carbs mean abs error | 5.6% (in band 14/20, within 25% 19/20) |
+| protein mean abs error | 6.8% (in band 16/20, within 25% 18/20) |
+| fat mean abs error | 9.4% (in band 15/20, within 25% 18/20) |
+| grams mean abs error | 11.9% (in band 15/20, within 25% 19/20) |
+| median time per photo | 15.4 s |
 
 ## Per photo
 
 | photo | reported | accepted band | dishes found | what it logged |
 |---|---|---|---|---|
-| dosa-thali | 343 kcal | 320–560 | 100% | Dosa (plain) 44 g + Coconut chutney 54 g + Sambar 192 g |
-| masala-dosa | 393 kcal | 340–660 | 100% | Coconut chutney 22 g + Masala dosa 156 g + Sambar 83 g |
-| idli-vada-thali | 522 kcal | 560–980 | 75% | Idli 146 g + Vada 85 g + Sambar 127 g |
-| sliders-watermelon | 806 kcal | 520–950 | 100% | Crab cakes 79 g + Hamburger 197 g + Watermelon 138 g |
-| fried-rice-bowl | 522 kcal | 350–780 | 100% | Fried rice 300 g |
-| dal-bowl | 461 kcal | 230–500 | 100% | Dal 318 g |
-| north-indian-thali | 1056 kcal | 900–2000 | 50% | Crab cakes 84 g + Orange juice 250 g + Chana masala 88 g + Kheer 60 g + Ice cream 40 g + Poori 99 g |
-| pizza-detroit | 649 kcal | 330–1050 | 100% | Pizza 244 g |
-| paratha-pan | 465 kcal | 160–420 | 0% | French onion soup 144 g + Kheer 286 g |
-| samosa-chutney | 301 kcal | 400–800 | 100% | Samosa 72 g + Miso soup 152 g + Chutney (sweet) 16 g + Green chutney 23 g |
-| biryani-pan | 183 kcal | 150–480 | 0% | Poha 142 g |
-| collage-pizza-salad-fries | 715 kcal | 700–1500 | 100% | Caesar salad 72 g + French fries 53 g + Pizza 183 g |
-| caesar-plate | 197 kcal | 180–480 | 100% | Caesar salad 130 g |
-| pancakes-berries | 700 kcal | 380–850 | 100% | Pancakes 215 g + Yogurt (curd) 100 g |
-| enchiladas-queso | 358 kcal | 350–800 | 0% | Chilaquiles 163 g + Yogurt (curd) 43 g |
-| naan-closeup | 358 kcal | 220–560 | 100% | Naan 115 g |
-| momos-chutney | 406 kcal | 230–620 | 100% | Dumplings 226 g + Ravioli 154 g |
-| tortilla-espanola | 366 kcal | 280–720 | 100% | Tortilla española 213 g |
-| kungpao-rice | 718 kcal | 400–800 | 0% | Sweet and sour pork 176 g + General Tso chicken 88 g |
+| dosa-thali | 343 kcal | 320–560 | 3/3 | Dosa (plain) 44 g + Coconut chutney 54 g + Sambar 192 g |
+| masala-dosa | 393 kcal | 340–660 | 3/3 | Coconut chutney 22 g + Masala dosa 156 g + Sambar 83 g |
+| masala-dosa-cropped-bowls | 346 kcal | 330–520 | 1/2 | Masala dosa 188 g |
+| idli-vada-thali | 522 kcal | 560–980 | 3/4 | Idli 146 g + Vada 85 g + Sambar 127 g |
+| sliders-watermelon | 806 kcal | 520–950 | 1/1 | Crab cakes 79 g + Hamburger 197 g + Watermelon 138 g |
+| fried-rice-bowl | 522 kcal | 350–780 | 1/1 | Fried rice 300 g |
+| dal-bowl | 461 kcal | 230–500 | 1/1 | Dal 318 g |
+| north-indian-thali | 1056 kcal | 900–2000 | 1/2 | Crab cakes 84 g + Orange juice 250 g + Chana masala 88 g + Kheer 60 g + Ice cream 40 g + Poori 99 g |
+| pizza-detroit | 649 kcal | 330–1050 | 1/1 | Pizza 244 g |
+| paratha-pan | 465 kcal | 160–420 | 0/1 | French onion soup 144 g + Kheer 286 g |
+| samosa-chutney | 301 kcal | 400–800 | 2/2 | Samosa 72 g + Miso soup 152 g + Chutney (sweet) 16 g + Green chutney 23 g |
+| biryani-pan | 183 kcal | 150–480 | 0/1 | Poha 142 g |
+| collage-pizza-salad-fries | 715 kcal | 700–1500 | 3/3 | Caesar salad 72 g + French fries 53 g + Pizza 183 g |
+| caesar-plate | 197 kcal | 180–480 | 1/1 | Caesar salad 130 g |
+| pancakes-berries | 700 kcal | 380–850 | 1/1 | Pancakes 215 g + Yogurt (curd) 100 g |
+| enchiladas-queso | 510 kcal | 350–800 | 0/1 | Chilaquiles 163 g + Gnocchi 108 g |
+| naan-closeup | 358 kcal | 220–560 | 1/1 | Naan 115 g |
+| momos-chutney | 406 kcal | 230–620 | 1/1 | Dumplings 226 g + Ravioli 154 g |
+| tortilla-espanola | 366 kcal | 280–720 | 1/1 | Tortilla española 213 g |
+| kungpao-rice | 718 kcal | 400–800 | 0/2 | Sweet and sour pork 176 g + General Tso chicken 88 g |
+
+`masala-dosa-cropped-bowls` is a user-supplied photo rather than a fetched one.
+`eval/data/` is gitignored, so `npm run test:vision` skips that row with a
+warning on a fresh clone until the file is put back at the path the truth file
+names.
 
 ## Where it still misses
 
@@ -52,3 +58,22 @@ a chicken stir-fry as sweet-and-sour, enchiladas under queso as chilaquiles.
 These are visually ambiguous by nature — the fix is one tap on the dish name,
 which is why the plate editor puts the alternatives (priced at the current
 portion) one tap away rather than burying them in a dropdown.
+
+`masala-dosa-cropped-bowls` is the clearest example, and worth reading in full
+because it looks like a segmentation failure and is not one. Two chutney bowls
+crowd in from the left edge, both cropped by the frame. Both are found as
+regions. Both are then misnamed, and the names are what sink them:
+
+- the white coconut chutney classifies as `dosa` at 0.66 **before** any global
+  prior is applied — the crop is a pale round thing beside a dosa — and then
+  merges into the dosa by name, exactly as it should given that label;
+- the orange chutney has no correct answer available. Its best chutney
+  candidate is `chutney` at 0.08, which is FNDDS's sweet mango relish at
+  246 kcal/100 g, nothing like a South Indian tomato or peanut chutney. That
+  dish is simply not in the vocabulary.
+
+So the honest reading is that side bowls on this plate need a tap, and closing
+the gap means vocabulary work — a savoury South Indian chutney with a real
+composition — not more geometry. Two geometric attempts are recorded in
+`DEFAULTS` (frame-grid widening, bounding-box containment) precisely because
+both looked obviously right and both measured worse.

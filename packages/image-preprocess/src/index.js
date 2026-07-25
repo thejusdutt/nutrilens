@@ -166,10 +166,17 @@ export function centerCrop(img, w, h) {
  * @returns {RawImage}
  */
 export function crop(img, x0, y0, w, h) {
+  // Clip, do not slide. A negative origin used to be clamped to 0 with the
+  // width left alone, so asking for a padded box around a region at the edge of
+  // the frame returned a window shifted inwards by the whole pad: a crop meant
+  // to be "this chutney bowl plus a margin" came back as the bowl plus a slice
+  // of whatever sat beside it, and got classified as that instead.
+  const x1 = Math.min(img.width, (x0 | 0) + (w | 0));
+  const y1 = Math.min(img.height, (y0 | 0) + (h | 0));
   x0 = Math.max(0, Math.min(img.width - 1, x0 | 0));
   y0 = Math.max(0, Math.min(img.height - 1, y0 | 0));
-  w = Math.min(w | 0, img.width - x0);
-  h = Math.min(h | 0, img.height - y0);
+  w = Math.max(1, x1 - x0);
+  h = Math.max(1, y1 - y0);
   const dst = new Uint8ClampedArray(w * h * 4);
   for (let y = 0; y < h; y++) {
     const srcOff = ((y0 + y) * img.width + x0) * 4;

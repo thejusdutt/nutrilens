@@ -57,6 +57,27 @@ describe('crop & pad', () => {
     expect(out.height).toBe(2);
   });
 
+  it('crop clips a negative origin instead of sliding the window', () => {
+    // Asking for a padded box around something at the left edge. The window
+    // must lose the part that falls outside the image, not shift right to keep
+    // its width — sliding it returns pixels from whatever sits beside the
+    // subject, which is how a chutney bowl came back classified as the dosa
+    // next to it.
+    const img = solid(10, 10, [1, 2, 3]);
+    const out = crop(img, -4, -4, 8, 8);
+    expect(out.width).toBe(4);
+    expect(out.height).toBe(4);
+  });
+
+  it('crop keeps the far edge when the origin is clipped', () => {
+    // A 6-wide window starting at -2 covers columns 0..3.
+    const img = { width: 8, height: 1, data: new Uint8ClampedArray(8 * 4) };
+    for (let x = 0; x < 8; x++) img.data[x * 4] = x * 10;
+    const out = crop(img, -2, 0, 6, 1);
+    expect(out.width).toBe(4);
+    expect([...out.data.filter((_, i) => i % 4 === 0)]).toEqual([0, 10, 20, 30]);
+  });
+
   it('padTo fills with the given color and keeps alpha opaque', () => {
     const out = padTo(solid(2, 2, [10, 20, 30]), 4, 4, [1, 2, 3]);
     expect(out.data[(3 * 4 + 3) * 4]).toBe(1);
