@@ -67,7 +67,11 @@ export const VOCABULARY = [
   { id: 'chocolate-cake', name: 'Chocolate cake', cat: 'cake', f101: 'chocolate_cake', fndds: ['Cake or cupcake, chocolate, no icing', 'Cake or cupcake, chocolate with chocolate icing, bakery'], serve: 110 },
   { id: 'chocolate-mousse', name: 'Chocolate mousse', cat: 'dessert', f101: 'chocolate_mousse', fndds: ['Chocolate mousse', 'Mousse'], serve: 110 },
   { id: 'churros', name: 'Churros', cat: 'pastry', f101: 'churros', fndds: ['Churros'], serve: 80 },
-  { id: 'clam-chowder', name: 'Clam chowder', cat: 'soup', f101: 'clam_chowder', syn: ['new england clam chowder'], fndds: ['Clam chowder, NS', 'Clam chowder'], serve: 350 },
+  // Named only, this label was an attractor for any small bowl of pale paste —
+  // it outscored coconut chutney on a crop of a chutney bowl. The prompts now
+  // mention what is actually in a chowder, which is what tells it apart from
+  // every other creamy white thing in a bowl.
+  { id: 'clam-chowder', name: 'Clam chowder', cat: 'soup', f101: 'clam_chowder', syn: ['new england clam chowder', 'creamy white soup with clams and potato chunks', 'bowl of thick chowder soup with a spoon'], fndds: ['Clam chowder, NS', 'Clam chowder'], serve: 350 },
   { id: 'club-sandwich', name: 'Club sandwich', cat: 'sandwich', f101: 'club_sandwich', fndds: ['Club sandwich'], serve: 250 },
   { id: 'crab-cakes', name: 'Crab cakes', cat: 'seafood', f101: 'crab_cakes', fndds: ['Crab cake'], serve: 120 },
   { id: 'creme-brulee', name: 'Crème brûlée', cat: 'dessert', f101: 'creme_brulee', syn: ['creme brulee custard'], fndds: ['Creme brulee', 'Custard'], serve: 130 },
@@ -181,7 +185,11 @@ export const VOCABULARY = [
   // at 246 kcal/100 g, which is nothing like the white coconut paste served
   // with every dosa. Composed from fresh coconut instead — see `mix` in
   // tools/build-nutrition-db.mjs.
-  { id: 'coconut-chutney', name: 'Coconut chutney', cat: 'snack', syn: ['white coconut chutney', 'south indian coconut chutney', 'bowl of white coconut chutney with mustard seeds'], mix: [['Coconut, fresh', 0.45], ['water', 0.55]], h: 2, rho: 1.0, serve: 40 },
+  // The prompts fight clam chowder, not the other chutneys: a small white bowl
+  // of pale coarse paste reads as a creamy soup, and on a tight crop chowder
+  // won at 0.53 against 0.36 here. So they say thick, coarse and ground, and
+  // that it is a dip beside a dosa rather than a bowl of soup.
+  { id: 'coconut-chutney', name: 'Coconut chutney', cat: 'snack', syn: ['white coconut chutney', 'south indian coconut chutney', 'thick white coconut chutney paste in a small bowl', 'coarse ground white coconut dip with mustard seeds', 'small bowl of coconut chutney served beside a dosa'], mix: [['Coconut, fresh', 0.45], ['water', 0.55]], h: 2, rho: 1.0, serve: 40 },
   { id: 'green-chutney', name: 'Green chutney', cat: 'snack', syn: ['coriander mint chutney', 'bright green indian chutney dip'], mix: [['Cilantro, raw', 0.5], ['water', 0.5]], h: 2, rho: 1.0, serve: 30 },
   // The savoury South Indian chutneys served beside a dosa. Absent from the
   // vocabulary until now, which meant the orange bowl in a dosa photo had no

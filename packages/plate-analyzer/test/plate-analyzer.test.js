@@ -109,6 +109,25 @@ describe('fuseWithGlobal', () => {
     const out = fuseWithGlobal([{ id: 'chutney', prob: 0.98 }, { id: 'dosa', prob: 0.02 }], imageTop);
     expect(out[0].id).toBe('chutney');
   });
+
+  it('survives a whole-image list whose tail runs to zero', () => {
+    // The real failure. A side dish covering 3% of the frame is never in the
+    // whole-image top-k, so it is priced at the floor — and the floor used to
+    // be a quarter of the smallest listed probability, which collapses when
+    // that list ends near zero. A bowl the region called coconut chutney at
+    // 0.49 came back as dosa, a label the same region had scored 0.03.
+    const region = [{ id: 'coconut-chutney', prob: 0.49 }, { id: 'dosa', prob: 0.03 }];
+    const tailToZero = [{ id: 'masala-dosa', prob: 0.733 }, { id: 'dosa', prob: 0.12 }, { id: 'breakfast-burrito', prob: 0.0001 }];
+    expect(fuseWithGlobal(region, tailToZero, 0.55, 0)[0].id).toBe('dosa');
+    expect(fuseWithGlobal(region, tailToZero, 0.55, DEFAULTS.priorFloor)[0].id).toBe('coconut-chutney');
+  });
+
+  it('still lets a strong whole-image signal correct an unsure region', () => {
+    // The floor must not be so generous that the prior stops working: this is
+    // the case it exists for, a torn-off piece of dosa reading as tempura.
+    const unsure = [{ id: 'tempura', prob: 0.4 }, { id: 'dosa', prob: 0.33 }];
+    expect(fuseWithGlobal(unsure, imageTop, 0.55, DEFAULTS.priorFloor)[0].id).toBe('dosa');
+  });
 });
 
 describe('mergeSameFood', () => {

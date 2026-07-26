@@ -15,10 +15,10 @@ overfitting to these 20 photos.
 | spurious dishes | 16 |
 | kcal mean abs error | 2.1% (in band 17/20, within 25% 20/20) |
 | carbs mean abs error | 5.6% (in band 14/20, within 25% 19/20) |
-| protein mean abs error | 7.3% (in band 16/20, within 25% 18/20) |
+| protein mean abs error | 7.1% (in band 17/20, within 25% 18/20) |
 | fat mean abs error | 3.4% (in band 17/20, within 25% 19/20) |
-| grams mean abs error | 11.7% (in band 15/20, within 25% 19/20) |
-| median time per photo | 13.1 s |
+| grams mean abs error | 11.8% (in band 14/20, within 25% 19/20) |
+| median time per photo | 13.4 s |
 
 ## Per photo
 
@@ -96,7 +96,52 @@ These are visually ambiguous by nature — the fix is one tap on the dish name,
 which is why the plate editor puts the alternatives (priced at the current
 portion) one tap away rather than burying them in a dropdown.
 
-The white coconut chutney in `masala-dosa-cropped-bowls` is still absorbed into
-the dosa: it classifies as `dosa` at 0.66 before any global prior is applied —
-a pale round thing beside a dosa — and then merges by name, which is correct
-behaviour for that label. One of the two bowls is logged, not both.
+### The white bowl: two barriers, both measured
+
+One of the two chutney bowls in `masala-dosa-cropped-bowls` is logged, not both.
+The white coconut chutney needs two separate things to go right and currently
+gets neither.
+
+**It is never segmented.** The frame grid probes at 23%, 50% and 77% of the
+width; the bowl ends at 19%. No prompt lands inside it, so the region that does
+get proposed is the white saucer *and* a slice of the dosa, which classifies as
+`masala-dosa` at 0.56 and merges by name. Widening the grid fixes exactly this
+— at 4 / 0.05 the bowl comes back as its own tight region — and costs recall
+76.3% → 69.6%, kcal error 2.1% → 11.3%, grams 11.8% → 21.9%.
+
+**Even segmented, it is a near-tie.** Given that tight region the classifier
+says `coconut-chutney` 0.49 against `clam-chowder` 0.40 — correct — and the
+whole-image prior then pulls them level, because a bowl covering 3% of a frame
+is never in the whole-image top-k while clam chowder scrapes in above the
+floor. Final: 0.375 against 0.383.
+
+So the ceiling here is a 0.008 margin in a text-embedding space, reached only
+by a probe grid that is worse everywhere else. What did not help: mask-fading
+the crop toward grey so the subject is the only thing in focus (worse at every
+strength — at a full fade the dosa reads as a banana), padding each axis by its
+own extent (dosa-thali drops to 2/3, the dosa reading as garlic bread), and the
+wider grid. What did help is below.
+
+### The prior floor
+
+Chasing the white bowl turned up a real bug in `fuseWithGlobal`, which is worth
+recording because it applies to every region on every plate, not just this one.
+
+Region labels are re-ranked by the whole-image distribution in the log domain,
+and a label the whole-image top-k does not list has to be priced somehow. It
+was priced at a quarter of the *smallest listed* probability — which is not a
+floor at all when that list has a near-zero tail. One photo's top-k ended at
+0.0001, so unlisted labels were valued at 0.000025, and in the log domain that
+is a penalty no region can survive.
+
+The labels this hurts are exactly the ones worth protecting: a side dish
+covering 3% of the frame is never in the whole-image top-k. On the segmented
+white bowl it turned `coconut-chutney` at 0.49 into `dosa` at 0.775 — a label
+the same region had scored 0.03.
+
+The floor is now bounded below by `DEFAULTS.priorFloor`. Across the benchmark
+it is close to neutral (protein in band 16/20 → 17/20, everything else within
+noise), which is the point: it is a correctness fix for a tail case, not a
+tuning knob. Both directions are pinned by tests — the resurrected-label case,
+and the case the prior exists for in the first place, where a torn-off piece of
+dosa reading as tempura still gets corrected.

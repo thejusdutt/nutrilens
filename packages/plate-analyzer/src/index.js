@@ -24,6 +24,12 @@ import { maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-
 export const DEFAULTS = {
   /** Weight of the whole-image distribution as a prior on each region's label. */
   globalPrior: 0.55,
+  /**
+   * Smallest probability the prior will assign a label the whole-image top-k
+   * did not list. See fuseWithGlobal — without a bound this collapses to near
+   * zero whenever that list has a near-zero tail.
+   */
+  priorFloor: 0.002,
   /** Min fused probability for a region to become an item. */
   minItemProb: 0.18,
   /**
@@ -41,15 +47,34 @@ export const DEFAULTS = {
   /** Margin added around a region before classifying it, as a fraction of each axis. */
   cropPad: 0.15,
   /**
+   * Pad each axis by its own extent rather than by the longer of the two.
+   *
+   * Off, and measured: a chutney bowl beside a big dish is a tall narrow region
+   * — 139 × 356 in the photo this was found on — so 15% of the long side puts
+   * 53 px on a 139 px width and the crop runs into the dish alongside. Padding
+   * per axis fixes that and costs more elsewhere: dosa-thali drops to 2/3 with
+   * the dosa reading as garlic bread, idli-vada-thali loses its sambar, and the
+   * phantom omelette returns to the photo this was meant to help. A squarer,
+   * context-rich crop is worth more to the encoder than a tight one.
+   */
+  cropPerAxis: false,
+  /**
    * Frame-grid resolution used when a plate was found, and how far in from each
    * edge that grid stays. See proposePoints.
    *
-   * 4 / 0.05 reaches the cropped side bowls that 3 / 0.1 never probes, and cost
-   * far more than it bought: on the 19-photo benchmark, recall 75.0% → 68.0%,
-   * spurious dishes 15 → 21, mean kcal error 2.2% → 10.5%. The extra probes
-   * land on tablecloth and background, and the classifier answers anyway —
-   * baklava, panna cotta, apple pie, a grilled cheese sandwich. Probing more of
-   * the frame needs a way to reject what the extra probes find first.
+   * 4 / 0.05 reaches the cropped side bowls that 3 / 0.1 never probes, and
+   * costs far more than it buys. Measured twice, months of other fixes apart,
+   * with the same verdict: recall 75.0% → 68.0% on 19 photos, and 76.3% →
+   * 69.6% with kcal error 2.1% → 11.3% and grams 11.8% → 21.9% on 20. The extra
+   * probes land on tablecloth and background, and the classifier answers
+   * anyway — baklava, panna cotta, apple pie, a grilled cheese sandwich.
+   *
+   * It does what it claims: at 4 / 0.05 the white chutney bowl in
+   * masala-dosa-cropped-bowls is segmented tightly and named `coconut-chutney`
+   * at 0.49 by the region classifier. It still does not get logged, because the
+   * whole-image prior leaves it in a near-tie with clam chowder. So the gap is
+   * two independent barriers deep, and widening the grid only removes the
+   * cheaper one while making everything else worse.
    */
   frameGrid: 3,
   frameInset: 0.1,
@@ -273,14 +298,24 @@ export async function proposeRegions({ segment, width, height, plate = null, onP
  * @param {number} [lambda]
  * @returns {{id:string, name?:string, prob:number}[]} renormalized, best first
  */
-export function fuseWithGlobal(regionTop, imageTop, lambda = DEFAULTS.globalPrior) {
+export function fuseWithGlobal(
+  regionTop, imageTop, lambda = DEFAULTS.globalPrior, priorFloor = DEFAULTS.priorFloor,
+) {
   if (!regionTop.length) return [];
   if (!lambda || !imageTop?.length) return [...regionTop].sort((a, b) => b.prob - a.prob);
   const EPS = 1e-9;
   const global = new Map(imageTop.map((t) => [t.id, t.prob]));
   // Unlisted labels get less than the smallest listed one, not zero: absence
   // from a truncated top-k is weak evidence, not proof.
-  const floor = Math.min(...imageTop.map((t) => t.prob)) * 0.25;
+  //
+  // Bounded below, because a quarter of the smallest listed probability is not
+  // a floor when the tail of the list runs to zero. A whole-image top-k that
+  // ends in a 0.0001 gave unlisted labels 2.5e-5, which log-domain fusion turns
+  // into a penalty no region can survive — and a side dish covering 3% of the
+  // frame is *always* unlisted. That is how a bowl the region called coconut
+  // chutney at 0.49 came back as dosa: dosa sat at 0.03 in the region and 0.12
+  // in the image, and the floor did the rest.
+  const floor = Math.max(Math.min(...imageTop.map((t) => t.prob)) * 0.25, priorFloor);
   const scored = regionTop.map((t) => ({
     ...t,
     score: Math.log(t.prob + EPS) + lambda * Math.log((global.get(t.id) ?? floor) + EPS),
@@ -340,16 +375,29 @@ export function maskContainment(a, b) {
  * the way its name says, and both callers — the automatic pass and tap-to-add —
  * go through this, so they cannot drift apart again.
  *
- * @param {RawImage} image @param {{x0,y0,x1,y1}} bbox @param {object} [o] resolved options
+ * Context is kept on purpose. Fading everything outside the region's mask
+ * toward grey — so the subject is the only thing with detail — was tried and is
+ * markedly worse at every strength: at a half fade the phantom omelette comes
+ * back, and at a full one the dosa reads as a banana. The encoder is using the
+ * surroundings to identify the subject, so cutting them away removes evidence
+ * rather than noise.
+ *
+ * @param {RawImage} image
+ * @param {{bbox:object}|{x0,y0,x1,y1}} region  region, or a bare bbox
+ * @param {object} [o] resolved options
  */
-export function regionCrop(image, bbox, o = DEFAULTS) {
-  const pad = Math.round(Math.max(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0) * o.cropPad);
-  const w = (bbox.x1 - bbox.x0) + 2 * pad;
-  const h = (bbox.y1 - bbox.y0) + 2 * pad;
+export function regionCrop(image, region, o = DEFAULTS) {
+  const bbox = region.bbox ?? region;
+  const bw = bbox.x1 - bbox.x0;
+  const bh = bbox.y1 - bbox.y0;
+  const padX = Math.round((o.cropPerAxis ? bw : Math.max(bw, bh)) * o.cropPad);
+  const padY = Math.round((o.cropPerAxis ? bh : Math.max(bw, bh)) * o.cropPad);
+  const w = bw + 2 * padX;
+  const h = bh + 2 * padY;
   return crop(
     image,
-    Math.max(0, Math.min(image.width - w, bbox.x0 - pad)),
-    Math.max(0, Math.min(image.height - h, bbox.y0 - pad)),
+    Math.max(0, Math.min(image.width - w, bbox.x0 - padX)),
+    Math.max(0, Math.min(image.height - h, bbox.y0 - padY)),
     w, h,
   );
 }
@@ -533,11 +581,11 @@ export async function buildPlate({
     onProgress?.(i, regions.length);
     const b = region.bbox;
     if (!b) continue;
-    const res = await classify(regionCrop(image, b, o));
+    const res = await classify(regionCrop(image, region, o));
     if (!res.isFood) continue;
     const known = res.top.filter((t) => foodById(t.id));
     if (!known.length) continue;
-    const candidates = fuseWithGlobal(known, imageTop, o.globalPrior);
+    const candidates = fuseWithGlobal(known, imageTop, o.globalPrior, o.priorFloor);
     if (candidates[0].prob < o.minItemProb) continue;
     named.push({ id: candidates[0].id, prob: candidates[0].prob, candidates, region });
   }

@@ -1,10 +1,12 @@
 {
   "options": {
     "globalPrior": 0.55,
+    "priorFloor": 0.002,
     "minItemProb": 0.18,
     "maxItems": 10,
     "dedupeOverlap": 0.55,
     "cropPad": 0.15,
+    "cropPerAxis": false,
     "frameGrid": 3,
     "frameInset": 0.1,
     "mergeSameFood": true,
@@ -24,7 +26,7 @@
   "rows": [
     {
       "key": "dosa-thali",
-      "ms": 14342,
+      "ms": 13432,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -39,7 +41,7 @@
             "id": "dosa",
             "name": "Dosa (plain)",
             "grams": 44,
-            "prob": 0.685,
+            "prob": 0.68,
             "method": "plate-scale",
             "sizeFactor": 0.4,
             "single": false,
@@ -54,7 +56,7 @@
             "id": "coconut-chutney",
             "name": "Coconut chutney",
             "grams": 54,
-            "prob": 0.524,
+            "prob": 0.501,
             "method": "plate-scale",
             "sizeFactor": 1.35,
             "single": false,
@@ -69,7 +71,7 @@
             "id": "sambar",
             "name": "Sambar",
             "grams": 192,
-            "prob": 0.502,
+            "prob": 0.647,
             "method": "plate-scale",
             "sizeFactor": 1.28,
             "single": false,
@@ -141,7 +143,7 @@
     },
     {
       "key": "masala-dosa",
-      "ms": 14659,
+      "ms": 12827,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -156,7 +158,7 @@
             "id": "coconut-chutney",
             "name": "Coconut chutney",
             "grams": 23,
-            "prob": 0.906,
+            "prob": 0.966,
             "method": "frame-scale",
             "sizeFactor": 0.57,
             "single": false,
@@ -201,7 +203,7 @@
             "id": "masala-dosa",
             "name": "Masala dosa",
             "grams": 146,
-            "prob": 0.968,
+            "prob": 0.964,
             "method": "frame-scale",
             "sizeFactor": 0.81,
             "single": false,
@@ -273,7 +275,7 @@
     },
     {
       "key": "masala-dosa-cropped-bowls",
-      "ms": 12548,
+      "ms": 11642,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -376,7 +378,7 @@
     },
     {
       "key": "idli-vada-thali",
-      "ms": 21177,
+      "ms": 18279,
       "dishRecall": 0.75,
       "missed": [
         "any-chutney"
@@ -423,7 +425,7 @@
             "id": "sambar",
             "name": "Sambar",
             "grams": 127,
-            "prob": 0.743,
+            "prob": 0.742,
             "method": "frame-scale",
             "sizeFactor": 0.85,
             "single": false,
@@ -499,7 +501,7 @@
     },
     {
       "key": "sliders-watermelon",
-      "ms": 15421,
+      "ms": 14405,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
@@ -516,7 +518,7 @@
             "id": "crab-cakes",
             "name": "Crab cakes",
             "grams": 79,
-            "prob": 0.931,
+            "prob": 0.919,
             "method": "frame-scale",
             "sizeFactor": 0.66,
             "single": false,
@@ -531,7 +533,7 @@
             "id": "hamburger",
             "name": "Hamburger",
             "grams": 197,
-            "prob": 0.808,
+            "prob": 0.807,
             "method": "frame-scale",
             "sizeFactor": 0.86,
             "single": false,
@@ -615,7 +617,7 @@
     },
     {
       "key": "fried-rice-bowl",
-      "ms": 8554,
+      "ms": 7203,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -694,7 +696,7 @@
     },
     {
       "key": "dal-bowl",
-      "ms": 9604,
+      "ms": 8394,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -773,7 +775,7 @@
     },
     {
       "key": "north-indian-thali",
-      "ms": 15487,
+      "ms": 14023,
       "dishRecall": 0.5,
       "missed": [
         "pulao"
@@ -840,7 +842,7 @@
             "id": "onion-chutney",
             "name": "Onion chutney",
             "grams": 14,
-            "prob": 0.464,
+            "prob": 0.461,
             "method": "plate-scale",
             "sizeFactor": 0.4,
             "single": false,
@@ -954,7 +956,7 @@
     },
     {
       "key": "pizza-detroit",
-      "ms": 16027,
+      "ms": 14960,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1034,7 +1036,7 @@
     },
     {
       "key": "paratha-pan",
-      "ms": 10520,
+      "ms": 10233,
       "dishRecall": 0,
       "missed": [
         "paratha"
@@ -1045,16 +1047,16 @@
       ],
       "got": {
         "whole": [
-          "kheer 29%",
-          "spring-onion-pancake 18%",
-          "paratha 15%"
+          "kheer 27%",
+          "spring-onion-pancake 17%",
+          "paratha 14%"
         ],
         "items": [
           {
             "id": "french-onion-soup",
             "name": "French onion soup",
             "grams": 144,
-            "prob": 0.377,
+            "prob": 0.392,
             "method": "plate-scale",
             "sizeFactor": 0.41,
             "single": false,
@@ -1069,7 +1071,7 @@
             "id": "kheer",
             "name": "Kheer",
             "grams": 286,
-            "prob": 0.843,
+            "prob": 0.634,
             "method": "plate-scale",
             "sizeFactor": 1.91,
             "single": false,
@@ -1133,7 +1135,7 @@
     },
     {
       "key": "samosa-chutney",
-      "ms": 14065,
+      "ms": 14131,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
@@ -1165,7 +1167,7 @@
             "id": "miso-soup",
             "name": "Miso soup",
             "grams": 152,
-            "prob": 0.89,
+            "prob": 0.935,
             "method": "frame-scale",
             "sizeFactor": 0.51,
             "single": false,
@@ -1180,7 +1182,7 @@
             "id": "chutney",
             "name": "Chutney (sweet)",
             "grams": 16,
-            "prob": 0.982,
+            "prob": 0.882,
             "method": "frame-scale",
             "sizeFactor": 0.52,
             "single": false,
@@ -1195,7 +1197,7 @@
             "id": "green-chutney",
             "name": "Green chutney",
             "grams": 23,
-            "prob": 0.815,
+            "prob": 0.901,
             "method": "frame-scale",
             "sizeFactor": 0.75,
             "single": false,
@@ -1263,7 +1265,7 @@
     },
     {
       "key": "biryani-pan",
-      "ms": 9641,
+      "ms": 9258,
       "dishRecall": 0,
       "missed": [
         "biryani"
@@ -1283,7 +1285,7 @@
             "id": "onion-chutney",
             "name": "Onion chutney",
             "grams": 44,
-            "prob": 0.725,
+            "prob": 0.706,
             "method": "plate-scale",
             "sizeFactor": 1.26,
             "single": false,
@@ -1298,7 +1300,7 @@
             "id": "poha",
             "name": "Poha",
             "grams": 104,
-            "prob": 0.525,
+            "prob": 0.524,
             "method": "plate-scale",
             "sizeFactor": 0.58,
             "single": false,
@@ -1363,7 +1365,7 @@
     },
     {
       "key": "collage-pizza-salad-fries",
-      "ms": 10420,
+      "ms": 10231,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1480,7 +1482,7 @@
     },
     {
       "key": "caesar-plate",
-      "ms": 13496,
+      "ms": 11491,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1559,11 +1561,11 @@
     },
     {
       "key": "pancakes-berries",
-      "ms": 12744,
+      "ms": 11669,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
-        "yogurt-plain"
+        "panna-cotta"
       ],
       "got": {
         "whole": [
@@ -1588,19 +1590,19 @@
             "fiber": 4.515
           },
           {
-            "id": "yogurt-plain",
-            "name": "Yogurt (curd)",
-            "grams": 100,
-            "prob": 0.816,
+            "id": "panna-cotta",
+            "name": "Panna cotta",
+            "grams": 120,
+            "prob": 0.542,
             "method": "serving-prior",
             "sizeFactor": 1,
             "single": false,
             "areaFrac": 0.03,
-            "kcal": 94,
-            "carbs": 10.22,
-            "protein": 6.67,
-            "fat": 2.87,
-            "fiber": 0.1
+            "kcal": 116,
+            "carbs": 13.164,
+            "protein": 6.096,
+            "fat": 4.368,
+            "fiber": 0
           }
         ],
         "plate": {
@@ -1608,10 +1610,10 @@
           "used": true
         },
         "totals": {
-          "kcal": 700,
-          "carbs": 86,
-          "protein": 23,
-          "fat": 29,
+          "kcal": 722,
+          "carbs": 89,
+          "protein": 22,
+          "fat": 30,
           "fiber": 5
         }
       },
@@ -1653,14 +1655,14 @@
       "err": {
         "kcal": 0,
         "carbs": 0,
-        "protein": 0.045454545454545456,
+        "protein": 0,
         "fat": 0,
-        "grams": 0
+        "grams": 0.015151515151515152
       }
     },
     {
       "key": "enchiladas-queso",
-      "ms": 13107,
+      "ms": 10993,
       "dishRecall": 0,
       "missed": [
         "enchiladas"
@@ -1680,7 +1682,7 @@
             "id": "chilaquiles",
             "name": "Chilaquiles",
             "grams": 163,
-            "prob": 0.75,
+            "prob": 0.749,
             "method": "frame-scale",
             "sizeFactor": 0.74,
             "single": false,
@@ -1695,7 +1697,7 @@
             "id": "gnocchi",
             "name": "Gnocchi",
             "grams": 108,
-            "prob": 0.549,
+            "prob": 0.521,
             "method": "frame-scale",
             "sizeFactor": 0.43,
             "single": false,
@@ -1759,7 +1761,7 @@
     },
     {
       "key": "naan-closeup",
-      "ms": 8993,
+      "ms": 7717,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1838,7 +1840,7 @@
     },
     {
       "key": "momos-chutney",
-      "ms": 16969,
+      "ms": 15615,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
@@ -1870,7 +1872,7 @@
             "id": "ravioli",
             "name": "Ravioli",
             "grams": 154,
-            "prob": 0.787,
+            "prob": 0.761,
             "method": "frame-scale",
             "sizeFactor": 0.62,
             "single": false,
@@ -1939,7 +1941,7 @@
     },
     {
       "key": "tortilla-espanola",
-      "ms": 12696,
+      "ms": 11215,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -2018,7 +2020,7 @@
     },
     {
       "key": "kungpao-rice",
-      "ms": 12551,
+      "ms": 11028,
       "dishRecall": 0,
       "missed": [
         "kung-pao-chicken",
@@ -2039,7 +2041,7 @@
             "id": "sweet-and-sour-pork",
             "name": "Sweet and sour pork",
             "grams": 176,
-            "prob": 0.763,
+            "prob": 0.72,
             "method": "plate-scale",
             "sizeFactor": 0.7,
             "single": false,
