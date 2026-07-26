@@ -24,7 +24,7 @@
   "rows": [
     {
       "key": "dosa-thali",
-      "ms": 20340,
+      "ms": 14342,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -54,7 +54,7 @@
             "id": "coconut-chutney",
             "name": "Coconut chutney",
             "grams": 54,
-            "prob": 0.531,
+            "prob": 0.524,
             "method": "plate-scale",
             "sizeFactor": 1.35,
             "single": false,
@@ -69,7 +69,7 @@
             "id": "sambar",
             "name": "Sambar",
             "grams": 192,
-            "prob": 0.503,
+            "prob": 0.502,
             "method": "plate-scale",
             "sizeFactor": 1.28,
             "single": false,
@@ -141,7 +141,7 @@
     },
     {
       "key": "masala-dosa",
-      "ms": 16345,
+      "ms": 14659,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -155,47 +155,62 @@
           {
             "id": "coconut-chutney",
             "name": "Coconut chutney",
-            "grams": 22,
-            "prob": 0.883,
+            "grams": 23,
+            "prob": 0.906,
             "method": "frame-scale",
-            "sizeFactor": 0.54,
+            "sizeFactor": 0.57,
             "single": false,
             "areaFrac": 0.038,
-            "kcal": 35,
-            "carbs": 1.507,
-            "protein": 0.33,
-            "fat": 3.3154,
-            "fiber": 0.891
+            "kcal": 37,
+            "carbs": 1.5755,
+            "protein": 0.34500000000000003,
+            "fat": 3.4661000000000004,
+            "fiber": 0.9315
           },
           {
-            "id": "masala-dosa",
-            "name": "Masala dosa",
-            "grams": 156,
-            "prob": 0.969,
+            "id": "tomato-chutney",
+            "name": "Tomato chutney",
+            "grams": 20,
+            "prob": 0.894,
             "method": "frame-scale",
-            "sizeFactor": 0.87,
+            "sizeFactor": 0.58,
             "single": false,
-            "areaFrac": 0.146,
-            "kcal": 287,
-            "carbs": 48.048,
-            "protein": 8.5176,
-            "fat": 6.661199999999999,
-            "fiber": 3.4320000000000004
+            "areaFrac": 0.041,
+            "kcal": 14,
+            "carbs": 0.6080000000000001,
+            "protein": 0.10200000000000001,
+            "fat": 1.2320000000000002,
+            "fiber": 0.16000000000000003
           },
           {
             "id": "sambar",
             "name": "Sambar",
-            "grams": 83,
-            "prob": 0.687,
+            "grams": 88,
+            "prob": 0.604,
             "method": "frame-scale",
-            "sizeFactor": 0.56,
+            "sizeFactor": 0.58,
             "single": false,
             "areaFrac": 0.041,
-            "kcal": 71,
-            "carbs": 9.7691,
-            "protein": 3.5939,
-            "fat": 2.2493,
-            "fiber": 3.32
+            "kcal": 76,
+            "carbs": 10.3576,
+            "protein": 3.8104,
+            "fat": 2.3848,
+            "fiber": 3.52
+          },
+          {
+            "id": "masala-dosa",
+            "name": "Masala dosa",
+            "grams": 146,
+            "prob": 0.968,
+            "method": "frame-scale",
+            "sizeFactor": 0.81,
+            "single": false,
+            "areaFrac": 0.105,
+            "kcal": 269,
+            "carbs": 44.967999999999996,
+            "protein": 7.9716,
+            "fat": 6.2341999999999995,
+            "fiber": 3.212
           }
         ],
         "plate": {
@@ -203,10 +218,10 @@
           "used": false
         },
         "totals": {
-          "kcal": 393,
-          "carbs": 59,
+          "kcal": 396,
+          "carbs": 58,
           "protein": 12,
-          "fat": 12,
+          "fat": 13,
           "fiber": 8
         }
       },
@@ -258,11 +273,9 @@
     },
     {
       "key": "masala-dosa-cropped-bowls",
-      "ms": 12269,
-      "dishRecall": 0.5,
-      "missed": [
-        "any-chutney"
-      ],
+      "ms": 12548,
+      "dishRecall": 1,
+      "missed": [],
       "spurious": [],
       "got": {
         "whole": [
@@ -274,17 +287,32 @@
           {
             "id": "masala-dosa",
             "name": "Masala dosa",
-            "grams": 188,
+            "grams": 200,
             "prob": 0.857,
             "method": "frame-scale",
-            "sizeFactor": 1.05,
+            "sizeFactor": 1.11,
             "single": false,
-            "areaFrac": 0.432,
-            "kcal": 346,
-            "carbs": 57.903999999999996,
-            "protein": 10.2648,
-            "fat": 8.0276,
-            "fiber": 4.136
+            "areaFrac": 0.362,
+            "kcal": 368,
+            "carbs": 61.6,
+            "protein": 10.92,
+            "fat": 8.54,
+            "fiber": 4.4
+          },
+          {
+            "id": "peanut-chutney",
+            "name": "Peanut chutney",
+            "grams": 22,
+            "prob": 0.353,
+            "method": "frame-scale",
+            "sizeFactor": 0.62,
+            "single": false,
+            "areaFrac": 0.07,
+            "kcal": 56,
+            "carbs": 1.5884,
+            "protein": 2.1758,
+            "fat": 4.9258,
+            "fiber": 0.7568
           }
         ],
         "plate": {
@@ -292,11 +320,11 @@
           "used": false
         },
         "totals": {
-          "kcal": 346,
-          "carbs": 58,
-          "protein": 10,
-          "fat": 8,
-          "fiber": 4
+          "kcal": 424,
+          "carbs": 63,
+          "protein": 13,
+          "fat": 13,
+          "fiber": 5
         }
       },
       "want": {
@@ -342,13 +370,13 @@
         "kcal": 0,
         "carbs": 0,
         "protein": 0,
-        "fat": -0.2,
+        "fat": 0,
         "grams": 0
       }
     },
     {
       "key": "idli-vada-thali",
-      "ms": 40666,
+      "ms": 21177,
       "dishRecall": 0.75,
       "missed": [
         "any-chutney"
@@ -356,7 +384,7 @@
       "spurious": [],
       "got": {
         "whole": [
-          "vada 81%",
+          "vada 80%",
           "idli 13%",
           "poori 2%"
         ],
@@ -395,7 +423,7 @@
             "id": "sambar",
             "name": "Sambar",
             "grams": 127,
-            "prob": 0.744,
+            "prob": 0.743,
             "method": "frame-scale",
             "sizeFactor": 0.85,
             "single": false,
@@ -471,7 +499,7 @@
     },
     {
       "key": "sliders-watermelon",
-      "ms": 16354,
+      "ms": 15421,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
@@ -587,7 +615,7 @@
     },
     {
       "key": "fried-rice-bowl",
-      "ms": 10785,
+      "ms": 8554,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -666,7 +694,7 @@
     },
     {
       "key": "dal-bowl",
-      "ms": 10448,
+      "ms": 9604,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -681,7 +709,7 @@
             "id": "dal",
             "name": "Dal",
             "grams": 318,
-            "prob": 0.912,
+            "prob": 0.905,
             "method": "bowl-scale",
             "sizeFactor": 1.59,
             "single": true,
@@ -745,20 +773,20 @@
     },
     {
       "key": "north-indian-thali",
-      "ms": 16184,
+      "ms": 15487,
       "dishRecall": 0.5,
       "missed": [
         "pulao"
       ],
       "spurious": [
         "crab-cakes",
-        "kheer",
+        "any-chutney",
         "ice-cream",
         "poori"
       ],
       "got": {
         "whole": [
-          "poori 44%",
+          "poori 43%",
           "falafel 22%",
           "poha 11%"
         ],
@@ -767,7 +795,7 @@
             "id": "crab-cakes",
             "name": "Crab cakes",
             "grams": 84,
-            "prob": 0.538,
+            "prob": 0.566,
             "method": "plate-scale",
             "sizeFactor": 0.7,
             "single": false,
@@ -782,7 +810,7 @@
             "id": "orange-juice",
             "name": "Orange juice",
             "grams": 250,
-            "prob": 0.799,
+            "prob": 0.8,
             "method": "serving-prior",
             "sizeFactor": 1,
             "single": false,
@@ -797,7 +825,7 @@
             "id": "chana-masala",
             "name": "Chana masala",
             "grams": 88,
-            "prob": 0.967,
+            "prob": 0.962,
             "method": "plate-scale",
             "sizeFactor": 0.4,
             "single": false,
@@ -809,25 +837,25 @@
             "fiber": 6.247999999999999
           },
           {
-            "id": "kheer",
-            "name": "Kheer",
-            "grams": 60,
-            "prob": 0.635,
+            "id": "onion-chutney",
+            "name": "Onion chutney",
+            "grams": 14,
+            "prob": 0.464,
             "method": "plate-scale",
             "sizeFactor": 0.4,
             "single": false,
             "areaFrac": 0.031,
-            "kcal": 65,
-            "carbs": 11.034,
-            "protein": 1.938,
-            "fat": 1.2899999999999998,
-            "fiber": 0.18
+            "kcal": 11,
+            "carbs": 0.9142000000000001,
+            "protein": 0.07840000000000001,
+            "fat": 0.8484,
+            "fiber": 0.1526
           },
           {
             "id": "ice-cream",
             "name": "Ice cream",
             "grams": 40,
-            "prob": 0.627,
+            "prob": 0.629,
             "method": "plate-scale",
             "sizeFactor": 0.4,
             "single": false,
@@ -859,10 +887,10 @@
           "used": true
         },
         "totals": {
-          "kcal": 1056,
-          "carbs": 125,
-          "protein": 30,
-          "fat": 49,
+          "kcal": 1002,
+          "carbs": 114,
+          "protein": 28,
+          "fat": 48,
           "fiber": 12
         }
       },
@@ -926,7 +954,7 @@
     },
     {
       "key": "pizza-detroit",
-      "ms": 16414,
+      "ms": 16027,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1006,7 +1034,7 @@
     },
     {
       "key": "paratha-pan",
-      "ms": 12670,
+      "ms": 10520,
       "dishRecall": 0,
       "missed": [
         "paratha"
@@ -1017,7 +1045,7 @@
       ],
       "got": {
         "whole": [
-          "kheer 30%",
+          "kheer 29%",
           "spring-onion-pancake 18%",
           "paratha 15%"
         ],
@@ -1026,7 +1054,7 @@
             "id": "french-onion-soup",
             "name": "French onion soup",
             "grams": 144,
-            "prob": 0.376,
+            "prob": 0.377,
             "method": "plate-scale",
             "sizeFactor": 0.41,
             "single": false,
@@ -1041,7 +1069,7 @@
             "id": "kheer",
             "name": "Kheer",
             "grams": 286,
-            "prob": 0.844,
+            "prob": 0.843,
             "method": "plate-scale",
             "sizeFactor": 1.91,
             "single": false,
@@ -1105,7 +1133,7 @@
     },
     {
       "key": "samosa-chutney",
-      "ms": 15669,
+      "ms": 14065,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
@@ -1137,7 +1165,7 @@
             "id": "miso-soup",
             "name": "Miso soup",
             "grams": 152,
-            "prob": 0.889,
+            "prob": 0.89,
             "method": "frame-scale",
             "sizeFactor": 0.51,
             "single": false,
@@ -1152,7 +1180,7 @@
             "id": "chutney",
             "name": "Chutney (sweet)",
             "grams": 16,
-            "prob": 0.998,
+            "prob": 0.982,
             "method": "frame-scale",
             "sizeFactor": 0.52,
             "single": false,
@@ -1167,7 +1195,7 @@
             "id": "green-chutney",
             "name": "Green chutney",
             "grams": 23,
-            "prob": 0.817,
+            "prob": 0.815,
             "method": "frame-scale",
             "sizeFactor": 0.75,
             "single": false,
@@ -1235,12 +1263,13 @@
     },
     {
       "key": "biryani-pan",
-      "ms": 11500,
+      "ms": 9641,
       "dishRecall": 0,
       "missed": [
         "biryani"
       ],
       "spurious": [
+        "any-chutney",
         "poha"
       ],
       "got": {
@@ -1251,19 +1280,34 @@
         ],
         "items": [
           {
+            "id": "onion-chutney",
+            "name": "Onion chutney",
+            "grams": 44,
+            "prob": 0.725,
+            "method": "plate-scale",
+            "sizeFactor": 1.26,
+            "single": false,
+            "areaFrac": 0.015,
+            "kcal": 36,
+            "carbs": 2.8732,
+            "protein": 0.24640000000000004,
+            "fat": 2.6664,
+            "fiber": 0.4796
+          },
+          {
             "id": "poha",
             "name": "Poha",
-            "grams": 142,
-            "prob": 0.54,
+            "grams": 104,
+            "prob": 0.525,
             "method": "plate-scale",
-            "sizeFactor": 0.79,
+            "sizeFactor": 0.58,
             "single": false,
-            "areaFrac": 0.031,
-            "kcal": 183,
-            "carbs": 39.745799999999996,
-            "protein": 3.7914,
-            "fat": 0.3976,
-            "fiber": 0.568
+            "areaFrac": 0.016,
+            "kcal": 134,
+            "carbs": 29.1096,
+            "protein": 2.7768,
+            "fat": 0.2912,
+            "fiber": 0.41600000000000004
           }
         ],
         "plate": {
@@ -1271,10 +1315,10 @@
           "used": true
         },
         "totals": {
-          "kcal": 183,
-          "carbs": 40,
-          "protein": 4,
-          "fat": 0,
+          "kcal": 170,
+          "carbs": 32,
+          "protein": 3,
+          "fat": 3,
           "fiber": 1
         }
       },
@@ -1312,14 +1356,14 @@
       "err": {
         "kcal": 0,
         "carbs": 0,
-        "protein": -0.6,
-        "fat": -1,
-        "grams": -0.05333333333333334
+        "protein": -0.7,
+        "fat": 0,
+        "grams": -0.013333333333333334
       }
     },
     {
       "key": "collage-pizza-salad-fries",
-      "ms": 11173,
+      "ms": 10420,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1436,7 +1480,7 @@
     },
     {
       "key": "caesar-plate",
-      "ms": 15525,
+      "ms": 13496,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1515,7 +1559,7 @@
     },
     {
       "key": "pancakes-berries",
-      "ms": 13592,
+      "ms": 12744,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
@@ -1616,7 +1660,7 @@
     },
     {
       "key": "enchiladas-queso",
-      "ms": 14638,
+      "ms": 13107,
       "dishRecall": 0,
       "missed": [
         "enchiladas"
@@ -1715,7 +1759,7 @@
     },
     {
       "key": "naan-closeup",
-      "ms": 9809,
+      "ms": 8993,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1794,7 +1838,7 @@
     },
     {
       "key": "momos-chutney",
-      "ms": 19401,
+      "ms": 16969,
       "dishRecall": 1,
       "missed": [],
       "spurious": [
@@ -1895,7 +1939,7 @@
     },
     {
       "key": "tortilla-espanola",
-      "ms": 14469,
+      "ms": 12696,
       "dishRecall": 1,
       "missed": [],
       "spurious": [],
@@ -1974,7 +2018,7 @@
     },
     {
       "key": "kungpao-rice",
-      "ms": 15379,
+      "ms": 12551,
       "dishRecall": 0,
       "missed": [
         "kung-pao-chicken",
@@ -1995,7 +2039,7 @@
             "id": "sweet-and-sour-pork",
             "name": "Sweet and sour pork",
             "grams": 176,
-            "prob": 0.764,
+            "prob": 0.763,
             "method": "plate-scale",
             "sizeFactor": 0.7,
             "single": false,

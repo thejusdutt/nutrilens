@@ -24,7 +24,10 @@
     "green-chutney": "any-chutney",
     "medu-vada": "vada",
     "momo": "dumplings",
-    "gyoza": "dumplings"
+    "gyoza": "dumplings",
+    "tomato-chutney": "any-chutney",
+    "onion-chutney": "any-chutney",
+    "peanut-chutney": "any-chutney"
   },
   "images": {
     "dosa-thali": {

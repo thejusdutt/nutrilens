@@ -183,6 +183,19 @@ export const VOCABULARY = [
   // tools/build-nutrition-db.mjs.
   { id: 'coconut-chutney', name: 'Coconut chutney', cat: 'snack', syn: ['white coconut chutney', 'south indian coconut chutney', 'bowl of white coconut chutney with mustard seeds'], mix: [['Coconut, fresh', 0.45], ['water', 0.55]], h: 2, rho: 1.0, serve: 40 },
   { id: 'green-chutney', name: 'Green chutney', cat: 'snack', syn: ['coriander mint chutney', 'bright green indian chutney dip'], mix: [['Cilantro, raw', 0.5], ['water', 0.5]], h: 2, rho: 1.0, serve: 30 },
+  // The savoury South Indian chutneys served beside a dosa. Absent from the
+  // vocabulary until now, which meant the orange bowl in a dosa photo had no
+  // right answer available: its best chutney candidate was the sweet mango
+  // relish above, at 246 kcal/100 g and nothing like what is in the bowl. The
+  // classifier reached for hummus and lobster bisque instead, both of which are
+  // the right colour and texture and the wrong food.
+  //
+  // Composed rather than looked up: FNDDS has no South Indian chutney at all.
+  // Shares are by mass of the finished paste, tempering oil included, which is
+  // most of the energy in all three.
+  { id: 'tomato-chutney', name: 'Tomato chutney', cat: 'snack', syn: ['south indian tomato chutney', 'thakkali chutney', 'bowl of thick orange red tomato chutney', 'orange indian chutney served with dosa'], mix: [['Tomatoes, raw', 0.5], ['Onions, raw', 0.12], ['Vegetable oil, NFS', 0.06], ['water', 0.32]], h: 2, rho: 1.0, serve: 35 },
+  { id: 'onion-chutney', name: 'Onion chutney', cat: 'snack', syn: ['south indian onion chutney', 'vengaya chutney', 'brown red onion chutney for dosa'], mix: [['Onions, raw', 0.55], ['Vegetable oil, NFS', 0.06], ['Tamarind', 0.03], ['water', 0.36]], h: 2, rho: 1.0, serve: 35 },
+  { id: 'peanut-chutney', name: 'Peanut chutney', cat: 'snack', syn: ['groundnut chutney', 'verkadalai chutney', 'thick creamy tan peanut chutney', 'beige brown south indian peanut chutney'], mix: [['Peanuts, roasted, unsalted', 0.35], ['Vegetable oil, NFS', 0.04], ['Tamarind', 0.03], ['water', 0.58]], h: 2, rho: 1.05, serve: 35 },
   { id: 'sambar', name: 'Sambar', cat: 'soup', syn: ['sambhar', 'south indian sambar lentil vegetable stew'], fndds: ['Sambar, vegetable stew'], serve: 150 },
   { id: 'yogurt-plain', name: 'Yogurt (curd)', cat: 'dessert', syn: ['plain yogurt', 'curd', 'dahi', 'bowl of white yogurt'], fndds: ['Yogurt, NFS'], rho: 1.03, h: 2.5, serve: 100 },
 
