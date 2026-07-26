@@ -11,7 +11,7 @@
  */
 
 /** Bump to ship an app-shell update. Does NOT touch the model cache. */
-const SHELL_VERSION = 'v6';
+const SHELL_VERSION = 'v7';
 /**
  * Versioned separately on purpose: the models are ~180 MB and immutable, so
  * shipping a UI fix must never evict them and force a re-download. Bump this
@@ -49,6 +49,10 @@ const SHELL_ASSETS = [
   '/data/vocabulary.json',
   '/data/label-embeddings.json',
   '/data/label-embeddings.bin',
+  // Trained linear probe: read alongside the text embeddings when naming a
+  // region. Precached with them so offline naming is identical to online.
+  '/data/probe.json',
+  '/data/probe.bin',
 ];
 
 self.addEventListener('install', (event) => {

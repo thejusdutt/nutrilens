@@ -36,6 +36,10 @@ const args = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i < 0 ? null : args[i + 1]; };
 const only = flag('--only');
 const jsonOut = flag('--json');
+// The trained linear probe is blended into region naming by default; these turn
+// it off or re-weight it, so a run can be attributed to it or not.
+const noProbe = args.includes('--no-probe');
+const probeAlpha = flag('--probe-alpha');
 const overrides = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] !== '--set') continue;
@@ -47,7 +51,7 @@ for (let i = 0; i < args.length; i++) {
 // skipped in silence, so the run reported the defaults under the name of the
 // setting it was meant to be testing — two benchmark runs that looked like an
 // A/B and were the same configuration twice.
-const KNOWN = new Set(['--only', '--json', '--set']);
+const KNOWN = new Set(['--only', '--json', '--set', '--probe-alpha', '--no-probe', '--flat-oov']);
 for (let i = 0; i < args.length; i++) {
   if (KNOWN.has(args[i])) { i++; continue; }
   console.error(`unknown argument: ${args[i]}`);
@@ -62,7 +66,11 @@ const engine = new NutritionEngine(db);
 const MODELS = join(root, 'app/public/models');
 
 console.log('loading models…');
-const { recognizer } = await createRecognizer();
+const { recognizer } = await createRecognizer({
+  probe: !noProbe,
+  probeAlpha: probeAlpha == null ? undefined : Number(probeAlpha),
+  fusion: args.includes('--flat-oov') ? { oovAdaptive: false } : {},
+});
 const segmenter = await SlimSamSegmenter.load(
   ort,
   join(MODELS, 'slimsam/onnx/vision_encoder_quantized.onnx'),

@@ -38,6 +38,8 @@ export class FusionScorer {
     this.vocab = vocab;
     this.wSwin = opts.wSwin ?? 0.72;
     this.oovBias = opts.oovBias ?? -1.0;
+    /** Scale the OOV penalty by the closed-set head's own confidence. */
+    this.oovAdaptive = opts.oovAdaptive ?? true;
     this.probeMass = opts.probeMass ?? 0.42;
     this.minConfidence = opts.minConfidence ?? 0.10;
     this.foodIdx = [];
@@ -64,6 +66,19 @@ export class FusionScorer {
     for (const p of swinProbs) swinMax = Math.max(swinMax, p);
     const wS = this.wSwin * Math.min(1, swinMax / 0.5);
 
+    // The out-of-set penalty rides the same confidence signal as wS.
+    //
+    // It exists because the closed-set head never votes for a label outside
+    // Food-101, so those labels would otherwise be scored on one head while
+    // their rivals are scored on two. But a *low* Swin maximum is itself
+    // evidence the dish is not in Food-101 — that is what an unsure closed-set
+    // head means — and charging the full penalty then hands the decision to
+    // whichever Western dish Swin liked best. A bowl of coconut chutney read as
+    // clam chowder is the shape of the bug: coconut chutney is out of set and
+    // paid -1.0 while chowder, which Food-101 does contain, was lifted from
+    // 0.02 to 0.41 on a vote from a model that has never seen a chutney.
+    const oov = this.oovBias * (this.oovAdaptive ? Math.min(1, swinMax / 0.5) : 1);
+
     const scores = new Float32Array(this.foodIdx.length);
     this.foodIdx.forEach((vi, k) => {
       const v = this.vocab[vi];
@@ -72,7 +87,7 @@ export class FusionScorer {
         const sLog = Math.log(swinProbs[v.f101] + EPS);
         scores[k] = wS * sLog + (1 - wS) * zLog;
       } else {
-        scores[k] = zLog + this.oovBias;
+        scores[k] = zLog + oov;
       }
     });
 

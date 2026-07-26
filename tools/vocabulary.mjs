@@ -337,6 +337,15 @@ export const VOCABULARY = [
   { id: 'nf-empty-plate', name: 'an empty plate', nonFood: true, prompts: ['a photo of an empty plate', 'a photo of empty dishes and cutlery on a table'] },
   { id: 'nf-packaging', name: 'food packaging', nonFood: true, prompts: ['a photo of a packaged food product box', 'a photo of a drink bottle label'] },
   { id: 'nf-plant', name: 'a plant', nonFood: true, prompts: ['a photo of a houseplant', 'a photo of flowers in a garden'] },
+  // Surfaces and table furniture. These exist because of what happens when the
+  // region proposer probes closer to the edge of the frame to reach a cropped
+  // side bowl: most of the extra probes land on the table, and with nothing in
+  // the non-food set describing a table, the classifier answers with whichever
+  // dish the wood or cloth resembles — baklava, panna cotta, apple pie, a
+  // grilled cheese sandwich. A crop of a tablecloth needs somewhere to go.
+  { id: 'nf-surface', name: 'a table surface', nonFood: true, prompts: ['a photo of a bare wooden table surface', 'a close-up of a marble or stone countertop', 'a photo of an empty tablecloth', 'a photo of a woven placemat', 'a close-up of a slate or granite background'] },
+  { id: 'nf-linen', name: 'cloth or paper', nonFood: true, prompts: ['a close-up of a folded cloth napkin', 'a photo of crumpled parchment paper', 'a photo of a paper towel', 'a close-up of plain fabric'] },
+  { id: 'nf-cutlery', name: 'cutlery', nonFood: true, prompts: ['a close-up of a metal spoon', 'a photo of a fork and knife on a table', 'a close-up of an empty steel bowl'] },
 ];
 
 /** Resolve physical priors for an entry (category defaults + overrides). */

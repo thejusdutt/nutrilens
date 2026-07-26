@@ -12,13 +12,13 @@ overfitting to these 20 photos.
 |---|---|
 | images | 20 |
 | dish recall | 76.3% |
-| spurious dishes | 16 |
+| spurious dishes | 17 |
 | kcal mean abs error | 2.1% (in band 17/20, within 25% 20/20) |
-| carbs mean abs error | 5.6% (in band 14/20, within 25% 19/20) |
-| protein mean abs error | 7.1% (in band 17/20, within 25% 18/20) |
+| carbs mean abs error | 5.1% (in band 15/20, within 25% 19/20) |
+| protein mean abs error | 6.2% (in band 18/20, within 25% 18/20) |
 | fat mean abs error | 3.4% (in band 17/20, within 25% 19/20) |
 | grams mean abs error | 11.8% (in band 14/20, within 25% 19/20) |
-| median time per photo | 13.4 s |
+| median time per photo | 12.9 s |
 
 ## Per photo
 
@@ -145,3 +145,66 @@ noise), which is the point: it is a correctness fix for a tail case, not a
 tuning knob. Both directions are pinned by tests — the resurrected-label case,
 and the case the prior exists for in the first place, where a torn-off piece of
 dosa reading as tempura still gets corrected.
+
+## The linear probe
+
+`app/public/data/probe.{json,bin}` is a classifier head trained on frozen
+MobileCLIP image embeddings — 139 classes, 512 dimensions, one matrix and a
+bias. It is blended into region naming beside the text embeddings. No new model
+ships: it reads the embedding the zero-shot head already computes, so inference
+costs one matrix multiply and ~278 KB.
+
+Build it with `npm run probe:dataset && npm run probe:train`; the crop pipeline
+is `probe:crops` → hand-label → `probe:labels`.
+
+Why it exists: zero-shot labelling compares an image to a *sentence* describing
+the dish, and that is a hard ceiling. A bowl of pale coarse paste sits about as
+close to "coconut chutney" as to "clam chowder" — 0.49 against 0.40 — and no
+amount of prompt writing reliably separates them. Trained on photographs of the
+dish, the probe puts that same bowl at **0.86**.
+
+What it is *not*: a replacement. Measured honestly on a held-out split by source
+photograph (splitting by embedding leaks, because the crops of one photo are
+near-duplicates of each other):
+
+| head | held-out top-1 |
+|---|---|
+| zero-shot, whole vocabulary | 77.6% |
+| linear probe alone | 81.3% over its own 139 classes, 74.3% blended at α=1 |
+| zero-shot, restricted to probe classes | 82.4% |
+| best blend (α = 0.5) | 78.5% |
+
+And it is trusted for **four classes only**. Most of its classes are trained on
+whole photographs, because that is what a labelled food dataset is, while this
+pipeline classifies tight region crops. Across that gap the probe is
+confidently wrong: blending all 139 classes takes `dosa-thali` from 3/3 dishes
+to 1/3, naming the dosa as garlic bread and the coconut chutney as clam chowder.
+Only `coconut-chutney`, `tomato-chutney`, `green-chutney` and `sambar` — the
+classes trained on 42 hand-labelled region crops — are mixed in. The rest keep
+their zero-shot score.
+
+The measured effect on this benchmark is small: protein in band 16/20 → 18/20,
+carbs 5.6% → 5.1%, one extra spurious dish, everything else unchanged.
+
+### Why the white bowl is still not logged
+
+The probe names it correctly and the pipeline discards the answer. In order:
+
+1. **Swin fusion** dilutes `coconut-chutney` 0.86 → 0.47. Swin is a Food-101
+   classifier: 101 Western dishes, no chutney in the label set. It votes
+   confidently for clam chowder, which Food-101 *does* contain, lifting it from
+   0.02 to 0.41.
+2. **The out-of-set penalty** charges every non-Food-101 label a flat −1.0
+   while its Western rivals are scored on two heads. It now rides Swin's own
+   confidence, which is the right shape, but does not fire here: Swin is
+   confidently wrong rather than unsure.
+3. **The global prior** carries the same error, because that bowl is in the
+   whole image and so clam chowder is in the whole-image top-8.
+
+Raising `priorFloor` to 0.01 does get the bowl logged as its own item — as
+*Clam chowder, 207 g*, which is worse than silence.
+
+So the remaining blocker is not recognition. It is that a Western closed-set
+classifier can outvote a confident open-vocabulary answer on Indian food.
+Fixing that means reweighting Swin for out-of-set dishes, which touches every
+photo in this set and has not been attempted.

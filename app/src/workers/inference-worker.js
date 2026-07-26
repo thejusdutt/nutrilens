@@ -87,6 +87,33 @@ async function cachedJson(url) {
   return res.json();
 }
 
+/**
+ * The trained linear probe, blended into region naming beside the text
+ * embeddings. Two small files, no extra model: it reads the same MobileCLIP
+ * embedding the zero-shot head already computes.
+ *
+ * Absent files are not an error — the app then runs on zero-shot alone, which
+ * is what every build before this one did.
+ */
+async function loadProbe() {
+  try {
+    const meta = await fetch('/data/probe.json').then((r) => (r.ok ? r.json() : null));
+    if (!meta) return null;
+    const buf = await (await fetch('/data/probe.bin')).arrayBuffer();
+    const all = new Float32Array(buf);
+    const k = meta.classes.length;
+    return {
+      classes: meta.classes,
+      weights: all.subarray(0, k * meta.dim),
+      bias: all.subarray(k * meta.dim),
+      index: new Map(meta.classes.map((c, i) => [c, i])),
+      trusted: meta.trusted ? new Set(meta.trusted) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function init() {
   console.log('[nutrilens-worker] init start');
   const [swinCfg, vocab, embMeta] = await Promise.all([
@@ -105,7 +132,7 @@ async function init() {
   const clipBytes = await fetchWithProgress('/models/mobileclip-s2/onnx/vision_model_fp16.onnx', 'Open-vocabulary model');
   const zs = await ZeroShotFoodClassifier.load(ortLike, clipBytes, {
     labels: vocab.map((v) => v.id), matrix, dim: embMeta.dim, logitScale: embMeta.logitScale,
-  });
+  }, { probe: await loadProbe() });
   recognizer = new FoodRecognizer(swin, zs, new FusionScorer(vocab));
   console.log('[nutrilens-worker] ready');
   postMessage({ type: 'ready', backend });

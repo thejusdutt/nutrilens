@@ -23,7 +23,12 @@
     "test:offline": "node eval/offline-test.mjs",
     "eval": "node eval/run-eval.mjs",
     "eval:fetch": "node eval/fetch-dataset.mjs",
-    "eval:report": "node eval/make-report.mjs"
+    "eval:report": "node eval/make-report.mjs",
+    "probe:dataset": "node tools/build-probe-dataset.mjs",
+    "probe:crops": "node tools/harvest-crops.mjs",
+    "probe:labels": "node tools/add-crop-labels.mjs",
+    "probe:train": "node tools/train-probe.mjs --epochs 1500 --lr 8 --l2 1e-4",
+    "probe:eval": "node tools/eval-probe.mjs"
   },
   "devDependencies": {
     "@huggingface/transformers": "^3.5.0",
