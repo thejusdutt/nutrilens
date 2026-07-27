@@ -86,7 +86,8 @@ export const VOCABULARY = [
   { id: 'falafel', name: 'Falafel', cat: 'snack', f101: 'falafel', syn: ['falafel balls'], fndds: ['Falafel'], rho: 0.75, serve: 120 },
   { id: 'filet-mignon', name: 'Filet mignon', cat: 'meat', f101: 'filet_mignon', syn: ['beef tenderloin steak'], fndds: ['Beef steak, NS as to cooking method', 'Beef steak'], h: 4, serve: 200 },
   { id: 'fish-and-chips', name: 'Fish and chips', cat: 'seafood', f101: 'fish_and_chips', syn: ['battered fried fish with french fries'], fndds: ['Fish, battered, fried', 'Fish, fried'], serve: 320 },
-  { id: 'foie-gras', name: 'Foie gras', cat: 'meat', f101: 'foie_gras', fndds: ['Liver, goose', 'Liver paste', 'Pate, liver'], h: 1.5, serve: 60 },
+  // FNDDS stops at ordinary liver pâté (201 kcal); foie gras is roughly half fat.
+  { id: 'foie-gras', name: 'Foie gras', cat: 'meat', f101: 'foie_gras', mix: [['Liver, paste or pate', 0.55], ['Butter, NFS', 0.45]], h: 1.5, serve: 60 },
   { id: 'french-fries', name: 'French fries', cat: 'snack', f101: 'french_fries', syn: ['fries', 'chips'], fndds: ['White potato, french fries, from fast food', 'french fries'], h: 4, rho: 0.45, serve: 130 },
   { id: 'french-onion-soup', name: 'French onion soup', cat: 'soup', f101: 'french_onion_soup', fndds: ['Onion soup, French'], serve: 350 },
   { id: 'french-toast', name: 'French toast', cat: 'flat', f101: 'french_toast', fndds: ['French toast, NFS', 'French toast'], h: 2.5, serve: 130 },
@@ -108,7 +109,8 @@ export const VOCABULARY = [
   { id: 'ice-cream', name: 'Ice cream', cat: 'dessert', f101: 'ice_cream', syn: ['scoops of ice cream'], fndds: ['Ice cream, NFS', 'Ice cream, regular'], rho: 0.6, serve: 100 },
   { id: 'lasagna', name: 'Lasagna', cat: 'pile', f101: 'lasagna', syn: ['lasagne'], fndds: ['Lasagna with meat', 'Lasagna'], h: 4.5, rho: 1.0, serve: 250 },
   { id: 'lobster-bisque', name: 'Lobster bisque', cat: 'soup', f101: 'lobster_bisque', fndds: ['Bisque', 'Lobster'], serve: 320 },
-  { id: 'lobster-roll-sandwich', name: 'Lobster roll', cat: 'sandwich', f101: 'lobster_roll_sandwich', fndds: ['Lobster salad', 'Lobster'], serve: 200 },
+  // 'Lobster salad' is the filling only — 1.2 g carbs for a dish served in a bun.
+  { id: 'lobster-roll-sandwich', name: 'Lobster roll', cat: 'sandwich', f101: 'lobster_roll_sandwich', mix: [['Lobster salad', 0.6], ['Roll, white, soft', 0.4]], serve: 200 },
   { id: 'macaroni-and-cheese', name: 'Macaroni and cheese', cat: 'pile', f101: 'macaroni_and_cheese', syn: ['mac and cheese'], fndds: ['Macaroni and cheese, NFS', 'Macaroni or noodles with cheese'], rho: 0.95, serve: 250 },
   { id: 'macarons', name: 'Macarons', cat: 'dessert', f101: 'macarons', syn: ['french macarons'], fndds: ['Macaroon', 'Cookie, NFS'], h: 2.5, rho: 0.6, serve: 45 },
   { id: 'miso-soup', name: 'Miso soup', cat: 'soup', f101: 'miso_soup', fndds: ['Miso soup'], serve: 300 },
@@ -120,7 +122,9 @@ export const VOCABULARY = [
   { id: 'pad-thai', name: 'Pad thai', cat: 'pile', f101: 'pad_thai', syn: ['thai stir-fried noodles'], fndds: ['Pad Thai', 'Pad thai'], serve: 320 },
   { id: 'paella', name: 'Paella', cat: 'pile', f101: 'paella', syn: ['spanish paella with seafood'], fndds: ['Paella', 'Rice with seafood'], serve: 350 },
   { id: 'pancakes', name: 'Pancakes', cat: 'flat', f101: 'pancakes', syn: ['stack of pancakes'], fndds: ['Pancakes, plain', 'Pancake'], h: 3.5, rho: 0.55, serve: 150 },
-  { id: 'panna-cotta', name: 'Panna cotta', cat: 'dessert', f101: 'panna_cotta', fndds: ['Panna cotta', 'Custard'], serve: 120 },
+  // 'Custard' is milk-and-egg set with starch; panna cotta is set cream, at
+  // more than twice the energy.
+  { id: 'panna-cotta', name: 'Panna cotta', cat: 'dessert', f101: 'panna_cotta', mix: [['Cream, heavy', 0.42], ['Milk, whole', 0.43], ['Sugar, white, granulated or lump', 0.12], ['water', 0.03]], serve: 120 },
   { id: 'peking-duck', name: 'Peking duck', cat: 'meat', f101: 'peking_duck', syn: ['crispy roast duck'], fndds: ['Duck, Peking', 'Duck, roasted', 'Duck'], serve: 180 },
   { id: 'pho', name: 'Pho', cat: 'soup', f101: 'pho', syn: ['vietnamese pho noodle soup'], fndds: ['Pho'], serve: 500 },
   { id: 'pizza', name: 'Pizza', cat: 'flat', f101: 'pizza', syn: ['pizza slice', 'cheese pizza'], fndds: ['Pizza, cheese, from restaurant or fast food, NS as to type of crust', 'Pizza, cheese'], serve: 240 },
@@ -167,12 +171,17 @@ export const VOCABULARY = [
   { id: 'dal', name: 'Dal', cat: 'soup', syn: ['indian lentil dal curry', 'dal tadka'], fndds: ['Dal', 'Lentil curry'], serve: 200 },
   { id: 'palak-paneer', name: 'Palak paneer', cat: 'pile', syn: ['indian spinach and cottage cheese curry'], fndds: ['Palak paneer', 'Spinach, creamed'], rho: 1.0, serve: 220 },
   { id: 'paneer-tikka', name: 'Paneer tikka', cat: 'meat', syn: ['grilled indian paneer cubes'], fndds: ['Cheese, paneer'], serve: 150 },
-  { id: 'butter-chicken', name: 'Butter chicken', cat: 'pile', syn: ['murgh makhani', 'indian butter chicken curry'], fndds: ['Chicken curry, Indian', 'Chicken curry'], rho: 1.0, serve: 250 },
+  // Plain 'Chicken curry' is neither buttered nor creamed, and shared its row
+  // with chicken-curry exactly. The cream and the extra chicken are the dish.
+  { id: 'butter-chicken', name: 'Butter chicken', cat: 'pile', syn: ['murgh makhani', 'indian butter chicken curry'], mix: [['Chicken curry', 0.50], ['Chicken, NS as to part, rotisserie, NS as to skin eaten', 0.26], ['Cream, heavy', 0.20], ['water', 0.04]], rho: 1.0, serve: 250 },
   { id: 'chana-masala', name: 'Chana masala', cat: 'pile', syn: ['chole', 'indian chickpea curry'], fndds: ['Chana masala', 'Chickpeas, from dried'], rho: 0.9, serve: 220 },
   { id: 'rajma', name: 'Rajma', cat: 'pile', syn: ['indian kidney bean curry'], fndds: ['Kidney beans, NFS'], rho: 0.9, serve: 220 },
-  { id: 'aloo-gobi', name: 'Aloo gobi', cat: 'pile', syn: ['indian potato cauliflower curry'], fndds: ['Potato and cauliflower', 'Cauliflower, cooked'], serve: 200 },
+  // The 'Cauliflower, cooked' fallback dropped both the potato and the oil and
+  // priced a 200 g serving at 52 kcal.
+  { id: 'aloo-gobi', name: 'Aloo gobi', cat: 'pile', syn: ['indian potato cauliflower curry'], mix: [['Potato, boiled, from fresh, peel not eaten, made with oil', 0.48], ['Cauliflower, fresh, cooked, fat added, NS as to fat type', 0.48], ['Butter, NFS', 0.04]], serve: 200 },
   { id: 'pakora', name: 'Pakora', cat: 'snack', syn: ['indian vegetable fritters'], fndds: ['Pakora'], serve: 100 },
-  { id: 'poha', name: 'Poha', cat: 'pile', syn: ['indian flattened rice breakfast'], fndds: ['Rice, white, cooked'], rho: 0.6, serve: 180 },
+  // Poha is tempered in oil; the plain-rice row left it with 0.28 g fat per 100 g.
+  { id: 'poha', name: 'Poha', cat: 'pile', syn: ['indian flattened rice breakfast'], fndds: ['Rice, white, cooked, made with oil'], rho: 0.6, serve: 180 },
   { id: 'upma', name: 'Upma', cat: 'pile', syn: ['south indian semolina upma'], fndds: ['Upma', 'Cream of wheat, cooked'], rho: 0.9, serve: 200 },
   { id: 'pulao', name: 'Pulao', cat: 'pile', syn: ['vegetable pulao rice', 'pilaf'], fndds: ['Rice pilaf', 'Rice with vegetables'], serve: 250 },
   { id: 'tandoori-chicken', name: 'Tandoori chicken', cat: 'meat', syn: ['indian tandoori roasted chicken'], fndds: ['Tandoori chicken', 'Chicken, NS as to part, grilled without sauce, skin not eaten'], serve: 200 },
@@ -213,14 +222,17 @@ export const VOCABULARY = [
   { id: 'kung-pao-chicken', name: 'Kung pao chicken', cat: 'pile', syn: ['stir fried diced chicken with dried red chilies and peanuts in dark sauce', 'sichuan kung pao chicken'], fndds: ['Kung pao chicken', 'Chicken with vegetables'], rho: 0.95, serve: 250 },
   { id: 'mapo-tofu', name: 'Mapo tofu', cat: 'pile', syn: ['sichuan mapo tofu'], fndds: ['Tofu and vegetables', 'Tofu, NFS'], rho: 1.0, serve: 250 },
   { id: 'congee', name: 'Congee', cat: 'soup', syn: ['rice porridge congee'], fndds: ['Congee', 'Rice porridge'], serve: 400 },
-  { id: 'spring-roll-fresh', name: 'Fresh summer rolls', cat: 'snack', syn: ['vietnamese fresh spring rolls', 'rice paper rolls'], fndds: ['Summer roll', 'Egg roll, meatless'], rho: 0.85, serve: 130 },
+  // Not fried: the egg-roll fallback was pricing a rice-paper roll at 2.4× its energy.
+  { id: 'spring-roll-fresh', name: 'Fresh summer rolls', cat: 'snack', syn: ['vietnamese fresh spring rolls', 'rice paper rolls'], fndds: ['rice paper, not fried', 'Summer roll'], rho: 0.85, serve: 130 },
   { id: 'tempura', name: 'Tempura', cat: 'seafood', syn: ['japanese shrimp tempura'], fndds: ['Shrimp, coated, fried', 'Tempura'], rho: 0.6, serve: 150 },
   { id: 'udon', name: 'Udon', cat: 'soup', syn: ['japanese udon noodle soup'], fndds: ['Udon', 'Noodle soup'], serve: 450 },
   { id: 'soba', name: 'Soba', cat: 'pile', syn: ['japanese soba buckwheat noodles'], fndds: ['Soba', 'Noodles, cooked'], serve: 300 },
   { id: 'onigiri', name: 'Onigiri', cat: 'snack', syn: ['japanese rice ball onigiri'], fndds: ['Rice, white, cooked'], rho: 0.95, serve: 110 },
   { id: 'katsu', name: 'Katsu', cat: 'meat', syn: ['japanese breaded pork cutlet tonkatsu', 'chicken katsu'], fndds: ['Pork cutlet, breaded', 'Chicken patty, breaded'], serve: 180 },
   { id: 'curry-rice-jp', name: 'Japanese curry rice', cat: 'pile', syn: ['japanese curry with rice katsu curry'], fndds: ['Curry, NFS', 'Rice with gravy'], serve: 400 },
-  { id: 'spring-onion-pancake', name: 'Scallion pancake', cat: 'flat', syn: ['chinese scallion pancake'], fndds: ['Pancake', 'Scallion'], h: 1, serve: 100 },
+  // FNDDS has no scallion pancake, and the query 'Pancake' matched *Pancake
+  // syrup* — 0 g protein, 0.1 g fat for a pan-fried dough. Composed instead.
+  { id: 'spring-onion-pancake', name: 'Scallion pancake', cat: 'flat', syn: ['chinese scallion pancake'], mix: [['Bread, dough, fried', 0.74], ['Onions, raw', 0.14], ['water', 0.12]], h: 1, serve: 100 },
   { id: 'satay', name: 'Satay', cat: 'meat', syn: ['chicken satay skewers with peanut sauce'], fndds: ['Chicken, grilled', 'Kabob'], serve: 140 },
   { id: 'nasi-goreng', name: 'Nasi goreng', cat: 'pile', syn: ['indonesian fried rice nasi goreng'], fndds: ['Fried rice'], serve: 320 },
 
@@ -253,7 +265,8 @@ export const VOCABULARY = [
   { id: 'bacon', name: 'Bacon', cat: 'meat', syn: ['crispy bacon strips'], fndds: ['Bacon, NS', 'Bacon, cooked'], h: 0.5, serve: 35 },
   { id: 'sausage', name: 'Sausage', cat: 'meat', syn: ['breakfast sausage links'], fndds: ['Sausage, NFS', 'Pork sausage'], serve: 75 },
   { id: 'toast', name: 'Toast', cat: 'flat', syn: ['buttered toast slices'], fndds: ['Bread, toasted', 'Bread, white'], h: 1.5, rho: 0.35, serve: 50 },
-  { id: 'avocado-toast', name: 'Avocado toast', cat: 'flat', fndds: ['Avocado toast', 'Avocado'], h: 3, rho: 0.6, serve: 130 },
+  // The 'Avocado' fallback logged the toast without any bread in it.
+  { id: 'avocado-toast', name: 'Avocado toast', cat: 'flat', mix: [['Bread, white, toasted', 0.375], ['Avocado, raw', 0.625]], h: 3, rho: 0.6, serve: 130 },
   { id: 'bagel', name: 'Bagel', cat: 'pastry', syn: ['bagel with cream cheese'], fndds: ['Bagel, NFS', 'Bagel'], h: 3, rho: 0.65, serve: 100 },
   { id: 'croissant', name: 'Croissant', cat: 'pastry', fndds: ['Croissant, NFS', 'Croissant'], serve: 60 },
   { id: 'muffin', name: 'Muffin', cat: 'pastry', syn: ['blueberry muffin'], fndds: ['Muffin, NFS', 'Muffin, blueberry'], serve: 110 },
@@ -297,12 +310,14 @@ export const VOCABULARY = [
   { id: 'brownie', name: 'Brownie', cat: 'cake', syn: ['chocolate brownie'], fndds: ['Brownie, NFS', 'Brownie'], h: 3, rho: 0.75, serve: 60 },
   { id: 'cookies', name: 'Cookies', cat: 'dessert', syn: ['chocolate chip cookies'], fndds: ['Cookie, chocolate chip', 'Cookie, NFS'], h: 1.5, rho: 0.65, serve: 45 },
   { id: 'pastry-danish', name: 'Danish pastry', cat: 'pastry', fndds: ['Danish pastry', 'Sweet roll'], serve: 90 },
-  { id: 'chocolate-bar', name: 'Chocolate', cat: 'dessert', syn: ['chocolate bar pieces'], fndds: ['Candy, NFS', 'Dark chocolate candy'], h: 1, rho: 1.2, serve: 40 },
+  // 'Candy, NFS' is the sugar-confection average: 8 g fat where chocolate has 30.
+  { id: 'chocolate-bar', name: 'Chocolate', cat: 'dessert', syn: ['chocolate bar pieces'], fndds: ['Chocolate candy', 'Candy, NFS'], h: 1, rho: 1.2, serve: 40 },
   { id: 'popcorn', name: 'Popcorn', cat: 'snack', fndds: ['Popcorn, popped, NS', 'Popcorn'], rho: 0.08, h: 6, serve: 30 },
   { id: 'potato-chips', name: 'Potato chips', cat: 'snack', syn: ['crisps'], fndds: ['Potato chips, NFS', 'Potato chips'], rho: 0.15, h: 4, serve: 40 },
   { id: 'pretzel', name: 'Pretzel', cat: 'snack', syn: ['soft pretzel'], fndds: ['Pretzel, soft', 'Pretzels, hard'], serve: 115 },
   { id: 'pudding', name: 'Pudding', cat: 'dessert', fndds: ['Pudding, NFS', 'Pudding, chocolate'], rho: 1.1, serve: 130 },
-  { id: 'mochi', name: 'Mochi', cat: 'dessert', syn: ['japanese mochi rice cake'], fndds: ['Rice cake'], rho: 1.1, serve: 60 },
+  // 'Rice cake' in FNDDS is the puffed snack disc, not a pounded glutinous cake.
+  { id: 'mochi', name: 'Mochi', cat: 'dessert', syn: ['japanese mochi rice cake'], fndds: ['Cake made with glutinous rice', 'Rice cake'], rho: 1.1, serve: 60 },
   { id: 'trifle', name: 'Trifle', cat: 'dessert', fndds: ['Trifle', 'Cake with fruit'], serve: 160 },
 
   // ============================= Mexican =============================
