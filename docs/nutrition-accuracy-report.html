@@ -1,0 +1,260 @@
+<title>NutriLens — offline nutrition, verified by Claude at build time</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#f4f6f1; --surface:#ffffff; --surface-2:#fbfcf9;
+    --ink:#1a201a; --ink-2:#57614f; --ink-3:#8a927f;
+    --rule:#e3e7db; --rule-2:#eef1e9;
+    --accent:#2f7d4f; --up:#2f7d4f; --down:#b06a3a; --usda:#9aa38c; --amber:#b07d1f;
+    --shadow:0 1px 2px rgba(26,32,26,.05), 0 8px 24px rgba(26,32,26,.06);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#12150f; --surface:#1a1e15; --surface-2:#181c13;
+      --ink:#e9ede1; --ink-2:#a3ad96; --ink-3:#727c67;
+      --rule:#2a3022; --rule-2:#222719;
+      --accent:#5cbb84; --up:#5cbb84; --down:#d69a68; --usda:#6d7663; --amber:#d0a24e;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12150f; --surface:#1a1e15; --surface-2:#181c13;
+    --ink:#e9ede1; --ink-2:#a3ad96; --ink-3:#727c67;
+    --rule:#2a3022; --rule-2:#222719;
+    --accent:#5cbb84; --up:#5cbb84; --down:#d69a68; --usda:#6d7663; --amber:#d0a24e;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px; margin:0 auto; padding:clamp(28px,5vw,72px) clamp(18px,4vw,40px)}
+  .display{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-variant-numeric:tabular-nums}
+  .eyebrow{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600}
+  h1{font-size:clamp(29px,5.2vw,44px); line-height:1.08; margin:.35em 0 .3em; text-wrap:balance; letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px); color:var(--ink-2); max-width:63ch; margin:0}
+  h2{font-size:clamp(20px,3vw,26px); margin:0 0 .2em; letter-spacing:-.01em; text-wrap:balance}
+  section{margin-top:clamp(40px,7vw,66px)}
+  .sec-intro{color:var(--ink-2); max-width:64ch; margin:.3em 0 1.6em}
+
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1px; background:var(--rule);
+    border:1px solid var(--rule); border-radius:14px; overflow:hidden; margin-top:clamp(26px,4vw,38px); box-shadow:var(--shadow)}
+  .stat{background:var(--surface); padding:20px}
+  .stat .n{font-size:clamp(25px,3.8vw,33px); font-weight:700; letter-spacing:-.02em; line-height:1}
+  .stat .n small{font-size:.5em; font-weight:600; color:var(--ink-3); letter-spacing:0}
+  .stat .l{font-size:12.5px; color:var(--ink-2); margin-top:8px}
+  .stat.accent .n{color:var(--accent)}
+
+  .offline{margin-top:22px; background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--accent);
+    border-radius:12px; padding:16px 18px; display:flex; gap:14px; align-items:flex-start; box-shadow:var(--shadow)}
+  .offline svg{flex:none; margin-top:2px; color:var(--accent)}
+  .offline p{margin:0; font-size:14.5px}
+  .offline b{color:var(--accent)}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px}
+  .card{background:var(--surface); border:1px solid var(--rule); border-radius:14px; padding:20px; box-shadow:var(--shadow)}
+  .card h3{margin:0 0 6px; font-size:15px}
+  .card p{margin:0; font-size:13.5px; color:var(--ink-2)}
+  .tag{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px}
+  .tag.usda{background:color-mix(in srgb,var(--usda) 22%,transparent); color:var(--ink-2)}
+  .tag.s{background:color-mix(in srgb,var(--accent) 16%,transparent); color:var(--accent)}
+  .tag.o{background:color-mix(in srgb,var(--amber) 20%,transparent); color:var(--amber)}
+  .rulebox{margin-top:16px; background:var(--surface-2); border:1px solid var(--rule); border-left:3px solid var(--accent);
+    border-radius:10px; padding:14px 16px; font-size:14px}
+  .rulebox b{color:var(--accent)}
+
+  /* pipeline */
+  .flow{display:grid; gap:10px; margin-top:6px}
+  .step{display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:start;
+    background:var(--surface); border:1px solid var(--rule); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow)}
+  .step .k{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3);
+    background:var(--surface-2); border:1px solid var(--rule); border-radius:6px; padding:3px 8px; white-space:nowrap}
+  .step .k.dev{color:var(--amber); border-color:color-mix(in srgb,var(--amber) 35%,var(--rule))}
+  .step .k.ship{color:var(--accent); border-color:color-mix(in srgb,var(--accent) 35%,var(--rule))}
+  .step b{font-size:14px} .step p{margin:2px 0 0; font-size:13px; color:var(--ink-2)}
+
+  .legend{display:flex; flex-wrap:wrap; gap:16px; font-size:12.5px; color:var(--ink-2); margin-bottom:14px; align-items:center}
+  .chip{display:inline-flex; align-items:center; gap:6px}
+  .dot{width:10px; height:10px; border-radius:3px; display:inline-block}
+  .tblwrap{border:1px solid var(--rule); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); background:var(--surface); overflow-x:auto}
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  thead th{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600;
+    text-align:left; padding:12px 14px; background:var(--surface-2); border-bottom:1px solid var(--rule)}
+  th.num,td.num{text-align:right}
+  tbody td{padding:9px 14px; border-bottom:1px solid var(--rule-2)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover td{background:var(--surface-2)}
+  .food{font-weight:600}
+  .old{color:var(--usda); text-decoration:line-through; text-decoration-thickness:1px}
+  .new{font-weight:700}
+  .barcell{width:32%; min-width:110px}
+  .bar{height:8px; border-radius:5px; position:relative; background:var(--rule-2)}
+  .bar span{position:absolute; top:0; bottom:0; border-radius:5px}
+  .delta{font-size:12px; white-space:nowrap}
+  .up-c{color:var(--up)} .down-c{color:var(--down)}
+
+  /* library groups */
+  .groups{display:flex; flex-wrap:wrap; gap:8px; margin-top:4px}
+  .g{font-size:12.5px; background:var(--surface); border:1px solid var(--rule); border-radius:20px; padding:5px 11px; box-shadow:var(--shadow)}
+  .g b{color:var(--accent); font-variant-numeric:tabular-nums}
+
+  /* search mock */
+  .mock{max-width:430px; background:var(--surface); border:1px solid var(--rule); border-radius:16px; box-shadow:var(--shadow); overflow:hidden}
+  .mock .search{display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--rule); color:var(--ink-2); font-size:14px}
+  .mock .search .q{color:var(--ink); font-weight:500}
+  .row-item{display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; padding:11px 16px; border-bottom:1px solid var(--rule-2)}
+  .row-item:last-child{border-bottom:0}
+  .row-item .name{font-weight:600; font-size:14px}
+  .row-item .sub{font-size:11.5px; color:var(--ink-3)}
+  .row-item .kcal{font-size:12px; color:var(--ink-2); font-variant-numeric:tabular-nums}
+  .plus{width:25px; height:25px; border-radius:8px; display:grid; place-items:center; border:1px solid var(--rule); color:var(--ink-2); font-size:13px}
+  .badge{font-size:10px; font-weight:700; letter-spacing:.04em; padding:1px 6px; border-radius:4px; margin-left:6px; vertical-align:1px}
+  .badge.m{background:color-mix(in srgb,var(--accent) 16%,transparent); color:var(--accent)}
+  .badge.e{background:color-mix(in srgb,var(--usda) 24%,transparent); color:var(--ink-2)}
+
+  pre{background:var(--surface); border:1px solid var(--rule); border-radius:12px; padding:16px 18px; overflow-x:auto;
+    font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; line-height:1.75; box-shadow:var(--shadow)}
+  pre .c{color:var(--ink-3)} pre .g2{color:var(--accent)}
+  .foot{margin-top:52px; padding-top:22px; border-top:1px solid var(--rule); color:var(--ink-3); font-size:13px;
+    display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center}
+  .ok{color:var(--accent); font-weight:600}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">NutriLens · nutrition accuracy</div>
+    <h1 class="display">1,982 foods, verified by Claude — and not one network call</h1>
+    <p class="lede">The database used to inherit whatever USDA’s survey rows said, and covered only what a camera needed to name. Now every food is independently recomputed and cross-checked by Claude, and the coverage is nine times wider. All of it happens at build time: what ships is static JSON the phone reads offline.</p>
+
+    <div class="stats">
+      <div class="stat accent"><div class="n">1,982</div><div class="l">foods, all offline</div></div>
+      <div class="stat"><div class="n">91<small> KB</small></div><div class="l">gzipped, the whole food dataset</div></div>
+      <div class="stat accent"><div class="n">61</div><div class="l">USDA values corrected by two models</div></div>
+      <div class="stat"><div class="n">1,744</div><div class="l">new dishes computed &amp; validated</div></div>
+      <div class="stat"><div class="n">303</div><div class="l">tests pass · build clean</div></div>
+    </div>
+
+    <div class="offline">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M5.6 9.6a10 10 0 0 1 3.1-2M15.5 7.9a10 10 0 0 1 2.9 1.7"/><path d="M8.4 13a6 6 0 0 1 1.7-1M13.9 12a6 6 0 0 1 1.7 1"/><circle cx="12" cy="17.5" r=".9" fill="currentColor" stroke="none"/></svg>
+      <p><b>The app makes no network call for nutrition.</b> Claude runs on a developer machine and its output is baked into the shipped files. There is no relay, no API key, no runtime fallback — every <span class="mono">fetch()</span> in the app points at a local <span class="mono">/data</span> file.</p>
+    </div>
+  </header>
+
+  <section>
+    <h2 class="display">Where the work happens</h2>
+    <p class="sec-intro">Two stages on a build machine, one artefact on the phone.</p>
+    <div class="flow">
+      <div class="step"><span class="k dev">build</span><div><b>Verify the 240 USDA foods</b><p>Claude recomputes each one from a standard recipe and it is cross-checked against USDA. Disagreements are settled by a second model.</p></div></div>
+      <div class="step"><span class="k dev">build</span><div><b>Compute 1,744 more dishes</b><p>A catalogue of what people actually eat, costed out in batches and validated row by row. Anything that will not add up is dropped, not shipped.</p></div></div>
+      <div class="step"><span class="k ship">ships</span><div><b>Two static JSON files</b><p><span class="mono">nutrition-db.json</span> (39 KB gz, measured) and <span class="mono">nutrition-library.json</span> (52 KB gz, computed). Precached by the service worker; the app reads them with the radio off.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="display">How a number earns trust</h2>
+    <p class="sec-intro">Nothing a model says is used until it survives nutrition-label arithmetic — energy must match its own macros (4·protein + 4·carbs + 9·fat − 2·fibre), and no per-100 g figure may exceed what 100 g can hold. Then three independent readings are compared.</p>
+    <div class="cards">
+      <div class="card"><h3><span class="tag usda">USDA FNDDS</span></h3><p>The measured reference: 31 nutrients per food. Authoritative for foods it names cleanly, unreliable for composed or “as-served” dishes it only averages.</p></div>
+      <div class="card"><h3><span class="tag s">Claude Sonnet</span></h3><p>Recomputes each dish from a recipe — <em>never shown the USDA number</em>, so agreement is real evidence rather than an echo.</p></div>
+      <div class="card"><h3><span class="tag o">Claude Opus</span></h3><p>A second, independent computation that settles the disagreements. Also never shown a prior value.</p></div>
+    </div>
+    <div class="rulebox">
+      <b>The deciding rule:</b> a food is corrected when <b>both models miss USDA in the same direction</b> — USDA is the outlier — not merely when the two models happen to match each other. That is what catches a watery survey row (clam chowder at 35 kcal/100 g) that is perfectly self-consistent and still wrong. The 37 hand-checked “golden” foods are never overwritten.
+    </div>
+  </section>
+
+  <section>
+    <h2 class="display">What changed in the measured set</h2>
+    <p class="sec-intro">61 of 238 foods moved. Most are thin USDA rows lifted to the dish as actually eaten — with the oil it absorbed, the cream it is set with. Some move the other way: dry-weight rows brought down to a real bowl.</p>
+    <div class="legend">
+      <span class="chip"><span class="dot" style="background:var(--up)"></span> corrected up (as-served)</span>
+      <span class="chip"><span class="dot" style="background:var(--down)"></span> corrected down (as-eaten)</span>
+      <span class="chip">kcal per 100 g</span>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Dish</th><th class="num">USDA</th><th class="num">Now</th><th>Change</th><th class="num">Δ</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="display">Checked against the open web</h2>
+    <p class="sec-intro">A fourth source, independent of both the database and the models: the biggest corrections were spot-checked against published nutrition data.</p>
+    <div class="cards">
+      <div class="card"><h3>Biryani</h3><p><span class="old">104</span> → <b>183</b> · web 169–179<br><span style="color:var(--accent);font-weight:600">near-exact</span></p></div>
+      <div class="card"><h3>Crème brûlée</h3><p><span class="old">113</span> → <b>328</b> · web 245–330<br><span style="color:var(--accent);font-weight:600">confirmed</span></p></div>
+      <div class="card"><h3>Clam chowder</h3><p><span class="old">35</span> → <b>94</b> · web 56–272<br><span style="color:var(--accent);font-weight:600">mid-range, confirmed</span></p></div>
+      <div class="card"><h3>Breakfast cereal</h3><p><span class="old">379</span> → <b>165</b> · web 80–200<br><span style="color:var(--amber);font-weight:600">direction right</span></p></div>
+    </div>
+    <div class="rulebox" style="border-left-color:var(--amber)">
+      Seven oils, nuts and seeds were also checked digit-for-digit against published values — coconut oil 862, olive oil 884, chia 486, macadamia 718, pine nuts 673, hemp 553, pumpkin seeds 559. <b>All seven match exactly.</b> These are the rows with the largest naive-Atwater gaps, and the gap is correct: fats and fibrous seeds use food-specific energy factors, which is precisely why the tolerance exists.
+    </div>
+  </section>
+
+  <section>
+    <h2 class="display">The offline library</h2>
+    <p class="sec-intro">1,744 dishes the USDA set never had, across 26 groups — split by cuisine <em>and</em> by category, because a cuisine prompt returns restaurant dishes and forgets a plain banana, while a category prompt returns staples and forgets regional cooking. Names were deduplicated in code, never by the model.</p>
+    <div class="groups" id="groups"></div>
+    <div class="rulebox">
+      <b>What it deliberately omits:</b> micronutrients. The library carries energy, macros, fibre, sugar, saturated fat and sodium — the figures a recipe determines. Selenium and vitamin K come from laboratory measurement, not reasoning, and an invented value would be worse than an absent one. USDA foods keep their full measured profile, are excluded from the library, and always outrank it in search.
+    </div>
+  </section>
+
+  <section>
+    <h2 class="display">What it feels like</h2>
+    <p class="sec-intro">Dishes that previously returned nothing now resolve instantly, offline. A measured food always leads; an estimate is labelled as one.</p>
+    <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="mock" role="img" aria-label="Search for pizza: the measured USDA food ranks first">
+        <div class="search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5l-4-4"/></svg><span class="q">pizza</span></div>
+        <div class="row-item"><div><div class="name">Pizza<span class="badge m">MEASURED</span></div><div class="sub">USDA · 31 nutrients</div></div><div class="kcal">266</div><div class="plus">＋</div></div>
+        <div class="row-item"><div><div class="name">Pizza Bianca<span class="badge e">ESTIMATE</span></div><div class="sub">Library</div></div><div class="kcal">270</div><div class="plus">＋</div></div>
+        <div class="row-item"><div><div class="name">Pizza Diavola<span class="badge e">ESTIMATE</span></div><div class="sub">Library</div></div><div class="kcal">270</div><div class="plus">＋</div></div>
+      </div>
+      <div class="mock" role="img" aria-label="Searches that previously returned nothing">
+        <div class="search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5l-4-4"/></svg><span class="q">previously: no results</span></div>
+        <div class="row-item"><div><div class="name">Shakshuka</div><div class="sub">Library · 300 g serving</div></div><div class="kcal">110</div><div class="plus">＋</div></div>
+        <div class="row-item"><div><div class="name">Grilled Chicken Breast, Skinless</div><div class="sub">Library · 165 kcal — the textbook figure</div></div><div class="kcal">165</div><div class="plus">＋</div></div>
+        <div class="row-item"><div><div class="name">Jollof Rice</div><div class="sub">Library</div></div><div class="kcal">180</div><div class="plus">＋</div></div>
+        <div class="row-item"><div><div class="name">Oat Milk</div><div class="sub">Library</div></div><div class="kcal">47</div><div class="plus">＋</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="display">Reproduce it</h2>
+    <p class="sec-intro">Every model reply is cached and committed, so the build itself never calls anything — it stays offline and reproducible.</p>
+    <pre><span class="c"># harden the measured set</span>
+npm run <span class="g2">verify:nutrition</span>      <span class="c"># Sonnet vs USDA, blind to the USDA value</span>
+npm run <span class="g2">adjudicate:nutrition</span>  <span class="c"># Opus settles the disagreements</span>
+npm run <span class="g2">build:db</span>              <span class="c"># fold in corrections, through every validation gate</span>
+
+<span class="c"># widen the offline coverage</span>
+npm run <span class="g2">build:catalogue</span>       <span class="c"># what people actually eat; deduped in code</span>
+npm run <span class="g2">build:library</span>         <span class="c"># cost it out, validate every row, ship the JSON</span></pre>
+    <div class="foot">
+      <span class="ok">✓ 303 tests pass</span><span>·</span>
+      <span>build clean</span><span>·</span>
+      <span>zero runtime network calls</span><span>·</span>
+      <span class="mono">docs/claude-nutrition.md</span><span>·</span>
+      <span>nothing committed yet</span>
+    </div>
+  </section>
+</div>
+
+<script>
+  const data = [["Green chutney",11.5,61],["Crème brûlée",113,328],["Tomato soup",19,53],["Clam chowder",35,94],["Beet salad",53,116],["Pakora",125,267],["Greek salad",48,101],["Peking duck",154,319],["Seaweed salad",41,83],["Pesto pasta",125,226],["Kebab",122,218],["Pozole",43,76],["Biryani",104,183],["Dumplings",113,198],["Escargots",158,274],["Onion chutney",82,141],["Upma",87,146],["Bibimbap",76,123],["Ravioli",98,158],["Kung pao chicken",129,203],["Breakfast cereal",379,165],["Prime rib",206,317],["Satay",151,230],["Fruit salad",133,64],["Pho",37,56],["Kheer",108,160],["Chocolate mousse",212,310],["Bread pudding",156,228],["Mapo tofu",93,134],["Yogurt with granola",104,149],["Coconut chutney",159,227],["Shrimp and grits",108,153],["Tomato chutney",69,96],["Palak paneer",101,138],["Lobster bisque",75,102],["Croque madame",195,265],["Falafel",514,333],["Roast chicken",164,221],["Udon",90,59],["Yogurt (curd)",94,64],["Coleslaw",117,153],["Oysters",51,66],["Huevos rancheros",121,156],["Chana masala",211,152],["Rajma",177,128],["Tuna tartare",109,139],["Mexican rice",115,146],["Grilled fish",208,156],["Soba",137,103],["Pork chop",183,228],["Nachos",265,328],["Sashimi",109,133],["Risotto",200,157],["Waffles",373,300],["Takoyaki",226,189],["Quinoa",146,123],["Spaghetti bolognese",178,153],["Toast",293,332],["Vada",266,242],["Macarons",460,469]];
+  const maxPct = Math.max(...data.map(([,o,n]) => Math.abs(n-o)/o));
+  document.getElementById("rows").innerHTML = data.map(([name,o,n]) => {
+    const pct = (n-o)/o*100, up = pct > 0;
+    const w = Math.max(6, Math.abs(pct)/(maxPct*100)*100);
+    return `<tr><td class="food">${name}</td><td class="num old mono">${o}</td><td class="num new mono">${n}</td>`
+      + `<td class="barcell"><div class="bar"><span style="width:${w}%;background:${up?'var(--up)':'var(--down)'}"></span></div></td>`
+      + `<td class="num delta mono ${up?'up-c':'down-c'}">${up?'+':'−'}${Math.abs(Math.round(pct))}%</td></tr>`;
+  }).join("");
+
+  const groups = {"staple-proteins":116,"indian":109,"staple-grains":99,"staple-vegetables":91,"fastfood":78,"snacks-sweets":76,"italian":74,"chinese":73,"thai-sea":73,"staple-dairy":71,"middle-east":71,"staple-fruits":70,"mexican-latam":67,"drinks":65,"japanese":63,"european":63,"staple-fats-nuts":57,"condiments":56,"composed-salads":56,"african":56,"korean":52,"soups":51,"breakfast":50,"caribbean":40,"baked-goods":39,"american":28};
+  document.getElementById("groups").innerHTML = Object.entries(groups)
+    .map(([k,n]) => `<span class="g">${k.replace(/-/g," ")} <b>${n}</b></span>`).join("");
+</script>

@@ -11,7 +11,7 @@
  */
 
 /** Bump to ship an app-shell update. Does NOT touch the model cache. */
-const SHELL_VERSION = 'v7';
+const SHELL_VERSION = 'v9';
 /**
  * Versioned separately on purpose: the models are ~180 MB and immutable, so
  * shipping a UI fix must never evict them and force a re-download. Bump this
@@ -46,6 +46,7 @@ const SHELL_ASSETS = [
   '/ort/ort-wasm-simd-threaded.asyncify.mjs',
   // Small data files
   '/data/nutrition-db.json',
+  '/data/nutrition-library.json',
   '/data/vocabulary.json',
   '/data/label-embeddings.json',
   '/data/label-embeddings.bin',

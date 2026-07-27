@@ -28,7 +28,14 @@
     "probe:crops": "node tools/harvest-crops.mjs",
     "probe:labels": "node tools/add-crop-labels.mjs",
     "probe:train": "node tools/train-probe.mjs --epochs 1500 --lr 8 --l2 1e-4",
-    "probe:eval": "node tools/eval-probe.mjs"
+    "probe:eval": "node tools/eval-probe.mjs",
+    "probe:trusted": "node tools/select-trusted.mjs --write",
+    "diagnose": "node eval/diagnose-recall.mjs",
+    "tune": "node eval/tune-fusion.mjs",
+    "verify:nutrition": "node tools/verify-nutrition-claude.mjs",
+    "adjudicate:nutrition": "node tools/adjudicate-claude.mjs",
+    "build:catalogue": "node tools/build-food-catalogue.mjs",
+    "build:library": "node tools/compute-food-library.mjs"
   },
   "devDependencies": {
     "@huggingface/transformers": "^3.5.0",

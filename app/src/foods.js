@@ -1,7 +1,8 @@
 /**
- * One food lookup for the whole app, over four sources:
+ * One food lookup for the whole app, over five sources:
  *
  *   USDA database   plain ids, e.g. "pizza"      — the offline reference set
+ *   Food library    "lib:<slug>"                 — the wider offline dish library
  *   My Foods        "my:<n>"                     — user-created, from a label
  *   Products        "off:<barcode>"              — scanned, cached forever
  *   Saved meals     "meal:<n>" / "recipe:<n>"    — groups of the above
@@ -10,6 +11,12 @@
  * and `nutrients(food, grams)` behave the same whatever produced the record.
  * Nutrient scaling always goes through the nutrition engine so a scanned yoghurt
  * and a USDA yoghurt are computed by identical code.
+ *
+ * The library is the breadth the USDA set cannot give: ~1700 dishes computed at
+ * build time and shipped as static JSON, so the app stays entirely offline. Its
+ * rows carry macros, fibre, sugar, saturated fat and sodium but no
+ * micronutrients — see tools/compute-food-library.mjs for why — so USDA foods
+ * always win a name clash and the library never shadows a measured food.
  */
 import { perServing } from '@nutrilens/diary';
 import {
@@ -21,15 +28,37 @@ let engine = null;
 const custom = new Map();   // "my:<n>"      → food
 const products = new Map(); // "off:<code>"  → food
 const saved = new Map();     // "meal:<n>" | "recipe:<n>" → saved meal
+const library = new Map();   // "lib:<slug>" → food
+/** Search index over the library: one entry per food, tokens precomputed. */
+let libIndex = [];
 
 export const customId = (id) => `my:${id}`;
 export const productId = (barcode) => `off:${barcode}`;
 export const savedId = (kind, id) => `${kind}:${id}`;
+export const libraryId = (slug) => `lib:${slug}`;
 
-/** @param {import('@nutrilens/nutrition-engine').NutritionEngine} nutritionEngine */
-export async function initFoods(nutritionEngine) {
+/**
+ * @param {import('@nutrilens/nutrition-engine').NutritionEngine} nutritionEngine
+ * @param {{foods:Record<string,object>}} [lib] parsed nutrition-library.json
+ */
+export async function initFoods(nutritionEngine, lib) {
   engine = nutritionEngine;
+  if (lib?.foods) loadLibrary(lib);
   await reloadAll();
+}
+
+/** Index the shipped dish library. Names already in the USDA set are skipped. */
+function loadLibrary(lib) {
+  const words = (s) => (s ?? '').toLowerCase().split(/[^a-z0-9%]+/).filter(Boolean);
+  const usdaNames = new Set((engine?.foodIds ?? []).map((id) => engine.food(id).name.toLowerCase()));
+  library.clear();
+  libIndex = [];
+  for (const [slug, f] of Object.entries(lib.foods)) {
+    if (usdaNames.has(f.name.toLowerCase())) continue; // never shadow a measured food
+    const id = libraryId(slug);
+    library.set(id, { ...f, id, kind: 'library', brand: 'Estimate' });
+    libIndex.push({ id, name: f.name, nameLower: f.name.toLowerCase(), nameWords: words(f.name) });
+  }
 }
 
 export async function reloadAll() {
@@ -55,6 +84,7 @@ export function food(id) {
   if (id == null) return null;
   if (custom.has(id)) return custom.get(id);
   if (products.has(id)) return products.get(id);
+  if (library.has(id)) return library.get(id);
   if (saved.has(id)) return mealAsFood(saved.get(id));
   return engine?.food(id) ? { ...engine.food(id), id, kind: 'usda' } : null;
 }
@@ -115,7 +145,9 @@ export const kcalFor = (foodRecord, grams) => Math.round((foodRecord?.per100g?.k
 /**
  * Search every source at once. USDA results are ranked by the engine; local
  * items (your own foods, your scans, your meals) are boosted, because a food you
- * created is almost always the one you meant.
+ * created is almost always the one you meant. Library dishes come last: they are
+ * the breadth, but their numbers are computed estimates rather than measured, so
+ * a USDA match for the same words should always be offered first.
  * @param {string} query
  * @param {{limit?:number}} [opts]
  * @returns {{id:string, name:string, brand?:string, kind:string, score:number}[]}
@@ -137,7 +169,35 @@ export function search(query, { limit = 40 } = {}) {
   const usda = (engine?.search(query, limit) ?? []).map((h) => ({
     id: h.id, name: h.name, kind: 'usda', score: h.score,
   }));
-  return [...local, ...usda].slice(0, limit);
+  return [...local, ...usda, ...searchLibrary(tokens, q, limit)].slice(0, limit);
+}
+
+/**
+ * Rank library dishes for a query. Same shape of scoring as the engine's own
+ * search — every token must match somewhere, whole words beat prefixes, an exact
+ * name wins — but shifted below the USDA band so measured foods lead.
+ */
+function searchLibrary(tokens, q, limit) {
+  if (!libIndex.length) return [];
+  const hits = [];
+  for (const e of libIndex) {
+    let score = 0;
+    let all = true;
+    for (const t of tokens) {
+      if (e.nameWords.includes(t)) score += 6;
+      else if (e.nameWords.some((w) => w.startsWith(t))) score += 4;
+      else if (e.nameLower.includes(t)) score += 1;
+      else { all = false; break; }
+    }
+    if (!all) continue;
+    if (e.nameLower === q) score += 30;
+    else if (e.nameLower.startsWith(q)) score += 12;
+    // Sit below the engine's band: a USDA hit on the same words ranks higher.
+    hits.push({ id: e.id, name: e.name, brand: 'Estimate', kind: 'library', score: score - 40 });
+  }
+  return hits
+    .sort((a, b) => b.score - a.score || a.name.length - b.name.length || a.name.localeCompare(b.name))
+    .slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------

@@ -69,7 +69,11 @@ let engine = null;
 const dataReady = (async () => {
   const db = await fetch('/data/nutrition-db.json').then((r) => r.json());
   engine = new NutritionEngine(db);
-  await initFoods(engine);
+  // The wider dish library is a separate file so the USDA core stays small and
+  // its provenance stays clean. Missing or unreadable is survivable — the app
+  // just falls back to the USDA set.
+  const lib = await fetch('/data/nutrition-library.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  await initFoods(engine, lib);
 })();
 
 // ---------------------------------------------------------------------------
