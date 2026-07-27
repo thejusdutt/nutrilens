@@ -84,7 +84,12 @@ export class ZeroShotFoodClassifier {
    * @param {{data:Uint8ClampedArray,width:number,height:number}} img
    * @returns {Promise<{sims: Float32Array, probs: Float32Array, top: {label:string, index:number, prob:number, sim:number}[]}>}
    */
-  async classify(img) {
+  /**
+   * @param {{data:Uint8ClampedArray,width:number,height:number}} img
+   * @param {{whole?:boolean}} [opts] `whole: true` when `img` is an entire
+   *   photograph rather than a region cut out of one — see #blendProbe.
+   */
+  async classify(img, opts = {}) {
     const e = await this.embed(img);
     const n = this.labels.length;
     const sims = new Float32Array(n);
@@ -96,7 +101,7 @@ export class ZeroShotFoodClassifier {
     }
     const scaled = new Float32Array(n);
     for (let i = 0; i < n; i++) scaled[i] = sims[i] * this.logitScale;
-    const probs = this.probe ? this.#blendProbe(e, scaled) : softmax(scaled);
+    const probs = this.probe ? this.#blendProbe(e, scaled, opts.whole === true) : softmax(scaled);
     const top = [...probs.keys()]
       .sort((a, b) => probs[b] - probs[a])
       .slice(0, 10)
@@ -114,10 +119,23 @@ export class ZeroShotFoodClassifier {
    *
    * @private
    */
-  #blendProbe(e, zeroShotLogits) {
+  #blendProbe(e, zeroShotLogits, whole = false) {
     const {
-      classes, weights, bias, index, trusted,
+      classes, weights, bias, index, trusted, trustedWhole,
     } = this.probe;
+    // Which classes may speak depends on what is being looked at.
+    //
+    // The probe learned from whole photographs, because that is what a labelled
+    // food dataset is. On whole photographs it is worth a lot — 77.6% → 82.7%
+    // held-out top-1 across the classes where it beats zero-shot outright. On
+    // tight region crops it is a different distribution and it is confidently
+    // wrong: measured, letting the same classes vote on crops took plate recall
+    // from 76.3% to 71.7% and added five phantom dishes.
+    //
+    // So the safe set is context-dependent. `trusted` are the classes trained
+    // on hand-labelled region crops, sound wherever they are asked; those plus
+    // `trustedWhole` apply only when the input is an entire photograph.
+    const allow = whole && trustedWhole ? trustedWhole : trusted;
     const a = this.probeAlpha;
     const k = classes.length;
     const pLogits = new Float32Array(k);
@@ -143,7 +161,7 @@ export class ZeroShotFoodClassifier {
     for (let i = 0; i < zLog.length; i++) {
       const label = this.labels[i];
       const pi = index.get(label);
-      const use = pi !== undefined && (!trusted || trusted.has(label));
+      const use = pi !== undefined && (!allow || allow.has(label));
       mixed[i] = use ? (1 - a) * zLog[i] + a * pLog[pi] : zLog[i];
     }
     return softmax(mixed);

@@ -108,6 +108,7 @@ async function loadProbe() {
       bias: all.subarray(k * meta.dim),
       index: new Map(meta.classes.map((c, i) => [c, i])),
       trusted: meta.trusted ? new Set(meta.trusted) : null,
+      trustedWhole: meta.trustedWhole ? new Set(meta.trustedWhole) : null,
     };
   } catch {
     return null;
@@ -179,7 +180,7 @@ self.onmessage = async (e) => {
       // Requests can race ahead of model loading (e.g. a button pressed while
       // the first download is still running) — queue behind init.
       await (initPromise ??= init());
-      const result = await recognizer.recognize(asRaw(msg.image));
+      const result = await recognizer.recognize(asRaw(msg.image), { whole: !!msg.whole });
       postMessage({ type: 'recognized', id: msg.id, result });
     } else if (msg.type === 'segment') {
       const seg = await loadSegmenter();

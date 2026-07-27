@@ -22,8 +22,18 @@ import { maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-
 
 /** Tunables, fitted on eval/vision-bench.mjs. Exported so the bench can sweep them. */
 export const DEFAULTS = {
-  /** Weight of the whole-image distribution as a prior on each region's label. */
-  globalPrior: 0.55,
+  /**
+   * Weight of the whole-image distribution as a prior on each region's label.
+   *
+   * Raised from 0.55 to 0.7 once the whole-image head became more trustworthy
+   * (the trustedWhole probe classes lifted its held-out top-1 from 77.6% to
+   * 82.7%). A prior is only worth leaning on to the extent the thing it comes
+   * from is right; when the whole-image call improved, leaning harder recovered
+   * dishes a region misread (paratha) and cut three phantom side dishes across
+   * the 20-photo bench. Measured flat from 0.7 to ~1.0; past ~1.1 it starts
+   * overriding correct region reads. See eval/tune-fusion.mjs.
+   */
+  globalPrior: 0.7,
   /**
    * Smallest probability the prior will assign a label the whole-image top-k
    * did not list. See fuseWithGlobal — without a bound this collapses to near

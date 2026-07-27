@@ -83,7 +83,7 @@ const estimator = new PortionEstimator();
  * @returns {{items:{id,name,grams,kcal}[], totals:object, plate:object|null}}
  */
 export async function analyzePhoto(image, options = {}) {
-  const whole = await recognizer.recognize(image);
+  const whole = await recognizer.recognize(image, { whole: true });
   const imageTop = whole.top.filter((t) => engine.food(t.id));
   const plate = detectPlateEllipse(image);
 

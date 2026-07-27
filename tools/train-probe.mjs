@@ -138,3 +138,10 @@ const out = new Float32Array(K * dim + K);
 out.set(W, 0); out.set(b, K * dim);
 writeFileSync(join(DATA, 'probe-weights.bin'), Buffer.from(out.buffer));
 console.log(`wrote ${K} x ${dim} weights + ${K} biases`);
+
+// To ship: copy these into app/public/data as probe.bin / probe.json, then run
+// `npm run probe:trusted` to recompute the trusted + trustedWhole class lists
+// from held-out data. Those lists decide which classes the probe is allowed to
+// override zero-shot on (crops vs whole photos); retraining without rerunning
+// probe:trusted leaves the app blending a class the new weights may fail.
+console.log('next: promote to app/public/data/, then `npm run probe:trusted`');

@@ -46,10 +46,12 @@ export function loadProbe(dataDir, enabled = true) {
     weights: all.subarray(0, k * meta.dim),
     bias: all.subarray(k * meta.dim),
     index: new Map(meta.classes.map((c, i) => [c, i])),
-    // Only the classes trained on hand-labelled region crops are trusted; the
-    // rest were trained on whole photographs and do not transfer. See
-    // ZeroShotFoodClassifier#blendProbe.
+    // `trusted` are the classes sound on tight region crops (trained on
+    // hand-labelled crops, or measured to transfer). `trustedWhole` are the
+    // additional classes worth blending only when the input is an entire
+    // photograph. See ZeroShotFoodClassifier#blendProbe.
     trusted: meta.trusted ? new Set(meta.trusted) : null,
+    trustedWhole: meta.trustedWhole ? new Set(meta.trustedWhole) : null,
   };
 }
 

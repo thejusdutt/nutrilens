@@ -130,11 +130,14 @@ export class FoodRecognizer {
   /**
    * Recognize the food in an image (or image region).
    * @param {{data:Uint8ClampedArray,width:number,height:number}} img
+   * @param {{whole?:boolean}} [opts] `whole: true` when `img` is an entire
+   *   photograph, not a region cut from one — lets the zero-shot head trust
+   *   probe classes that are only sound on full frames. See ZeroShotFoodClassifier#blendProbe.
    * @returns {Promise<ReturnType<FusionScorer['fuse']> & {timings:{swinMs:number, zeroShotMs:number}}>}
    */
-  async recognize(img) {
+  async recognize(img, opts = {}) {
     const t0 = performance.now();
-    const [s, z] = await Promise.all([this.swin.classify(img), this.zeroShot.classify(img)]);
+    const [s, z] = await Promise.all([this.swin.classify(img), this.zeroShot.classify(img, opts)]);
     const t1 = performance.now();
     const result = this.scorer.fuse(s.probs, z.probs);
     return { ...result, timings: { swinMs: t1 - t0, zeroShotMs: t1 - t0, totalMs: performance.now() - t0 } };

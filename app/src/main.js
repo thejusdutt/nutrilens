@@ -235,7 +235,7 @@ async function startAnalysis(blob) {
     setSpinner('Loading models…');
     await Promise.all([ensureWorker(), dataReady]);
     setSpinner('Identifying food…');
-    const { result } = await rpcImage({ type: 'recognize', image: rawToMsg(state.raw) });
+    const { result } = await rpcImage({ type: 'recognize', image: rawToMsg(state.raw), whole: true });
     state.candidates = result.top.filter((t) => engine.food(t.id));
     state.isFood = result.isFood;
     $('nonfood-warning').hidden = result.isFood;
