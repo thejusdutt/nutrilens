@@ -52,6 +52,63 @@ d('shipped nutrition database', () => {
     expect(engine.food('lassi').fdcDesc.toLowerCase()).not.toContain('vegetable');
     expect(engine.food('oatmeal').fdcDesc.toLowerCase()).not.toContain('cookie');
     expect(engine.food('plain-rice').fdcDesc.toLowerCase()).toMatch(/^rice/);
+    // Scallion pancake resolved to *Pancake syrup*: the plural in "Pancakes,
+    // NFS" meant the singular query only matched the condiment.
+    expect(engine.food('spring-onion-pancake').fdcDesc.toLowerCase()).not.toContain('syrup');
+    // Fresh summer rolls priced as fried egg rolls, at 2.4× the energy.
+    expect(engine.food('spring-roll-fresh').fdcDesc.toLowerCase()).not.toContain('egg roll');
+  });
+
+  it('composed dishes carry every component they are made of', () => {
+    // Each of these lost a defining ingredient to a fallback query: the bread
+    // under the avocado, the bun round the lobster, the potato in aloo gobi.
+    // A calorie total can look sane while the macros behind it are another
+    // food's, so assert the shape, not just the energy.
+    const shape = [
+      // id, minCarbs, minFat, minProtein — the component that went missing
+      ['avocado-toast', 18, 5, 3],          // was pure avocado: 8.5 g carbs
+      ['lobster-roll-sandwich', 15, 5, 8],  // was lobster salad: 1.2 g carbs
+      ['aloo-gobi', 9, 4, 1.5],             // was bare cauliflower: 0.29 g fat
+      ['butter-chicken', 2, 9, 8],          // was plain curry: 6.5 g fat
+      ['spring-onion-pancake', 25, 8, 4],   // was syrup: 0 g protein, 0.1 g fat
+      ['panna-cotta', 10, 10, 1.5],         // was custard: 3.6 g fat
+      ['poha', 20, 2, 2],                   // was plain rice: 0.28 g fat
+      ['chocolate-bar', 40, 20, 5],         // was generic candy: 8.3 g fat
+    ];
+    for (const [id, minC, minF, minP] of shape) {
+      const p = engine.food(id)?.per100g;
+      expect(p, id).toBeTruthy();
+      expect(p.carbs, `${id} carbs=${p.carbs}`).toBeGreaterThanOrEqual(minC);
+      expect(p.fat, `${id} fat=${p.fat}`).toBeGreaterThanOrEqual(minF);
+      expect(p.protein, `${id} protein=${p.protein}`).toBeGreaterThanOrEqual(minP);
+    }
+  });
+
+  it('no two foods share one row by accident', () => {
+    // A query falling through to a generic parent leaves the child with the
+    // parent's exact numbers — how Butter chicken became plain chicken curry.
+    // These pairs genuinely are one FNDDS food; everything else is a bug.
+    const allowed = new Set([
+      'beef-carpaccio|beef-tartare', 'beignets|donuts', 'filet-mignon|steak',
+      'fried-rice|nasi-goreng', 'omelette|scrambled-eggs', 'sashimi|tuna-tartare',
+      'onigiri|plain-rice',
+    ]);
+    const seen = new Map();
+    for (const id of engine.foodIds) {
+      const fp = JSON.stringify(engine.food(id).per100g);
+      if (!seen.has(fp)) seen.set(fp, []);
+      seen.get(fp).push(id);
+    }
+    const clashes = [];
+    for (const ids of seen.values()) {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const pair = [ids[i], ids[j]].sort().join('|');
+          if (!allowed.has(pair)) clashes.push(pair);
+        }
+      }
+    }
+    expect(clashes, `foods sharing identical nutrition: ${clashes.join(', ')}`).toEqual([]);
   });
 
   it('search: the obvious food ranks first', () => {
@@ -70,5 +127,25 @@ d('shipped nutrition database', () => {
     expect(white.indexOf('plain-rice')).toBeLessThan(Math.max(0, white.indexOf('risotto')) + (white.includes('risotto') ? 0 : 99));
     // "rice" queries must not put non-rice-named dishes (bibimbap) first.
     expect(engine.search('rice')[0].id).not.toBe('bibimbap');
+  });
+
+  it('Claude cross-verification provenance is present and coherent', () => {
+    // The verification overlay must have been folded in at build time: a large
+    // share of foods carry a provenance tag, and every tag is one we emit.
+    const foods = Object.entries(engine.db.foods);
+    const tagged = foods.filter(([, f]) => f.src);
+    expect(tagged.length, 'foods with a verification src tag').toBeGreaterThan(80);
+    const okSrc = new Set(['usda-verified', 'claude-corrected', 'two-model-consensus', 'two-model-outlier']);
+    for (const [id, f] of foods) {
+      if (!f.src) continue;
+      expect(okSrc.has(f.src), `${id} has unknown src "${f.src}"`).toBe(true);
+      expect(f.verified, `${id} tagged ${f.src} but not verified`).toBe(true);
+      // A corrected food must carry a complete, self-consistent macro set.
+      if (f.src !== 'usda-verified') {
+        for (const k of ['kcal', 'protein', 'carbs', 'fat']) {
+          expect(typeof f.per100g[k], `${id}.${k} missing after correction`).toBe('number');
+        }
+      }
+    }
   });
 });

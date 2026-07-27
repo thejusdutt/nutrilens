@@ -2,7 +2,23 @@ node_modules/
 app/dist/
 app/public/ort/
 app/public/models/
-tools/data/
+# tools/data holds the FNDDS release, model weights and embeddings — big, binary,
+# refetchable. Ignore everything in it, then whitelist the Claude verification
+# artefacts: they are the provenance of the corrections folded into
+# nutrition-db.json and of every row in nutrition-library.json. Without them a
+# fresh clone's `npm run build:db` would silently drop all 61 corrections, and
+# there would be no record of why a number changed. Small, text, reviewable.
+# (A `!` rule cannot rescue a file whose *directory* is excluded, hence the
+# wildcard-plus-exceptions shape rather than a plain `tools/data/`.)
+tools/data/*
+!tools/data/claude-overlay.json
+!tools/data/claude-nutrition-cache.json
+!tools/data/opus-nutrition-cache.json
+!tools/data/nutrition-verification.json
+!tools/data/nutrition-verification-report.md
+!tools/data/adjudication-report.md
+!tools/data/food-catalogue.json
+!tools/data/food-library-cache.json
 eval/data/
 eval/results/*.jsonl
 eval/results/raw/

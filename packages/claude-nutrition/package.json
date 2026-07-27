@@ -1,0 +1,14 @@
+{
+  "name": "@nutrilens/claude-nutrition",
+  "version": "1.0.0",
+  "description": "Build-time tool: compute per-100 g nutrition with Claude, validate it against nutrition-label arithmetic, and cross-verify it with USDA FNDDS. Its output is baked into the shipped offline database — nothing here runs in the app.",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./bedrock-cli": "./src/bedrock-cli.js"
+  },
+  "license": "MIT",
+  "keywords": ["nutrition", "claude", "build-tool", "macros", "cross-verification", "usda", "offline"]
+}

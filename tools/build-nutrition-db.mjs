@@ -8,7 +8,7 @@
  *          app/public/data/vocabulary.json
  *          tools/data/mapping-report.txt (human review of every mapping)
  */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { VOCABULARY, priorsFor } from './vocabulary.mjs';
@@ -217,13 +217,63 @@ for (const entry of VOCABULARY) {
   reportLines.push(`${entry.id.padEnd(26)} ${String(roundPer100g(per100g.kcal) ?? '??').padStart(5)} kcal/100g  ← [${usedQuery}] ${fdcDesc}`);
 }
 
+// Pristine USDA baseline, written before any correction is applied. The
+// verification tools read THIS, never the corrected artifact, so re-running them
+// re-derives the corrections from USDA instead of "confirming" values they
+// already changed. Rebuilt from FNDDS every run, so it is always pristine.
+writeFileSync(join(root, 'tools/data/nutrition-db.base.json'), JSON.stringify({ foods: dbFoods }));
+
+// --------------------------- Claude verification overlay ---------------------------
+// tools/data/claude-overlay.json is produced by verify-nutrition-claude.mjs and
+// adjudicate-claude.mjs: every dish independently recomputed by Claude (Sonnet)
+// and cross-checked against these USDA numbers, with a second model (Opus)
+// breaking the ties. Where two independent models agree and outvote a
+// hand-composed USDA row, the corrected per-100 g lives here; where all sources
+// agree, the food is simply stamped verified.
+//
+// It is committed data, so the build stays offline and reproducible — nothing
+// calls a model at build time. Regenerate with `npm run verify:nutrition` then
+// `npm run adjudicate:nutrition`. Every correction still has to clear the same
+// validation gate below, so a bad overlay entry fails the build rather than
+// shipping.
+const overlayPath = join(root, 'tools/data/claude-overlay.json');
+let ovCorrectedCount = 0; let ovVerifiedCount = 0;
+if (existsSync(overlayPath)) {
+  const overlay = JSON.parse(readFileSync(overlayPath, 'utf8'));
+  for (const [id, ov] of Object.entries(overlay)) {
+    const f = dbFoods[id];
+    if (!f) continue;
+    f.verified = true;
+    f.src = ov.source;
+    if (ov.score != null) f.verifyScore = ov.score;
+    if (ov.per100g) {
+      // The overlay is already physically reconciled (fat sub-fractions rescaled
+      // to the corrected total in adjudicate-claude.mjs), so apply it verbatim.
+      f.per100g = Object.fromEntries(Object.entries(ov.per100g).map(([k, v]) => [k, roundPer100g(v)]));
+      if (ov.servingG) f.verifiedServingG = Math.round(ov.servingG);
+      ovCorrectedCount++;
+    } else {
+      ovVerifiedCount++;
+    }
+  }
+  console.log(`Claude overlay: ${ovCorrectedCount} foods corrected, ${ovVerifiedCount} confirmed against USDA`);
+}
+
 // --------------------------- validation gate ---------------------------
-// The build FAILS if the data is implausible. Three layers:
+// The build FAILS if the data is implausible. Five layers:
 //  1. Atwater consistency: kcal ≈ 4·protein + 4·carbs + 9·fat (catches join
 //     errors and unit mix-ups).
 //  2. Physical ranges per 100 g.
 //  3. Golden references: well-known foods must match published USDA values
 //     (catches semantic mis-mappings like 'Roti' → 'ROTIsserie chicken').
+//  4. Shared rows: two foods resolving to identical nutrition must say so.
+//  5. Protein floor: a cooked dish made of ~no protein is a mis-match.
+//
+// Layers 1–2 only see one food at a time and only check that its numbers hang
+// together, which is why 'Scallion pancake' → *Pancake syrup* sailed through
+// for months: syrup is perfectly self-consistent. Semantic wrongness is only
+// visible against something outside the row — a published value (3), a sibling
+// food (4), or what the dish is physically made of (5).
 const GOLDEN = {
   // id: [kcal, ±kcalTol, protein g, ±proteinTol] per 100 g
   'plain-rice': [130, 20, 2.7, 1],
@@ -252,7 +302,45 @@ const GOLDEN = {
   gazpacho: [26, 15, 0.8, 0.8],
   'general-tso-chicken': [295, 60, 13, 4],
   tamales: [174, 45, 7.4, 3],
+  // Composed or hand-picked rows: FNDDS has no entry that *is* these dishes, so
+  // nothing about the name would flag a wrong match. Pinned here instead.
+  'spring-onion-pancake': [300, 60, 6, 3],
+  'aloo-gobi': [125, 45, 2.5, 1.5],
+  'avocado-toast': [210, 45, 5, 2],
+  'panna-cotta': [220, 50, 2.6, 1.5],
+  'foie-gras': [450, 90, 9, 4],
+  'lobster-roll-sandwich': [230, 50, 11.5, 4],
+  'butter-chicken': [170, 45, 11, 4],
+  'chocolate-bar': [535, 70, 7.7, 3],
+  mochi: [265, 60, 3, 2.5],
+  poha: [150, 40, 2.8, 1.5],
+  'spring-roll-fresh': [115, 35, 5.5, 2.5],
 };
+
+/**
+ * Foods that legitimately share one FNDDS row, and why. Anything else landing
+ * on identical per-100 g values means a query quietly fell through to a
+ * generic parent — how Butter chicken became plain chicken curry and Avocado
+ * toast became a bare avocado.
+ */
+const SHARED_ROWS = [
+  ['beef-carpaccio', 'beef-tartare'],       // both raw beef, differing only in cut
+  ['beignets', 'donuts'],                    // FNDDS has one fried-dough row
+  ['filet-mignon', 'steak'],
+  ['fried-rice', 'nasi-goreng'],
+  ['omelette', 'scrambled-eggs'],            // FNDDS scores them as one food
+  ['sashimi', 'tuna-tartare'],
+  ['plain-rice', 'onigiri'],                 // onigiri is shaped rice, nothing added
+];
+
+/**
+ * Prepared dishes that really are almost protein-free. Everything else in a
+ * cooked category must clear the floor.
+ */
+const LOW_PROTEIN_OK = new Set(['congee', 'tomato-soup', 'gazpacho', 'pho']);
+const COOKED_CATS = new Set(['flat', 'pile', 'sandwich', 'pastry', 'cake', 'meat', 'seafood', 'egg', 'soup']);
+const catById = Object.fromEntries(VOCABULARY.map((v) => [v.id, v.cat]));
+
 const problems = [];
 // 0. Coverage: a nutrient we advertise in the UI must actually have data. An
 // FNDDS name that resolves to no food rows (the `sugars` → "Sugars, Total"
@@ -274,6 +362,34 @@ for (const [id, f] of Object.entries(dbFoods)) {
   for (const [label, grams] of f.portions) {
     if (!(grams >= 1)) problems.push(`${id}: portion "${label}" weighs ${grams} g`);
   }
+  // 5. A cooked dish is made of something. Flour, egg, meat, pulses and dairy
+  // all carry protein, so a prepared food reporting almost none is not that
+  // food — it is a condiment or a syrup wearing its name.
+  if (COOKED_CATS.has(catById[id]) && !LOW_PROTEIN_OK.has(id) && protein < 1.5) {
+    problems.push(`${id}: ${protein} g protein per 100 g is too little for a ${catById[id]} dish [${f.fdcDesc}]`);
+  }
+}
+// 4. Two foods on identical numbers means one of them fell through to the
+// other's row. Declared pairs are exempt; anything new must be justified.
+const declared = new Set(SHARED_ROWS.flatMap((g) => g.flatMap((a) => g.map((b) => `${a}|${b}`))));
+const byFingerprint = new Map();
+for (const [id, f] of Object.entries(dbFoods)) {
+  const fp = JSON.stringify(f.per100g);
+  if (!byFingerprint.has(fp)) byFingerprint.set(fp, []);
+  byFingerprint.get(fp).push(id);
+}
+for (const ids of byFingerprint.values()) {
+  if (ids.length < 2) continue;
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      if (declared.has(`${ids[i]}|${ids[j]}`)) continue;
+      problems.push(`${ids[i]} and ${ids[j]} share identical nutrition — one fell through to the other's`
+        + ` row [${dbFoods[ids[i]].fdcDesc}]. Fix the query, or add the pair to SHARED_ROWS.`);
+    }
+  }
+}
+for (const group of SHARED_ROWS) {
+  for (const id of group) if (!dbFoods[id]) problems.push(`SHARED_ROWS names a food not in the DB: ${id}`);
 }
 for (const [id, [kcal, kTol, protein, pTol]] of Object.entries(GOLDEN)) {
   const f = dbFoods[id];
@@ -290,7 +406,8 @@ if (problems.length) {
   for (const p of problems) console.error('  ✗', p);
   process.exit(1);
 }
-console.log(`validation: Atwater + ranges (${Object.keys(dbFoods).length} foods) + ${Object.keys(GOLDEN).length} golden references — all pass`);
+console.log(`validation: Atwater + ranges (${Object.keys(dbFoods).length} foods) + ${Object.keys(GOLDEN).length} golden references`
+  + ` + shared-row and protein-floor checks — all pass`);
 
 const db = {
   version: '2024-10-31',

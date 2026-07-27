@@ -80,6 +80,14 @@ d('shipped database vs USDA FNDDS source', () => {
 
   const ids = Object.keys(db.foods);
 
+  // Foods whose per-100 g was corrected by the Claude cross-verification overlay
+  // no longer trace to a single FNDDS row — their provenance is the two-model
+  // consensus recorded in tools/data/claude-overlay.json, checked separately
+  // below. Everything else must still match FNDDS value-for-value.
+  const overlayPath = join(root, 'tools/data/claude-overlay.json');
+  const overlay = existsSync(overlayPath) ? JSON.parse(readFileSync(overlayPath, 'utf8')) : {};
+  const correctedIds = new Set(Object.entries(overlay).filter(([, o]) => o.per100g).map(([id]) => id));
+
   // A handful of dishes have no single FNDDS row that describes them as served
   // (see `mix` in tools/build-nutrition-db.mjs). Their values are still built
   // only from FNDDS rows, so they are checked against the recomputed mixture
@@ -109,6 +117,9 @@ d('shipped database vs USDA FNDDS source', () => {
       if (Math.abs(shares - 1) > 1e-9) bad.push(`${id}: mixture shares sum to ${shares}, not 1`);
       const src = mixedSource(mix);
       if (!src) { bad.push(`${id}: a mixture component is not an exact FNDDS description`); continue; }
+      // A corrected mixture still has to name real FNDDS rows that sum to a
+      // recipe (checked above), but its shipped values come from the overlay.
+      if (correctedIds.has(id)) continue;
       for (const [key, value] of Object.entries(db.foods[id].per100g)) {
         const expected = roundPer100g(src[key] ?? 0);
         if (value !== expected) bad.push(`${id}.${key}: db ${value} vs mixture ${expected}`);
@@ -132,7 +143,7 @@ d('shipped database vs USDA FNDDS source', () => {
   it('every per-100 g value equals its source amount exactly', () => {
     const bad = [];
     for (const id of ids) {
-      if (mixById.has(id)) continue; // checked against the recipe instead
+      if (mixById.has(id) || correctedIds.has(id)) continue; // recipe / overlay instead
       const src = srcNutrients.get(String(db.foods[id].fdcId)) ?? {};
       for (const [key, value] of Object.entries(db.foods[id].per100g)) {
         if (src[key] == null) { bad.push(`${id}.${key}=${value} has no source row`); continue; }
@@ -146,13 +157,35 @@ d('shipped database vs USDA FNDDS source', () => {
   it('no source nutrient is silently dropped', () => {
     const missing = [];
     for (const id of ids) {
-      if (mixById.has(id)) continue;
+      if (mixById.has(id) || correctedIds.has(id)) continue;
       const src = srcNutrients.get(String(db.foods[id].fdcId)) ?? {};
       for (const key of Object.keys(src)) {
         if (db.foods[id].per100g[key] == null) missing.push(`${id}.${key} (FNDDS has ${src[key]})`);
       }
     }
     expect(missing, missing.slice(0, 10).join('; ')).toEqual([]);
+  });
+
+  it('corrected foods trace exactly to the verification overlay', () => {
+    // The overlay records, per corrected food, the Sonnet and Opus estimates it
+    // was built from — so a corrected value is auditable, just to a two-model
+    // consensus rather than to one FNDDS row. The shipped number must equal what
+    // the overlay says, and must not drop a micronutrient FNDDS provided.
+    const bad = [];
+    for (const id of correctedIds) {
+      const shipped = db.foods[id].per100g;
+      const ov = overlay[id].per100g;
+      for (const [key, value] of Object.entries(ov)) {
+        const expected = roundPer100g(value);
+        if (shipped[key] !== expected) bad.push(`${id}.${key}: shipped ${shipped[key]} vs overlay ${expected}`);
+      }
+      // Micronutrients FNDDS carried must survive the correction.
+      const src = mixById.has(id) ? {} : (srcNutrients.get(String(db.foods[id].fdcId)) ?? {});
+      for (const key of Object.keys(src)) {
+        if (shipped[key] == null) bad.push(`${id}.${key} dropped by correction`);
+      }
+    }
+    expect(bad, bad.slice(0, 10).join('; ')).toEqual([]);
   });
 
   it('every advertised nutrient carries data for every food', () => {
