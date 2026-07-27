@@ -16,7 +16,13 @@
  * probe merely matches adds risk (it was trained on whole photographs, and the
  * pipeline also asks it about tight region crops) for no measured gain.
  *
- * Usage: node tools/select-trusted.mjs [--min-n 6] [--margin 0.15] [--write]
+ * Recall alone is not enough to earn trust, because trusting a class lets the
+ * probe override zero-shot whenever it *predicts* that class. So a class that
+ * knows its own photos well can still be a net loss if it also claims its
+ * neighbours': see the `--max-steal` gate below.
+ *
+ * Usage: node tools/select-trusted.mjs [--min-n 6] [--margin 0.15]
+ *                                      [--max-steal 0.5] [--write]
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -27,6 +33,12 @@ const APP = join(root, 'app/public/data');
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i < 0 ? d : Number(process.argv[i + 1]); };
 const MIN_N = arg('min-n', 6);
 const MARGIN = arg('margin', 0.15);
+/**
+ * How many right answers a class may steal, as a fraction of the ones it wins.
+ * 0.5 means: to be trusted, a class must win at least twice as many photos as it
+ * takes away from zero-shot. Set to 0 to admit only classes that steal nothing.
+ */
+const MAX_STEAL_RATIO = arg('max-steal', 0.5);
 const HOLDOUT = arg('holdout', 0.2);
 const SEED = arg('seed', 7);
 const WRITE = process.argv.includes('--write');
@@ -86,14 +98,26 @@ const zsTop = (i) => {
 };
 
 const stat = new Map();
+const bump = (label) => {
+  if (!stat.has(label)) stat.set(label, { n: 0, probe: 0, zs: 0, claimed: 0, stolen: 0 });
+  return stat.get(label);
+};
 for (let i = 0; i < rows.length; i++) {
   if (!held.has(rows[i].file)) continue;
   const label = rows[i].label;
-  if (!stat.has(label)) stat.set(label, { n: 0, probe: 0, zs: 0 });
-  const s = stat.get(label);
+  const s = bump(label);
   s.n++;
-  if (probeTop(i) === label) s.probe++;
+  const p = probeTop(i);
+  if (p === label) s.probe++;
   if (zsTop(i) === label) s.zs++;
+  // Precision, not just recall. Trusting a class lets the probe OVERRIDE
+  // zero-shot whenever it predicts that class — so the cost of trusting it is
+  // every photo it wrongly claims, not only the ones it gets right about
+  // itself. `claimed` counts every held-out photo the probe calls this class;
+  // `stolen` counts those where that was wrong AND zero-shot had it right.
+  const c = bump(p);
+  c.claimed++;
+  if (p !== label && zsTop(i) === label) c.stolen++;
 }
 
 // The only classes trained on hand-labelled region *crops*, so the only ones
@@ -101,25 +125,47 @@ for (let i = 0; i < rows.length; i++) {
 // learned was trained on whole photographs.
 const CROP_TRUSTED = ['coconut-chutney', 'green-chutney', 'sambar', 'tomato-chutney'];
 const rowsOut = [...stat.entries()]
-  .map(([label, s]) => ({ label, n: s.n, probe: s.probe / s.n, zs: s.zs / s.n, gap: s.probe / s.n - s.zs / s.n }))
+  .map(([label, s]) => ({
+    label,
+    n: s.n,
+    probe: s.n ? s.probe / s.n : 0,
+    zs: s.n ? s.zs / s.n : 0,
+    gap: s.n ? (s.probe - s.zs) / s.n : 0,
+    claimed: s.claimed,
+    stolen: s.stolen,
+  }))
   .sort((a, b) => b.gap - a.gap);
 
 // Classes where the probe clearly beats zero-shot on held-out *whole photos*.
 // These are only ever consulted on a full frame, never on a region crop, so
 // crop-transfer is not a concern for them — the held-out set is whole photos.
-const picked = rowsOut.filter((r) => r.n >= MIN_N && r.gap >= MARGIN).map((r) => r.label);
+//
+// The `stolen` gate is the one that matters and was missing. A recall-only
+// filter admitted `omelette`: the probe knows its own omelettes well, so its gap
+// looked good, but trusting it also handed it every golden-brown crepe zero-shot
+// had right. On a masala dosa that inflated omelette from 14% to 29% of the
+// whole-image read, and the region naming that leans on it then labelled the
+// dosa body an omelette — a phantom 11 g of protein on the plate. A class may
+// not be trusted if trusting it costs more right answers than it wins.
+const picked = rowsOut
+  .filter((r) => r.n >= MIN_N && r.gap >= MARGIN && r.stolen <= (r.probe - r.zs) * r.n * MAX_STEAL_RATIO)
+  .map((r) => r.label);
 const trusted = [...CROP_TRUSTED].sort();
 const trustedWhole = [...new Set([...CROP_TRUSTED, ...picked])].sort();
 
 console.log(`held-out photos: ${held.size}, classes scored: ${rowsOut.length}`);
-console.log(`selection: n >= ${MIN_N} and probe − zero-shot >= ${(MARGIN * 100).toFixed(0)} points\n`);
-console.log('class                      n   probe    zs     gap   whole-trusted');
+console.log(`selection: n >= ${MIN_N}, probe − zero-shot >= ${(MARGIN * 100).toFixed(0)} points,`
+  + ` and stolen <= ${MAX_STEAL_RATIO}× won\n`);
+console.log('class                      n   probe    zs     gap   won  stole  whole-trusted');
 for (const r of rowsOut) {
   const keep = trustedWhole.includes(r.label);
   if (!keep && r.gap <= 0 && r.gap > -MARGIN) continue; // quiet middle
+  const won = Math.round((r.probe - r.zs) * r.n);
+  const rejected = r.n >= MIN_N && r.gap >= MARGIN && !keep;
   console.log(
     `  ${r.label.padEnd(24)} ${String(r.n).padStart(3)}  ${(r.probe * 100).toFixed(0).padStart(4)}%  `
-    + `${(r.zs * 100).toFixed(0).padStart(4)}%  ${(r.gap * 100 >= 0 ? '+' : '') + (r.gap * 100).toFixed(0).padStart(4)}   ${keep ? 'YES' : ''}`,
+    + `${(r.zs * 100).toFixed(0).padStart(4)}%  ${(r.gap * 100 >= 0 ? '+' : '') + (r.gap * 100).toFixed(0).padStart(4)}`
+    + `  ${String(won).padStart(4)}  ${String(r.stolen).padStart(5)}   ${keep ? 'YES' : (rejected ? 'no — steals too much' : '')}`,
   );
 }
 console.log(`\ncrop-trusted classes:  ${trusted.length}  ${trusted.join(', ')}`);

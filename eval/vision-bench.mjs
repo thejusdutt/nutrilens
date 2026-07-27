@@ -108,6 +108,11 @@ export async function analyzePhoto(image, options = {}) {
     options,
   });
 
+  // `rawItems` keeps the region masks, which the summary below throws away.
+  // Absorption bugs — a filling inside a dish surviving as its own line — are
+  // only diagnosable with the masks in hand.
+  const rawItems = items;
+
   const named = items.map((it) => {
     const n = engine.forPortion(it.id, it.grams).nutrients;
     const v = (k) => n[k]?.value ?? 0;
@@ -128,6 +133,8 @@ export async function analyzePhoto(image, options = {}) {
   return {
     whole: whole.top.slice(0, 3).map((t) => `${t.id} ${(t.prob * 100).toFixed(0)}%`),
     items: named,
+    rawItems,
+    regions,
     plate: plate ? { confidence: Number(plate.confidence.toFixed(2)), used: plate.confidence >= 0.7 } : null,
     totals: {
       kcal: Math.round(sum('kcal')),
