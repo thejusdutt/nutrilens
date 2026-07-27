@@ -55,6 +55,8 @@ const FIELDS = {
 
 const KJ_PER_KCAL = 4.184;
 const round2 = (v) => Math.round(v * 100) / 100;
+/** Open Food Facts stores numbers as numbers or as strings, interchangeably. */
+const toNumber = (v) => (typeof v === 'string' ? parseFloat(v) : v);
 
 /**
  * Parse a serving size string into grams. Open Food Facts writes these by hand,
@@ -88,16 +90,36 @@ export function fromOffProduct(product, { barcode } = {}) {
   const nutriments = product.nutriments ?? {};
   const per100g = {};
 
+  // The bare `nutriments.<key>` is the value *as the contributor entered it*,
+  // in whatever basis `nutrition_data_per` names — so on a product labelled per
+  // serving it is a per-serving figure, and reading it as per-100 g overstates
+  // a 30 g portion threefold. Only `<key>_100g` is normalized. Fall back to the
+  // bare key when the basis is per 100 g; rescale it when the serving weight is
+  // known; otherwise leave the field out rather than log a guess.
+  const serving = parseServing(product.serving_size);
+  const perServing = product.nutrition_data_per === 'serving';
+  const bareToPer100g = perServing
+    ? (serving ? (v) => v * 100 / serving.grams : null)
+    : (v) => v;
+
   for (const [key, [offKey, scale]] of Object.entries(FIELDS)) {
-    const raw = nutriments[`${offKey}_100g`] ?? nutriments[offKey];
-    const value = typeof raw === 'string' ? parseFloat(raw) : raw;
+    let value = toNumber(nutriments[`${offKey}_100g`]);
+    if (!Number.isFinite(value)) {
+      const bare = toNumber(nutriments[offKey]);
+      value = Number.isFinite(bare) && bareToPer100g ? bareToPer100g(bare) : NaN;
+    }
     if (!Number.isFinite(value) || value < 0) continue;
     per100g[key] = round2(value * scale);
   }
 
   // Energy: prefer kcal, fall back to the kJ field every European label carries.
+  // Same basis rule as above — `energy` without the suffix is not normalized.
   if (per100g.kcal == null) {
-    const kj = nutriments['energy-kj_100g'] ?? nutriments.energy_100g ?? nutriments.energy;
+    let kj = toNumber(nutriments['energy-kj_100g'] ?? nutriments.energy_100g);
+    if (!Number.isFinite(kj)) {
+      const bare = toNumber(nutriments.energy);
+      kj = Number.isFinite(bare) && bareToPer100g ? bareToPer100g(bare) : NaN;
+    }
     if (Number.isFinite(kj) && kj > 0) per100g.kcal = round2(kj / KJ_PER_KCAL);
   }
   // Sodium is often absent while salt is present (salt = sodium × 2.5).
@@ -114,7 +136,6 @@ export function fromOffProduct(product, { barcode } = {}) {
   if (!name) return { ok: false, reason: 'product has no name' };
   const brand = (product.brands || '').split(',')[0].trim() || null;
 
-  const serving = parseServing(product.serving_size);
   const portions = [];
   if (serving) portions.push([serving.label, serving.grams]);
   portions.push(['100 g', 100]);

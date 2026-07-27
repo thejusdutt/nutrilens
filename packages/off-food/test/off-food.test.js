@@ -126,6 +126,62 @@ describe('rejecting untrustworthy records', () => {
   });
 });
 
+describe('per-serving records', () => {
+  // Contributors may enter a label per serving. Then `nutriments.proteins` is a
+  // per-serving figure and only `proteins_100g` is normalized — reading the
+  // bare key as per 100 g inflated a 25 g portion fourfold.
+  const perServing = (extra = {}) => ({
+    code: '1',
+    product_name: 'Crispbread',
+    serving_size: '25 g',
+    nutrition_data_per: 'serving',
+    nutriments: { 'energy-kcal': 90, proteins: 2.5, carbohydrates: 18, fat: 0.6, ...extra },
+  });
+
+  it('rescales bare values from the serving basis to 100 g', () => {
+    const { ok, food } = fromOffProduct(perServing());
+    expect(ok).toBe(true);
+    // 90 kcal per 25 g serving = 360 kcal per 100 g.
+    expect(food.per100g.kcal).toBeCloseTo(360, 1);
+    expect(food.per100g.protein).toBeCloseTo(10, 1);
+    expect(food.per100g.carbs).toBeCloseTo(72, 1);
+    expect(food.per100g.fat).toBeCloseTo(2.4, 1);
+  });
+
+  it('still prefers the normalized _100g field when both are present', () => {
+    const p = perServing();
+    p.nutriments['energy-kcal_100g'] = 375;
+    p.nutriments.proteins_100g = 9;
+    const { food } = fromOffProduct(p);
+    expect(food.per100g.kcal).toBe(375);
+    expect(food.per100g.protein).toBe(9);
+  });
+
+  it('drops the field rather than guess when the serving weight is unknown', () => {
+    const p = perServing();
+    p.serving_size = 'about one biscuit';
+    // No weight to rescale by, so nothing can be stated per 100 g.
+    expect(fromOffProduct(p)).toEqual({ ok: false, reason: 'product has no energy value' });
+  });
+
+  it('treats bare values as per 100 g when the label says so', () => {
+    const p = perServing();
+    p.nutrition_data_per = '100g';
+    const { food } = fromOffProduct(p);
+    expect(food.per100g.kcal).toBe(90);
+    expect(food.per100g.protein).toBe(2.5);
+  });
+
+  it('rescales the kJ fallback on the same basis', () => {
+    const p = perServing();
+    delete p.nutriments['energy-kcal'];
+    p.nutriments.energy = 380; // kJ per 25 g serving
+    const { food } = fromOffProduct(p);
+    // 380 kJ / 25 g → 1520 kJ per 100 g → 363 kcal
+    expect(food.per100g.kcal).toBeCloseTo(1520 / 4.184, 0);
+  });
+});
+
 describe('serving-size parsing', () => {
   it('reads a plain weight', () => {
     expect(parseServing('30 g')).toEqual({ grams: 30, label: '30 g' });
