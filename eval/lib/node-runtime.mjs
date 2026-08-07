@@ -12,15 +12,25 @@ import * as ort from 'onnxruntime-node';
 import {
   SwinFoodClassifier, ZeroShotFoodClassifier, FusionScorer, FoodRecognizer,
 } from '@nutrilens/food-recognition';
+import { ANALYSIS_SIDE } from '@nutrilens/image-preprocess';
 
 export const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
-/** Decode any image file/buffer to a RawImage (RGBA), EXIF-rotated. */
-export async function decodeImage(input, maxSide = 1280) {
+/**
+ * Decode any image file/buffer to a RawImage (RGBA), EXIF-rotated, at the one
+ * resolution the app analyses at.
+ *
+ * Resized in both directions on purpose. This used to only shrink, matching an
+ * older `maxSide` in the app, which meant the small web images most of the
+ * benchmark fixtures are went through the pipeline untouched while a real phone
+ * photo was always scaled down to the cap — so the harness was scoring a
+ * resolution no user ever supplies. See ANALYSIS_SIDE.
+ */
+export async function decodeImage(input, fitSide = ANALYSIS_SIDE) {
   const img = sharp(input).rotate();
   const meta = await img.metadata();
-  const scale = Math.min(1, maxSide / Math.max(meta.width, meta.height));
-  const pipeline = scale < 1 ? img.resize(Math.round(meta.width * scale)) : img;
+  const scale = fitSide / Math.max(meta.width, meta.height);
+  const pipeline = img.resize(Math.max(1, Math.round(meta.width * scale)));
   const { data, info } = await pipeline.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   return { data: new Uint8ClampedArray(data.buffer, data.byteOffset, data.byteLength), width: info.width, height: info.height };
 }

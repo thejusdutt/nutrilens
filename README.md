@@ -21,15 +21,18 @@ published numbers are always the ones the current code produces.
 
 | | measured |
 |---|---|
-| Calories inside the accepted band | 15 / 20 |
-| Calories within 25% | 19 / 20 |
-| Mean calorie error | 3.9% |
-| Dishes named correctly | 81.3% |
-| Dishes invented that were not there | 14 |
+| Calories inside the accepted band | 16 / 20 |
+| Calories within 25% | 18 / 20 |
+| Mean calorie error | 4.1% |
+| Dishes named correctly | 85.0% |
+| Dishes invented that were not there | 17 |
 
-Every one of those is deterministic: the same photo gives the same dishes and
-the same calories on every run. Time per photo is 11–32 s on a laptop CPU,
-depending on what else it is doing.
+Deterministic: one image file gives the same dishes and the same calories on
+every run. Every photo is analysed at one fixed resolution
+(`ANALYSIS_SIDE`, 1280 px) so the answer does not depend on the camera that
+took it — though a low-resolution *copy* of a photo still carries less
+information than the original and can be read differently. Time per photo is
+9–32 s on a laptop CPU, depending on what else it is doing.
 
 Before the accuracy rebuild, on the 19 plates that existed then: 10/19 inside
 the band, 13/19 within 25%, 31.7% mean calorie error, 54.7% of dishes named,

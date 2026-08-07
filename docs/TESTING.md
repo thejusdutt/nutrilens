@@ -81,17 +81,24 @@ send `Access-Control-Allow-Origin` or the app only sees "Failed to fetch".
 3. waits through model download → recognition → segmentation → portion →
    nutrition, polling visible UI state,
 4. asserts the top candidate, kcal > 0, ≥4 macro rows, ≥10 micro rows, the
-   non-food banner hidden, and the service worker registered,
+   non-food banner hidden, the service worker registered, **and that the photo
+   was analysed at `ANALYSIS_SIDE`** — `toRawImage` is browser-only, so this is
+   the only place that resize can be checked at all,
 5. saves to the diary and asserts the diary renders the entries,
 6. captures `eval/results/browser-smoke.png`.
 
-Verified on the beignets fixture: top-1 "Beignets", 440 kcal, 2 dishes, 25
-micronutrient rows, service worker active — PASS.
+Verified on the beignets fixture: top-1 "Beignets", 500 kcal, 2 dishes, 25
+micronutrient rows, analysed at 1280, service worker active — PASS.
 
 `npm run test:offline` proves the offline claim: prefetch the models online →
 force the browser fully offline (CDP emulation) → reload → the shell serves from
 cache → a complete analysis succeeds with zero network. Verified: PASS
-("Beignets, 440 kcal" offline).
+("Beignets, 500 kcal" offline).
+
+That fixture is 512 px and now reaches the pipeline at 1280, which is why both
+numbers moved from 440 kcal: the plate is the same two dishes (beignets and a
+café au lait the app names "Lassi"), measured off a larger canvas. The
+whole-image label is unaffected — 100% beignets at either size.
 
 All four browser layers share port 5199 and **reuse whatever is already serving
 it** rather than starting a second one, so run them one at a time. The catch is

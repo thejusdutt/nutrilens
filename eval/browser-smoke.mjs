@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
+import { ANALYSIS_SIDE } from '@nutrilens/image-preprocess';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -71,6 +72,15 @@ try {
     microRows: document.querySelectorAll('.micro-row').length,
     nonFoodHidden: document.getElementById('nonfood-warning').hidden,
     swRegistered: !!navigator.serviceWorker?.controller || null,
+    // The analysis resolution, read off the canvas the pipeline actually ran
+    // on. Pinned here because toRawImage is browser-only and no unit test can
+    // reach it: segmentation resolves more structure the more pixels it gets,
+    // so a photo analysed at its own size instead of a fixed one gives a
+    // different set of dishes depending on the camera that took it.
+    analysisSide: Math.max(
+      document.getElementById('photo-canvas').width,
+      document.getElementById('photo-canvas').height,
+    ),
   }));
   console.log(JSON.stringify(result, null, 2));
 
@@ -95,7 +105,10 @@ try {
 
   const ok = result.topCandidate?.toLowerCase().includes('beignet')
     && Number(result.kcal.replace(/,/g, '')) > 50 && result.macroRows >= 4 && result.microRows >= 10
-    && logged.entries >= 1 && Number(logged.food.replace(/\D/g, '')) > 0;
+    && logged.entries >= 1 && Number(logged.food.replace(/\D/g, '')) > 0
+    // The fixture is 512 px; if this reads 512 the resize is only shrinking
+    // again and the pipeline is back to answering per-camera.
+    && result.analysisSide === ANALYSIS_SIDE;
   console.log(ok ? 'BROWSER SMOKE PASS' : 'BROWSER SMOKE FAIL');
   process.exitCode = ok ? 0 : 1;
 } finally {

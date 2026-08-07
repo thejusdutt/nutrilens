@@ -3,7 +3,7 @@
  * navigation and settings. The diary, nutrition, progress, exercise and
  * my-food screens live in their own modules and are wired up at the bottom.
  */
-import { toRawImage, crop } from '@nutrilens/image-preprocess';
+import { toRawImage, crop, ANALYSIS_SIDE } from '@nutrilens/image-preprocess';
 import { overlayMask, outlineMask } from '@nutrilens/food-segmentation';
 import { PortionEstimator, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
@@ -222,7 +222,7 @@ async function startAnalysis(blob) {
   resetResultUI();
   $('save-slot').value = pendingSlot ?? suggestSlot();
   setSpinner('Preparing photo…');
-  state.raw = await toRawImage(blob, { maxSide: 1280 });
+  state.raw = await toRawImage(blob, { fitSide: ANALYSIS_SIDE });
   // Everything measured from the previous photo is now meaningless. Leaving
   // `seg` behind made runPortionEstimation reuse the old mask (it only
   // segments when seg is empty), and leaving `plate` behind let a plate from

@@ -14,7 +14,8 @@ raw RGBA buffer.
 
 | Function | Purpose |
 |---|---|
-| `toRawImage(source, {maxSide})` | Browser-only decode of Blob/File/Image/Canvas/ImageBitmap → RawImage, EXIF-rotated |
+| `toRawImage(source, {fitSide})` | Browser-only decode of Blob/File/Image/Canvas/ImageBitmap → RawImage, EXIF-rotated, resized to one fixed longest side |
+| `ANALYSIS_SIDE` | The longest side an ML pipeline should analyse at (1280) |
 | `resizeBilinear(img, w, h)` | Bilinear resample (half-pixel centers, PIL-compatible) |
 | `resizeBicubic(img, w, h)` | Catmull-Rom bicubic (matches training-time PIL BICUBIC; use for ViT/Swin models) |
 | `resizeShortestSide(img, s)` | Aspect-preserving resize (CLIP-style) |
@@ -28,9 +29,16 @@ raw RGBA buffer.
 ## Example
 
 ```js
-import { toRawImage, resizeBicubic, toTensor } from '@nutrilens/image-preprocess';
+import {
+  toRawImage, resizeBicubic, toTensor, ANALYSIS_SIDE,
+} from '@nutrilens/image-preprocess';
 
-const raw = await toRawImage(file, { maxSide: 1280 });
+// `fitSide` resizes up as well as down, so a 4000 px phone photo and a 500 px
+// image saved off a web page both reach the model at the same scale. Prefer it
+// to `maxSide`, which only shrinks: segmentation resolves more structure the
+// more pixels it gets, so a shrink-only cap makes the answer depend on the
+// camera. `maxSide` is kept for callers that only want a memory bound.
+const raw = await toRawImage(file, { fitSide: ANALYSIS_SIDE });
 const t = toTensor(resizeBicubic(raw, 224, 224), {
   mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225],
 });

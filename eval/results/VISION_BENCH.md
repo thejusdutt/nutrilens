@@ -13,14 +13,14 @@ overfitting to these 20 photos.
 | metric | value |
 |---|---|
 | images | 20 |
-| dish recall | 81.3% |
-| spurious dishes | 14 (9 images affected) |
-| kcal mean abs error | 3.9% (in band 15/20, within 25% 19/20) |
-| carbs mean abs error | 6.2% (in band 15/20, within 25% 18/20) |
-| protein mean abs error | 6.6% (in band 17/20, within 25% 17/20) |
-| fat mean abs error | 3.5% (in band 16/20, within 25% 19/20) |
-| grams mean abs error | 7.4% (in band 15/20, within 25% 19/20) |
-| median time per photo | 8.8 s |
+| dish recall | 85.0% |
+| spurious dishes | 17 (11 images affected) |
+| kcal mean abs error | 4.1% (in band 16/20, within 25% 18/20) |
+| carbs mean abs error | 6.8% (in band 14/20, within 25% 18/20) |
+| protein mean abs error | 6.4% (in band 16/20, within 25% 17/20) |
+| fat mean abs error | 1.9% (in band 18/20, within 25% 20/20) |
+| grams mean abs error | 9.2% (in band 15/20, within 25% 18/20) |
+| median time per photo | 24.4 s |
 
 Every row but the last is deterministic — the same photo gives the same
 dishes, the same grams and the same calories on every run. The time is only
@@ -31,26 +31,26 @@ laptop the median ranged from 11 s to 32 s a photo.
 
 | photo | reported | accepted band | dishes found | what it logged |
 |---|---|---|---|---|
-| dosa-thali | 380 kcal | 320–560 | 3/3 | Dosa (plain) 44 g + Coconut chutney 54 g + Sambar 192 g |
-| masala-dosa | 416 kcal | 340–660 | 3/3 | Coconut chutney 23 g + Tomato chutney 20 g + Sambar 88 g + Masala dosa 146 g |
-| masala-dosa-cropped-bowls | 424 kcal | 330–520 | 2/2 | Masala dosa 200 g + Peanut chutney 22 g |
-| idli-vada-thali | 502 kcal | 560–980 | 3/4 | Idli 146 g + Vada 85 g + Sambar 127 g |
-| sliders-watermelon | 806 kcal | 520–950 | 1/1 | Crab cakes 79 g + Hamburger 197 g + Watermelon 138 g |
+| dosa-thali | 380 kcal | 320–560 | 3/3 | Sambar 192 g + Coconut chutney 54 g + Dosa (plain) 44 g |
+| masala-dosa | 529 kcal | 340–660 | 3/3 | Masala dosa 127 g + Dosa (plain) 68 g + Sambar 91 g + Tomato chutney 21 g + Coconut chutney 24 g |
+| masala-dosa-cropped-bowls | 382 kcal | 330–520 | 2/2 | Peanut chutney 14 g + Masala dosa 75 g + Omelette 113 g |
+| idli-vada-thali | 409 kcal | 560–980 | 2/4 | Idli 136 g + Vada 97 g |
+| sliders-watermelon | 1061 kcal | 520–950 | 1/1 | Hamburger 241 g + Crab cakes 75 g + Sashimi 63 g + Garlic bread 26 g |
 | fried-rice-bowl | 522 kcal | 350–780 | 1/1 | Fried rice 300 g |
 | dal-bowl | 461 kcal | 230–500 | 1/1 | Dal 318 g |
-| north-indian-thali | 809 kcal | 900–2000 | 1/2 | Poori 110 g + Orange juice 250 g + Chana masala 88 g + Onion chutney 14 g + Ice cream 40 g |
+| north-indian-thali | 813 kcal | 900–2000 | 1/2 | Poori 111 g + Ice cream 40 g + Onion chutney 14 g + Chana masala 88 g + Orange juice 250 g |
 | pizza-detroit | 649 kcal | 330–1050 | 1/1 | Pizza 244 g |
-| paratha-pan | 560 kcal | 160–420 | 1/1 | Paratha 32 g + Kheer 286 g |
-| samosa-chutney | 312 kcal | 400–800 | 2/2 | Samosa 72 g + Miso soup 152 g + Chutney (sweet) 16 g + Green chutney 23 g |
-| biryani-pan | 219 kcal | 150–480 | 0/1 | Onion chutney 44 g + Poha 104 g |
-| collage-pizza-salad-fries | 715 kcal | 700–1500 | 3/3 | Caesar salad 72 g + French fries 53 g + Pizza 183 g |
-| caesar-plate | 326 kcal | 180–480 | 1/1 | Trifle 64 g + Caesar salad 144 g |
-| pancakes-berries | 868 kcal | 380–850 | 1/1 | Pancakes 215 g + Panna cotta 120 g |
-| enchiladas-queso | 510 kcal | 350–800 | 0/1 | Chilaquiles 163 g + Gnocchi 108 g |
+| paratha-pan | 560 kcal | 160–420 | 1/1 | Kheer 286 g + Paratha 32 g |
+| samosa-chutney | 499 kcal | 400–800 | 2/2 | Samosa 110 g + Chutney (sweet) 43 g + Miso soup 160 g + Green chutney 22 g |
+| biryani-pan | 362 kcal | 150–480 | 1/1 | Poha 81 g + Biryani 120 g + Onion chutney 14 g |
+| collage-pizza-salad-fries | 715 kcal | 700–1500 | 3/3 | Pizza 183 g + French fries 53 g + Caesar salad 72 g |
+| caesar-plate | 459 kcal | 180–480 | 1/1 | Caesar salad 136 g + Sandwich 88 g |
+| pancakes-berries | 615 kcal | 380–850 | 1/1 | Pancakes 218 g |
+| enchiladas-queso | 538 kcal | 350–800 | 0/1 | Chilaquiles 276 g |
 | naan-closeup | 358 kcal | 220–560 | 1/1 | Naan 115 g |
 | momos-chutney | 415 kcal | 230–620 | 1/1 | Dumplings 209 g |
-| tortilla-espanola | 366 kcal | 280–720 | 1/1 | Tortilla española 213 g |
-| kungpao-rice | 718 kcal | 400–800 | 0/2 | Sweet and sour pork 176 g + General Tso chicken 88 g |
+| tortilla-espanola | 463 kcal | 280–720 | 1/1 | Tortilla española 230 g + Orange juice 142 g |
+| kungpao-rice | 712 kcal | 400–800 | 0/2 | Sweet and sour pork 174 g + General Tso chicken 88 g |
 
 <!-- /generated: everything below is written by hand -->
 
@@ -61,6 +61,70 @@ altered probe — a partial measurement that still reads like the full one is
 worse than a stale one.
 
 `masala-dosa-cropped-bowls` is a user-supplied photo rather than a fetched one.
+
+## 2026-08-07: the photos are now the size the app analyses
+
+Every number above moved, and none of it was the pipeline. The inputs changed.
+
+A user reported a masala dosa logged as *Omelette 97 g + Masala dosa 260 g +
+Peanut chutney 35 g*, 746 kcal, where the benchmark said 424 kcal and two
+dishes. Both were right about their own input. The same photo, run at four
+source widths:
+
+| source | logged |
+|---|---|
+| 499 px | 424 kcal — Masala dosa 200 g + Peanut chutney 22 g |
+| 720 px | 521 kcal — Masala dosa 235 g + Peanut chutney 35 g |
+| 1000 px | 406 kcal — **Omelette 114 g** + Masala dosa 80 g + Peanut chutney 19 g |
+| 1280 px | 382 kcal — **Omelette 113 g** + Masala dosa 75 g + Peanut chutney 14 g |
+
+Segmentation resolves finer structure the more pixels it is given, so above
+about 1000 px the dosa's potato filling becomes its own region and is named
+omelette, while the dosa's own mass falls 200 g → 75 g. The app capped the
+longest side at 1280 but only ever *shrank*: a phone photo (4000 px) was always
+scaled to the cap, and a picture saved off a web page (500 px) went through
+untouched. The answer depended on the camera.
+
+`toRawImage` now resizes to `ANALYSIS_SIDE` in both directions and the harness
+decodes the same way. 1280 rather than a smaller figure because for any photo
+already at least that large — every phone photo — it is arithmetically the same
+operation as the old cap, so real-photo behaviour is provably unchanged. 1024
+was measured too: better calories (in band 17/20, mean error 1.3%) against
+worse recall (73.8%).
+
+**Thirteen of the twenty fixtures were below 1280**, so the old figures
+described a resolution no user ever supplies. Against them, honestly:
+
+| | old, mixed sizes | now, all at 1280 |
+|---|---|---|
+| dish recall | 81.3% | **85.0%** |
+| calories in band | 15/20 | **16/20** |
+| calories within 25% | 19/20 | 18/20 |
+| spurious dishes | 14 | 17 |
+
+Recall and in-band improved; within-25% and invented dishes got worse. The
+spurious count is the honest cost of the extra resolution — the omelette on
+this dosa is now found on every run instead of only on sharp uploads, which is
+the point: it is a real weakness and it is now measured rather than hidden by a
+downscaled fixture.
+
+### What this does not fix
+
+Normalising the geometry removed the camera as a variable. It did not make the
+pipeline resolution-invariant, and it cannot: upscaling a 499 px image to 1280
+produces a blurry 1280 image, not the information a native one carries. The same
+photo from four different source files, all now analysed at 1280×1267, still
+gives 378–425 kcal — a spread of 47 kcal against 139 before, so the variance is
+**3× smaller, not gone**.
+
+Determinism is unaffected: one file gives one answer, every time. What varies is
+which *copy* of a photo you start from.
+
+The remaining lead is the filling-as-a-dish failure itself. `containedFraction`
+exists to absorb a region sitting inside another dish and does not fire here.
+Note that the naive form of that fix was already tried and reverted — see the
+chutney case below, where absorbing by bounding box swallowed the chutney and
+the sambar into the dosa.
 
 ## Reading a change in these numbers
 

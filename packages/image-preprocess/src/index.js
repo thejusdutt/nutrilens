@@ -17,11 +17,26 @@
 // ---------------------------------------------------------------------------
 
 /**
+ * The size every photo is analysed at, longest side in pixels.
+ *
+ * Fixed, and applied in both directions, because segmentation resolves finer
+ * structure the more pixels it is given: the same dosa at 499 px is one dish
+ * and at 1000 px is a dosa plus a separate "omelette" where its potato filling
+ * is, with the dosa's own mass falling 200 g → 80 g. Left to `maxSide` alone,
+ * which only ever shrinks, a phone photo (4000 px, capped to this) and a
+ * picture saved off a web page (500 px, untouched) went down different paths —
+ * so the answer depended on the camera rather than the food.
+ */
+export const ANALYSIS_SIDE = 1280;
+
+/**
  * Decode any browser image source into a RawImage.
  * Applies EXIF orientation (via createImageBitmap) so phone photos are upright.
  *
  * @param {Blob|File|HTMLImageElement|HTMLCanvasElement|ImageBitmap|ImageData} source
- * @param {{maxSide?: number}} [opts] Downscale so max(width,height) <= maxSide (saves memory before ML resize).
+ * @param {{maxSide?: number, fitSide?: number}} [opts] `maxSide` only shrinks;
+ *   `fitSide` resizes to exactly that longest side, up or down, so the pipeline
+ *   sees one resolution whatever the camera produced. Prefer `fitSide`.
  * @returns {Promise<RawImage>}
  */
 export async function toRawImage(source, opts = {}) {
@@ -31,7 +46,11 @@ export async function toRawImage(source, opts = {}) {
   const bitmapOpts = { imageOrientation: 'from-image' };
   const bitmap = source instanceof ImageBitmap ? source : await createImageBitmap(source, bitmapOpts);
   let { width, height } = bitmap;
-  if (opts.maxSide && Math.max(width, height) > opts.maxSide) {
+  if (opts.fitSide) {
+    const s = opts.fitSide / Math.max(width, height);
+    width = Math.max(1, Math.round(width * s));
+    height = Math.max(1, Math.round(height * s));
+  } else if (opts.maxSide && Math.max(width, height) > opts.maxSide) {
     const s = opts.maxSide / Math.max(width, height);
     width = Math.round(width * s);
     height = Math.round(height * s);
