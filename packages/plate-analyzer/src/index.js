@@ -660,6 +660,23 @@ export async function buildPlate({
   // back weighing 40% of a serving — by the time you look at grams the
   // evidence that it was a speck is gone.
   const biggest = Math.max(0, ...items.map((it) => it.region?.areaPx ?? 0));
-  return items.filter((it) => it.grams >= o.minItemGrams
+  const kept = items.filter((it) => it.grams >= o.minItemGrams
     && (it.region?.areaPx ?? biggest) >= biggest * o.minAreaShare);
+
+  // Biggest dish first, and defined at all.
+  //
+  // Order used to be whatever order the regions were proposed in, which is not
+  // a property of the plate: the beignets fixture came back "Beignets + Lassi"
+  // at 512 px and "Lassi + Beignets" at 1280 px — the same two dishes and the
+  // same total, listed the other way round. The UI numbers these onto the photo
+  // and the first one supplies the diary thumbnail, so the order is visible and
+  // ought to mean something. Area is the same notion of importance the garnish
+  // filter just used, and it survives a change of resolution because scaling
+  // moves every region together.
+  //
+  // Probability then id break ties, so two equal-area regions cannot swap
+  // between runs.
+  return kept.sort((a, b) => (b.region?.areaPx ?? 0) - (a.region?.areaPx ?? 0)
+    || b.prob - a.prob
+    || a.id.localeCompare(b.id));
 }

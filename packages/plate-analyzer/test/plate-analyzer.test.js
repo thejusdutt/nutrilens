@@ -426,6 +426,23 @@ describe('buildPlate', () => {
     expect(items.map((i) => i.id)).toEqual(['dosa']); // merged, and not "tempura"
   });
 
+  it('lists the biggest dish first, whatever order the regions arrived in', async () => {
+    // Order used to be proposal order, which is not a property of the plate:
+    // the beignets fixture came back "Beignets + Lassi" at 512 px and "Lassi +
+    // Beignets" at 1280 px — same dishes, same total, listed the other way
+    // round. The UI numbers these onto the photo and the first one supplies the
+    // diary thumbnail, so the order is visible and has to be defined.
+    const small = region(2, 2, 20, 20);      // 324 px, proposed first
+    const big = region(50, 50, 96, 96);      // 2116 px, proposed second
+    const items = await buildPlate({
+      ...base,
+      regions: [small, big],
+      imageTop: [{ id: 'dosa', prob: 0.5 }, { id: 'sambar', prob: 0.4 }],
+      classify: classifySequence(looksLike('dosa'), looksLike('sambar')),
+    });
+    expect(items.map((i) => i.id)).toEqual(['sambar', 'dosa']);
+  });
+
   it('keeps two real dishes as two diary lines', async () => {
     const items = await buildPlate({
       ...base,
