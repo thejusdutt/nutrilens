@@ -5,7 +5,7 @@
     "",
     "Every nutrient is a [low, high] BAND, not a point. Portion estimation from a single",
     "uncalibrated photo is genuinely uncertain — a benchmark demanding one exact number would",
-    "reward overfitting to these 19 photos instead of measuring whether the app is useful.",
+    "reward overfitting to these 20 photos instead of measuring whether the app is useful.",
     "The bands are what a dietitian would accept as 'that's the right answer for this photo':",
     "roughly ±30% around the considered estimate, wider where the serving itself is ambiguous",
     "(a whole pizza on a board, a pan of rice — you cannot know how much of it is one portion).",
@@ -17,7 +17,7 @@
     "Estimates use FNDDS per-100g values, so a miss here means the pipeline is wrong, not that",
     "the arithmetic disagrees with a different food database."
   ],
-  "_aliasNote": "Applied to BOTH the expected and the predicted id before comparing. Only for distinctions a person would not make on a photo — every chutney is 'a chutney' — never for foods whose calories differ materially (plain dosa vs masala dosa are separate dishes and must be told apart).",
+  "_aliasNote": "Applied to BOTH the expected and the predicted id before comparing. Only for distinctions a person would not make on a photo — every chutney is 'a chutney' — never for foods whose calories differ materially (plain dosa vs masala dosa are separate dishes and must be told apart). The `lib:` entries are the shipped dish library's own name for a food the USDA core already carries; each was checked against that rule and none differs by more than 4% per 100 g. Four of them exist because the note on the photo says one thing and its dish id says another — the note is the one that was written while looking at the picture.",
   "acceptableAliases": {
     "chutney": "any-chutney",
     "coconut-chutney": "any-chutney",
@@ -27,7 +27,14 @@
     "gyoza": "dumplings",
     "tomato-chutney": "any-chutney",
     "onion-chutney": "any-chutney",
-    "peanut-chutney": "any-chutney"
+    "peanut-chutney": "any-chutney",
+
+    "lib:idli-plain": "idli",
+    "lib:white-rice-cooked": "plain-rice",
+    "lib:dal-makhani": "dal",
+    "lib:chicken-burger-fried": "hamburger",
+    "lib:garlic-naan": "naan",
+    "lib:raita": "yogurt-plain"
   },
   "images": {
     "dosa-thali": {

@@ -1,7 +1,7 @@
 {
   "options": {
     "globalPrior": 0.7,
-    "priorFloor": 0.002,
+    "priorFloor": 0.0025,
     "minItemProb": 0.18,
     "maxItems": 10,
     "dedupeOverlap": 0.55,
@@ -28,7 +28,7 @@
     "dishRecall": 81.25,
     "spurious": 14,
     "spuriousImages": 9,
-    "medianMs": 31901,
+    "medianMs": 8784,
     "fields": {
       "kcal": {
         "meanAbs": 3.8959617180205415,
@@ -60,7 +60,7 @@
   "rows": [
     {
       "key": "dosa-thali",
-      "ms": 59492,
+      "ms": 8503,
       "found": 3,
       "wanted": 3,
       "dishRecall": 1,
@@ -152,7 +152,7 @@
             "id": "sambar",
             "name": "Sambar",
             "grams": 192,
-            "prob": 0.659,
+            "prob": 0.662,
             "method": "plate-scale",
             "sizeFactor": 1.28,
             "single": false,
@@ -179,7 +179,7 @@
     },
     {
       "key": "masala-dosa",
-      "ms": 51300,
+      "ms": 8784,
       "found": 3,
       "wanted": 3,
       "dishRecall": 1,
@@ -313,7 +313,7 @@
     },
     {
       "key": "masala-dosa-cropped-bowls",
-      "ms": 44451,
+      "ms": 7526,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -418,7 +418,7 @@
     },
     {
       "key": "idli-vada-thali",
-      "ms": 44309,
+      "ms": 12630,
       "found": 3,
       "wanted": 4,
       "dishRecall": 0.75,
@@ -543,7 +543,7 @@
     },
     {
       "key": "sliders-watermelon",
-      "ms": 31901,
+      "ms": 9903,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -661,7 +661,7 @@
     },
     {
       "key": "fried-rice-bowl",
-      "ms": 17215,
+      "ms": 6062,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -742,7 +742,7 @@
     },
     {
       "key": "dal-bowl",
-      "ms": 17831,
+      "ms": 6407,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -823,7 +823,7 @@
     },
     {
       "key": "north-indian-thali",
-      "ms": 32488,
+      "ms": 11078,
       "found": 1,
       "wanted": 2,
       "dishRecall": 0.5,
@@ -990,7 +990,7 @@
     },
     {
       "key": "pizza-detroit",
-      "ms": 38199,
+      "ms": 10747,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1072,7 +1072,7 @@
     },
     {
       "key": "paratha-pan",
-      "ms": 23411,
+      "ms": 7199,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1170,7 +1170,7 @@
     },
     {
       "key": "samosa-chutney",
-      "ms": 29423,
+      "ms": 8899,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -1245,7 +1245,7 @@
             "id": "miso-soup",
             "name": "Miso soup",
             "grams": 152,
-            "prob": 0.929,
+            "prob": 0.93,
             "method": "frame-scale",
             "sizeFactor": 0.51,
             "single": false,
@@ -1260,7 +1260,7 @@
             "id": "chutney",
             "name": "Chutney (sweet)",
             "grams": 16,
-            "prob": 0.84,
+            "prob": 0.819,
             "method": "frame-scale",
             "sizeFactor": 0.52,
             "single": false,
@@ -1275,7 +1275,7 @@
             "id": "green-chutney",
             "name": "Green chutney",
             "grams": 23,
-            "prob": 0.678,
+            "prob": 0.651,
             "method": "frame-scale",
             "sizeFactor": 0.75,
             "single": false,
@@ -1302,7 +1302,7 @@
     },
     {
       "key": "biryani-pan",
-      "ms": 20719,
+      "ms": 6543,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -1362,7 +1362,7 @@
             "id": "onion-chutney",
             "name": "Onion chutney",
             "grams": 44,
-            "prob": 0.504,
+            "prob": 0.477,
             "method": "plate-scale",
             "sizeFactor": 1.26,
             "single": false,
@@ -1404,7 +1404,7 @@
     },
     {
       "key": "collage-pizza-salad-fries",
-      "ms": 21782,
+      "ms": 6863,
       "found": 3,
       "wanted": 3,
       "dishRecall": 1,
@@ -1523,7 +1523,7 @@
     },
     {
       "key": "caesar-plate",
-      "ms": 30526,
+      "ms": 9843,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1621,7 +1621,7 @@
     },
     {
       "key": "pancakes-berries",
-      "ms": 29333,
+      "ms": 8602,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1697,7 +1697,7 @@
             "id": "panna-cotta",
             "name": "Panna cotta",
             "grams": 120,
-            "prob": 0.578,
+            "prob": 0.59,
             "method": "serving-prior",
             "sizeFactor": 1,
             "single": false,
@@ -1724,7 +1724,7 @@
     },
     {
       "key": "enchiladas-queso",
-      "ms": 33414,
+      "ms": 8655,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -1825,7 +1825,7 @@
     },
     {
       "key": "naan-closeup",
-      "ms": 21693,
+      "ms": 6605,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1906,7 +1906,7 @@
     },
     {
       "key": "momos-chutney",
-      "ms": 46191,
+      "ms": 13052,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1992,7 +1992,7 @@
     },
     {
       "key": "tortilla-espanola",
-      "ms": 34434,
+      "ms": 9468,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -2073,7 +2073,7 @@
     },
     {
       "key": "kungpao-rice",
-      "ms": 27963,
+      "ms": 9330,
       "found": 0,
       "wanted": 2,
       "dishRecall": 0,
@@ -2137,7 +2137,7 @@
             "id": "sweet-and-sour-pork",
             "name": "Sweet and sour pork",
             "grams": 176,
-            "prob": 0.746,
+            "prob": 0.756,
             "method": "plate-scale",
             "sizeFactor": 0.7,
             "single": false,

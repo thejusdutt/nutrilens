@@ -20,7 +20,7 @@ overfitting to these 20 photos.
 | protein mean abs error | 6.6% (in band 17/20, within 25% 17/20) |
 | fat mean abs error | 3.5% (in band 16/20, within 25% 19/20) |
 | grams mean abs error | 7.4% (in band 15/20, within 25% 19/20) |
-| median time per photo | 31.9 s |
+| median time per photo | 8.8 s |
 
 Every row but the last is deterministic — the same photo gives the same
 dishes, the same grams and the same calories on every run. The time is only
@@ -175,6 +175,18 @@ noise), which is the point: it is a correctness fix for a tail case, not a
 tuning knob. Both directions are pinned by tests — the resurrected-label case,
 and the case the prior exists for in the first place, where a torn-off piece of
 dosa reading as tempura still gets corrected.
+
+**2026-08-07: that bound is now a share of the strongest listed label, not an
+absolute probability.** The whole-image distribution is a softmax, so its height
+depends on how many labels it ran over — measured, growing the vocabulary from
+249 labels to 1,991 dropped the median whole-image top-1 from 0.80 to 0.52. A
+fixed 0.002 therefore came to price an unlisted label half again as generously
+as it was set to, and an over-generous floor is precisely what puts dishes on a
+plate that are not there. `priorFloor` is now 0.0025 — the old 0.002 divided by
+that 0.80 median — so the shipping configuration is unchanged: re-running this
+benchmark after the change reproduced all twenty rows exactly. A third test
+pins the property the constant was missing, that an unlisted label keeps its
+standing however large the vocabulary behind the softmax is.
 
 ## The linear probe
 

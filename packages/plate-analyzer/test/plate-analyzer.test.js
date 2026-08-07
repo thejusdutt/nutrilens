@@ -128,6 +128,30 @@ describe('fuseWithGlobal', () => {
     const unsure = [{ id: 'tempura', prob: 0.4 }, { id: 'dosa', prob: 0.33 }];
     expect(fuseWithGlobal(unsure, imageTop, 0.55, DEFAULTS.priorFloor)[0].id).toBe('dosa');
   });
+
+  it('prices an unlisted label the same however many labels the softmax ran over', () => {
+    // The whole-image distribution is a softmax, so its height depends on the
+    // size of the vocabulary behind it — the same photo over 1,991 labels is
+    // flatter than over 249. An absolute floor would quietly become more
+    // generous as the vocabulary grew and start inventing dishes; a floor
+    // expressed as a share of the strongest label does not.
+    const region = [{ id: 'chutney', prob: 0.3 }, { id: 'dosa', prob: 0.28 }];
+    // The tail has to run near zero, or the "quarter of the smallest listed"
+    // bound wins and the floor never comes into it.
+    const peaked = [{ id: 'dosa', prob: 0.80 }, { id: 'samosa', prob: 0.10 }, { id: 'idli', prob: 0.0001 }];
+    // Same photo, same ranking, a vocabulary 8x larger: every probability is
+    // scaled down together.
+    const flat = peaked.map((t) => ({ ...t, prob: t.prob * 0.65 }));
+
+    const ratioOf = (list) => {
+      const [a, b] = fuseWithGlobal(region, list, 0.55, DEFAULTS.priorFloor);
+      return a.prob / b.prob;
+    };
+    // The unlisted label's standing against the listed one must not move.
+    // Relative, not absolute: the EPS guarding the logs is a fixed 1e-9 and so
+    // does not scale with the rest, leaving a residual around 1e-7.
+    expect(Math.abs(ratioOf(flat) / ratioOf(peaked) - 1)).toBeLessThan(1e-5);
+  });
 });
 
 describe('mergeSameFood', () => {

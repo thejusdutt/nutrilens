@@ -35,11 +35,15 @@ export const DEFAULTS = {
    */
   globalPrior: 0.7,
   /**
-   * Smallest probability the prior will assign a label the whole-image top-k
-   * did not list. See fuseWithGlobal — without a bound this collapses to near
-   * zero whenever that list has a near-zero tail.
+   * Smallest share of the strongest whole-image label that the prior will
+   * assign a label that top-k did not list. See fuseWithGlobal — without a
+   * bound this collapses to near zero whenever that list has a near-zero tail,
+   * and as a fixed probability it would drift every time the vocabulary
+   * changed size. 0.0025 is the absolute 0.002 this replaces, divided by the
+   * 0.80 median whole-image top-1 measured over the benchmark at 249 labels,
+   * so the shipping configuration is unchanged on the average photo.
    */
-  priorFloor: 0.002,
+  priorFloor: 0.0025,
   /** Min fused probability for a region to become an item. */
   minItemProb: 0.18,
   /**
@@ -325,7 +329,18 @@ export function fuseWithGlobal(
   // frame is *always* unlisted. That is how a bowl the region called coconut
   // chutney at 0.49 came back as dosa: dosa sat at 0.03 in the region and 0.12
   // in the image, and the floor did the rest.
-  const floor = Math.max(Math.min(...imageTop.map((t) => t.prob)) * 0.25, priorFloor);
+  //
+  // That bound is a *fraction of the strongest listed label*, not an absolute
+  // probability, because the whole-image distribution is a softmax whose height
+  // depends on how many labels it ran over. An absolute floor silently changes
+  // meaning when the vocabulary grows: measured, going from 249 labels to 1,991
+  // dropped the median whole-image top-1 from 0.80 to 0.52, so a fixed 0.002
+  // came to price an unlisted label half again as generously as it was set to —
+  // and an over-generous floor is exactly what puts dishes on a plate that are
+  // not there. Anchored to the maximum, the floor means the same thing at any
+  // vocabulary size.
+  const probs = imageTop.map((t) => t.prob);
+  const floor = Math.max(Math.min(...probs) * 0.25, Math.max(...probs) * priorFloor);
   const scored = regionTop.map((t) => ({
     ...t,
     score: Math.log(t.prob + EPS) + lambda * Math.log((global.get(t.id) ?? floor) + EPS),
