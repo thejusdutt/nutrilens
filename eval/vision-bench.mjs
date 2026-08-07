@@ -17,8 +17,13 @@
  * is inherently uncertain and a benchmark that demands a single number would
  * reward overfitting.
  *
+ * A full run in the shipping configuration rewrites the tables in
+ * eval/results/VISION_BENCH.md and the whole of eval/results/vision-bench.json.
+ * Any other run only prints, so an experiment cannot leave its numbers behind
+ * under the name of the shipped ones.
+ *
  * Usage:
- *   node eval/vision-bench.mjs                 # score every image
+ *   node eval/vision-bench.mjs                 # score every image, write the report
  *   node eval/vision-bench.mjs --only 'dosa|idli'  # regex filter on the image key
  *   node eval/vision-bench.mjs --json out.json # machine-readable results
  *   node eval/vision-bench.mjs --set globalPrior=0 --set mergeSameFood=false
@@ -162,11 +167,12 @@ function bandError(value, band) {
 const pct = (x) => (x == null ? '   —  ' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`.padStart(6));
 
 const rows = [];
+const skipped = [];
 const entries = Object.entries(truth.images).filter(([k]) => !only || new RegExp(only, 'i').test(k));
 
 for (const [key, spec] of entries) {
   const file = join(root, spec.file);
-  if (!existsSync(file)) { console.warn(`skip ${key}: ${spec.file} missing`); continue; }
+  if (!existsSync(file)) { console.warn(`skip ${key}: ${spec.file} missing`); skipped.push(key); continue; }
   const image = await decodeImage(readFileSync(file));
   const t0 = Date.now();
   const got = await analyzePhoto(image, overrides);
@@ -190,6 +196,8 @@ for (const [key, spec] of entries) {
   rows.push({
     key,
     ms,
+    found: hit.length,
+    wanted: wantIds.size,
     dishRecall: hit.length / wantIds.size,
     missed,
     spurious,
@@ -218,26 +226,147 @@ for (const [key, spec] of entries) {
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
+const FIELDS = ['kcal', 'carbs', 'protein', 'fat', 'grams'];
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const absErrs = (k) => rows.map((r) => r.err[k]).filter((x) => x != null).map(Math.abs);
 const within = (k, tol) => absErrs(k).filter((x) => x <= tol).length;
 
+/** Every headline number, computed once so the console and the report agree. */
+const summary = {
+  images: rows.length,
+  dishRecall: mean(rows.map((r) => r.dishRecall)) * 100,
+  spurious: rows.reduce((a, r) => a + r.spurious.length, 0),
+  spuriousImages: rows.filter((r) => r.spurious.length).length,
+  medianMs: rows.map((r) => r.ms).sort((a, b) => a - b)[Math.floor(rows.length / 2)] ?? 0,
+  fields: Object.fromEntries(FIELDS.map((k) => [k, {
+    meanAbs: mean(absErrs(k)) * 100, inBand: within(k, 0), within25: within(k, 0.25),
+  }])),
+};
+
 console.log(`\n${'='.repeat(72)}`);
-console.log(`images                ${rows.length}`);
-console.log(`dish recall           ${(mean(rows.map((r) => r.dishRecall)) * 100).toFixed(1)}%`);
-console.log(`spurious dishes       ${rows.reduce((a, r) => a + r.spurious.length, 0)} total`
-  + ` (${rows.filter((r) => r.spurious.length).length} images affected)`);
-for (const k of ['kcal', 'carbs', 'protein', 'fat', 'grams']) {
+console.log(`images                ${summary.images}`);
+console.log(`dish recall           ${summary.dishRecall.toFixed(1)}%`);
+console.log(`spurious dishes       ${summary.spurious} total (${summary.spuriousImages} images affected)`);
+for (const k of FIELDS) {
+  const f = summary.fields[k];
   console.log(
-    `${k.padEnd(8)} mean |err| ${(mean(absErrs(k)) * 100).toFixed(1).padStart(5)}%`
-    + `   in band ${String(within(k, 0)).padStart(2)}/${rows.length}`
-    + `   within 25% ${String(within(k, 0.25)).padStart(2)}/${rows.length}`,
+    `${k.padEnd(8)} mean |err| ${f.meanAbs.toFixed(1).padStart(5)}%`
+    + `   in band ${String(f.inBand).padStart(2)}/${summary.images}`
+    + `   within 25% ${String(f.within25).padStart(2)}/${summary.images}`,
   );
 }
-console.log(`median time           ${(rows.map((r) => r.ms).sort((a, b) => a - b)[Math.floor(rows.length / 2)] / 1000).toFixed(1)}s`);
+console.log(`median time           ${(summary.medianMs / 1000).toFixed(1)}s`);
 console.log('='.repeat(72));
 
+// ---------------------------------------------------------------------------
+// Artifacts
+// ---------------------------------------------------------------------------
+
+/**
+ * A row without the pixels.
+ *
+ * `got.rawItems` and `got.regions` carry every region's mask — one byte per
+ * pixel, so a single photo is megabytes and twenty of them overflow the largest
+ * string V8 will build. `--json` threw `RangeError: Invalid string length` on
+ * every full run from the moment the masks were kept. They exist for in-process
+ * diagnosis; nothing downstream reads them back.
+ */
+function serializable({ got, ...row }) {
+  const { rawItems, regions, ...rest } = got;
+  return { ...row, got: rest };
+}
+
+const asJson = () => JSON.stringify({
+  options: { ...DEFAULTS, ...overrides },
+  summary,
+  rows: rows.map(serializable),
+}, null, 2);
+
 if (jsonOut) {
-  writeFileSync(jsonOut, JSON.stringify({ options: { ...DEFAULTS, ...overrides }, rows }, null, 2));
+  writeFileSync(jsonOut, asJson());
   console.log(`wrote ${jsonOut}`);
+}
+
+/**
+ * The tracked report is only rewritten by a run that can stand behind it: the
+ * whole set, shipping settings, nothing skipped. A `--only` run or a fresh
+ * clone without `eval/data/` would otherwise overwrite the numbers with a
+ * partial measurement that still reads like the full one.
+ */
+const tweaked = only || Object.keys(overrides).length || noProbe
+  || probeAlpha != null || args.includes('--flat-oov');
+const complete = !skipped.length && rows.length === Object.keys(truth.images).length;
+
+if (tweaked) {
+  console.log('\nreport not written: this run is not the shipping configuration');
+} else if (!complete) {
+  console.log(`\nreport not written: ${skipped.length} of ${Object.keys(truth.images).length} images missing`
+    + ` (${skipped.join(', ')})`);
+} else {
+  writeFileSync(join(root, 'eval/results/vision-bench.json'), asJson());
+  writeReport();
+  console.log('\nwrote eval/results/VISION_BENCH.md + vision-bench.json');
+}
+
+/**
+ * Rewrite the generated half of eval/results/VISION_BENCH.md.
+ *
+ * The report said "Generated by npm run test:vision" and was not: its tables
+ * were pasted in by hand, so commits that changed how a region gets named left
+ * a report describing a pipeline that no longer existed. Everything between the
+ * markers now comes from the run; the analysis below them is written by hand
+ * and left alone.
+ */
+function writeReport() {
+  const path = join(root, 'eval/results/VISION_BENCH.md');
+  const START = '<!-- generated: rewritten by npm run test:vision -->';
+  const END = '<!-- /generated: everything below is written by hand -->';
+  const date = new Date().toISOString().slice(0, 10);
+  const one = (n) => n.toFixed(1);
+
+  const metric = (k) => {
+    const f = summary.fields[k];
+    return `| ${k} mean abs error | ${one(f.meanAbs)}% `
+      + `(in band ${f.inBand}/${summary.images}, within 25% ${f.within25}/${summary.images}) |`;
+  };
+
+  const block = [
+    START,
+    '',
+    `Generated by \`npm run test:vision\` on ${date}. Scores the shipped photo`,
+    'pipeline end to end — recognition, segmentation, portion, nutrition — against',
+    'what a careful human reader says is on each plate (eval/vision-truth.json).',
+    '',
+    'Bands, not point values: portion estimation from one uncalibrated photo is',
+    'genuinely uncertain, and a benchmark demanding an exact number would reward',
+    `overfitting to these ${summary.images} photos.`,
+    '',
+    '| metric | value |',
+    '|---|---|',
+    `| images | ${summary.images} |`,
+    `| dish recall | ${one(summary.dishRecall)}% |`,
+    `| spurious dishes | ${summary.spurious} (${summary.spuriousImages} images affected) |`,
+    ...FIELDS.map(metric),
+    `| median time per photo | ${one(summary.medianMs / 1000)} s |`,
+    '',
+    'Every row but the last is deterministic — the same photo gives the same',
+    'dishes, the same grams and the same calories on every run. The time is only',
+    'what the machine that ran it could do: across four runs of this set on one',
+    'laptop the median ranged from 11 s to 32 s a photo.',
+    '',
+    '## Per photo',
+    '',
+    '| photo | reported | accepted band | dishes found | what it logged |',
+    '|---|---|---|---|---|',
+    ...rows.map((r) => `| ${r.key} | ${r.got.totals.kcal} kcal | ${r.want.kcal[0]}–${r.want.kcal[1]}`
+      + ` | ${r.found}/${r.wanted} | ${r.got.items.map((i) => `${i.name} ${i.grams} g`).join(' + ') || '(nothing)'} |`),
+    '',
+    END,
+  ].join('\n');
+
+  // Refuse rather than silently drop the analysis: without the end marker there
+  // is no way to tell the generated tables from the writing underneath them.
+  const prose = readFileSync(path, 'utf8').split(END)[1];
+  if (prose == null) throw new Error(`${path} has no "${END}" marker — not overwriting it`);
+  writeFileSync(path, `# Vision benchmark\n\n${block}${prose}`);
 }

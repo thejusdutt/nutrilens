@@ -15,7 +15,7 @@
 │  │  ranges, search)          │                │      └─── FusionScorer ──────┐│  │
 │  │ IndexedDB history         │                │ ┌──────────────┐ ┌──────────┐││  │
 │  │ PortionEstimator (grams)  │                │ │SlimSAM enc/dec│ │plate     │││  │
-│  └───────────────────────────┘                │ │ 17MB quantized│ │ellipse   │││  │
+│  └───────────────────────────┘                │ │ 14MB quantized│ │ellipse   │││  │
 │              ▲                                │ └──────────────┘ │RANSAC(JS)│││  │
 │              │ Cache Storage (models, shell)  │                  └──────────┘││  │
 │  ┌───────────┴───────────┐                    └──────────────────────────────┘│  │
@@ -24,7 +24,7 @@
 └──────────────────────────────────────────────────────────────────────────────────┘
 
 Build time (Node, never shipped):
-  FNDDS CSV ──build-nutrition-db──► nutrition-db.json (231 foods × 30 nutrients)
+  FNDDS CSV ──build-nutrition-db──► nutrition-db.json (238 foods × 31 nutrients)
   vocabulary.mjs ──MobileCLIP text tower + prompt ensembling──► label-embeddings.bin
 ```
 
@@ -49,7 +49,7 @@ Segmentation → Portion**, because:
 
 - Closed-set head: `p_swin` over 101 dishes (calibrated by temperature).
 - Open-vocab head: cosine(image embed, precomputed label embeds) → softmax at
-  CLIP logit scale over 231 foods + 8 non-food probes.
+  CLIP logit scale over 238 foods + 11 non-food probes.
 - In-set labels: `score = wS·log p_swin + (1−wS)·log p_zs`, where
   `wS = wSwin·min(1, maxp_swin/0.5)` — Swin's weight shrinks when it is itself
   unsure (typical for foods outside Food-101).
@@ -57,7 +57,9 @@ Segmentation → Portion**, because:
 - Softmax over the union → final calibrated distribution.
 - Non-food: if Σ p_zs(probes) > threshold, report "not food" instead of a
   hallucinated dish. Probes span people, pets, vehicles, screens, empty plates,
-  packaging, plants, landscapes.
+  packaging, plants, landscapes, bare table surfaces, cloth or paper, and
+  cutlery — the last three because an empty corner of a photo is what a region
+  proposal lands on when it misses the food.
 - `wSwin`/`oovBias` are fitted by the offline sweep in `eval/make-report.mjs`.
 
 ## Multi-dish analysis (packages/plate-analyzer)
@@ -133,7 +135,7 @@ give the same calories twice.
 1. `tools/fetch-assets.sh` — models from HuggingFace (pinned files), FNDDS zip
    from USDA. Nothing is fetched at runtime except from the app's own origin.
 2. `tools/build-nutrition-db.mjs` — parses FNDDS CSVs (note: `food_nutrient.
-   nutrient_id` actually stores legacy `nutrient_nbr`), maps the 211-entry
+   nutrient_id` actually stores legacy `nutrient_nbr`), maps the 238-entry
    curated vocabulary to FNDDS foods via a scored substring matcher with
    per-entry fallback queries, emits `nutrition-db.json` + `vocabulary.json` +
    a human-reviewable `mapping-report.txt`.
@@ -141,9 +143,22 @@ give the same calories twice.
    dishes FNDDS only lists in a form nobody eats (caesar salad without
    dressing) or does not list at all (coconut chutney). Every value still
    traces to USDA data, and the mapping report prints the recipe.
+   The same step folds in `tools/data/claude-overlay.json` (step 4) and then
+   runs every validation gate over the result, so a bad correction fails the
+   build. It reads the pristine `nutrition-db.base.json` it writes first, never
+   its own corrected output — otherwise a re-run would confirm its own past
+   corrections.
 3. `tools/build-embeddings.mjs` — runs the MobileCLIP text tower in Node
    (onnxruntime-node + transformers.js tokenizer) over ~3–9 ensembled prompts
-   per label; ships only the 219×512 float32 matrix (438 KB).
+   per label; ships only the 249×512 float32 matrix (498 KiB).
+4. `npm run verify:nutrition` → `npm run adjudicate:nutrition` — two Claude
+   models recompute every shipped food from a standard recipe and cross-check
+   it against USDA *without seeing the USDA number*, writing
+   `tools/data/claude-overlay.json`. `npm run build:catalogue` →
+   `npm run build:library` extends breadth the same way, shipping
+   `nutrition-library.json` (1,744 dishes, 53 KiB gzipped). All of this happens at
+   build time and the results are committed: the app itself never calls a
+   model over the network. See `docs/claude-nutrition.md`.
 
 ## Performance decisions
 

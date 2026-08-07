@@ -125,3 +125,9 @@ so a measured food is always offered first. A library row is labelled
 consistency, physical limits, no fabricated micronutrients, no shadowing of a USDA
 food, and that the engine can price a library row through the same code path as
 every other food.
+
+## The written-up results
+
+`docs/nutrition-accuracy-report.html` is the readable version of what this
+pipeline produced: which foods were confirmed, which were corrected and by how
+much, and where the corrections came from. Open it in a browser.

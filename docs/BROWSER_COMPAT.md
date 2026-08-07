@@ -11,13 +11,13 @@ beyond ES2022):
 | WebGPU (opt-in `?webgpu=1`) | ✅ | ⚠️ behind flag/nightly | ⚠️ 18+ partial |
 | PWA install prompt | ✅ | ➖ (manual) | ✅ (Add to Home Screen) |
 | Camera (getUserMedia) | ✅ | ✅ | ✅ |
-| Service worker + Cache Storage (135 MB) | ✅ | ✅ | ✅ (quota prompts possible) |
+| Service worker + Cache Storage (180 MB) | ✅ | ✅ | ✅ (quota prompts possible) |
 | IndexedDB history | ✅ | ✅ | ✅ |
 | `createImageBitmap` EXIF orientation | ✅ | ✅ | ✅ 17+ |
 
 Notes:
 
-- **Storage quota**: models occupy ~135 MB of Cache Storage. Chromium grants
+- **Storage quota**: models occupy ~180 MB of Cache Storage. Chromium grants
   this silently; Safari may evict under pressure — the app re-downloads
   transparently (cache-first with network fallback).
 - **No COOP/COEP**: everything still works; WASM runs single-threaded

@@ -13,7 +13,7 @@
 
 ### Curated mapping
 
-`tools/vocabulary.mjs` defines 231 canonical foods; each carries one or more
+`tools/vocabulary.mjs` defines 238 canonical foods; each carries one or more
 FNDDS query strings. `tools/build-nutrition-db.mjs` resolves them with a scored
 matcher (all-token substring match; prefers exact description, shorter
 descriptions, and `NFS`/`NS as to` generic entries) and writes
@@ -21,6 +21,12 @@ descriptions, and `NFS`/`NS as to` generic entries) and writes
 description and kcal/100 g for human review. Spot-checked values: pizza 266,
 white rice 129, banana 97, biryani 104, dosa 210 kcal/100 g — all consistent
 with USDA reference values.
+
+Those are the numbers the *mapping* produces. A later build step may correct
+one before it ships: FNDDS survey rows for composed dishes are often thinner
+than the dish as it is served, and biryani leaves this stage at 104 kcal/100 g
+and ships at 183. See `docs/claude-nutrition.md` for how a correction is made
+and recorded.
 
 Known imperfect proxies (documented deliberately rather than silently):
 `gulab-jamun → Barfi (Indian dessert)`, `takoyaki → Octopus/Fritter`,

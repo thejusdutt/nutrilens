@@ -13,18 +13,27 @@ in airplane mode.
 ## Does the number match what a person sees?
 
 That is the only question a food tracker is judged on, so it has its own
-benchmark: `npm run test:vision` runs the shipped pipeline end to end over 19
+benchmark: `npm run test:vision` runs the shipped pipeline end to end over 20
 photographed plates and scores the dish names and the calories against what a
-careful human reader says is on them (`eval/vision-truth.json`).
+careful human reader says is on them (`eval/vision-truth.json`). A full run
+rewrites [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md), so the
+published numbers are always the ones the current code produces.
 
-| | before | now |
-|---|---|---|
-| Calories inside the accepted band | 10 / 19 | **16 / 19** |
-| Calories within 25% | 13 / 19 | **19 / 19** |
-| Mean calorie error | 31.7% | **2.2%** |
-| Dishes named correctly | 54.7% | **75.0%** |
-| Dishes invented that were not there | 26 | **15** |
-| Median time per photo | 16.9 s | **10.1 s** |
+| | measured |
+|---|---|
+| Calories inside the accepted band | 15 / 20 |
+| Calories within 25% | 19 / 20 |
+| Mean calorie error | 3.9% |
+| Dishes named correctly | 81.3% |
+| Dishes invented that were not there | 14 |
+
+Every one of those is deterministic: the same photo gives the same dishes and
+the same calories on every run. Time per photo is 11–32 s on a laptop CPU,
+depending on what else it is doing.
+
+Before the accuracy rebuild, on the 19 plates that existed then: 10/19 inside
+the band, 13/19 within 25%, 31.7% mean calorie error, 54.7% of dishes named,
+26 invented.
 
 What moved the numbers, in order of size:
 
@@ -47,6 +56,8 @@ What moved the numbers, in order of size:
    different calories on every analysis. It is seeded now.
 
 ## Measured accuracy (see eval/results/ACCURACY_REPORT.md)
+
+Measured 2026-07-17, against the 231-food vocabulary of that release.
 
 | | Food-101 val subsample (2,523 imgs) | Extended Indian set (259 imgs) |
 |---|---|---|
@@ -92,23 +103,32 @@ biryani vs. pulao); see the per-class table in the report.
 - **Dashboards** — calories by meal, macro split, every nutrient against its
   target, day or week; weight and calorie trends over 30/90/365 days.
 - **Recognition** — Swin-Base fine-tuned on Food-101 (90.2% measured top-1)
-  **fused** with a MobileCLIP-S2 open-vocabulary head (211-food vocabulary
-  incl. Indian, East Asian, fruits, breakfast foods) and non-food rejection.
+  **fused** with a MobileCLIP-S2 open-vocabulary head (238-food vocabulary
+  incl. Indian, East Asian, fruits, breakfast foods) and non-food rejection,
+  plus a linear probe over the same frozen embeddings — trusted on 26 classes
+  for a whole photo and on the four hand-labelled region types anywhere, because
+  a probe trained on photographs is confidently wrong on a tight crop.
 - **Portion estimation** — SlimSAM segmentation + a custom RANSAC plate-ellipse
   detector turn mask area into grams with explicit uncertainty; always
   user-adjustable (slider + FNDDS household measures).
-- **Nutrition** — USDA FNDDS 2021-2023: 30 nutrients (energy, macros, 11
-  minerals, 12 vitamins, cholesterol, fatty-acid classes) per food, %DV, ranges.
-  Dishes FNDDS only lists in a form nobody eats (caesar salad *without*
+- **Nutrition** — USDA FNDDS 2021-2023: 238 foods × 31 nutrients (energy,
+  macros, 9 minerals, 11 vitamins, choline, cholesterol, fatty-acid classes), %DV,
+  ranges. Dishes FNDDS only lists in a form nobody eats (caesar salad *without*
   dressing) are composed as mass-weighted mixtures of FNDDS rows, so every
   value still traces to USDA data — and the provenance test recomputes the
   recipe to prove it.
+- **Breadth without going online** — a further 1,744 dishes (53 KiB gzipped)
+  computed at build time by two Claude models that cross-check each other and
+  USDA, shipped as static JSON and searched alongside the measured foods but
+  always ranked below them and labelled "Estimate". Nothing calls a model at
+  runtime; the app has no network path to one.
 - **PWA** — installable, offline-first service worker, camera/upload/drag-drop/
   paste, tap-to-refine multi-dish flow, IndexedDB storage, CSV export, dark mode.
 - **All inference in a Web Worker** on ONNX Runtime Web (multi-threaded WASM;
   WebGPU opt-in via `?webgpu=1`).
 - **Eleven reusable MIT libraries** under `packages/` — each with a clean API,
-  JSDoc and unit tests, publishable independently.
+  JSDoc and unit tests, publishable independently. A twelfth,
+  `claude-nutrition`, is build-time only and not published.
 - **Automated evaluation** — reproducible accuracy/calibration/latency reports
   on the Food-101 validation split + an extended Indian-food set, running the
   *identical* library code in Node.
@@ -157,6 +177,7 @@ packages/
   food-segmentation/   SlimSAM wrapper + pure-JS mask utilities
   portion-estimator/   RANSAC plate-ellipse scale reference + area→grams model
   nutrition-engine/    offline nutrition DB engine (scaling, %DV, search, ranges)
+  claude-nutrition/    build-time only: compute a dish, cross-verify, adjudicate
   diary/               serving maths, day totals, streaks, projections, CSV export
   exercise-db/         MET activity table + ACSM energy expenditure
   barcode/             EAN-13/EAN-8/UPC-A encoder + scanline image decoder
@@ -177,10 +198,10 @@ docs/                  research, architecture, models, datasets, testing, compat
 ## Tests & evaluation
 
 ```bash
-npm test                   # 252 unit tests across all packages (vitest), including:
+npm test                   # 308 unit tests across all packages (vitest), including:
                            #  · every per-100 g value traced back to the FNDDS CSVs
                            #  · every food × nutrient × 11 portion sizes recomputed
-npm run test:vision        # dish names + calories vs human ground truth on 19
+npm run test:vision        # dish names + calories vs human ground truth on 20
                            #   photographed plates (the "does it match" benchmark)
 npm run test:nutrition-ui  # rendered kcal/macros/micros/%DV vs an independent
                            #   oracle, across 12 foods, plate totals and the diary

@@ -43,7 +43,7 @@ Candidates surveyed (all fine-tuned on Food-101 unless noted):
 
 Decision: **Swin-Base fine-tuned on Food-101** — highest verified accuracy
 with a ready-made, officially quantized ONNX export under Apache-2.0.
-We ship `model_int8.onnx` (93 MB): measured 90.2% top-1 on our validation
+We ship `model_int8.onnx` (93.3 MB): measured 90.2% top-1 on our validation
 subsample (int8 costs ~1–2 pt vs the fp32 reference — acceptable for a 4×
 size cut; note int8 is safe for *classifiers*, unlike CLIP embedding towers,
 see §4). The smaller q4f16 variant (52.7 MB) was evaluated but **fails to
@@ -83,7 +83,7 @@ Zero-shot encoder candidates:
 | Model | ImageNet ZS top-1 | Vision tower | ONNX |
 |---|---|---|---|
 | MobileCLIP-S0 | 67.8% | 11.8 MB int8 / 22.9 MB fp16 | ✅ Xenova/mobileclip_s0 |
-| **Apple MobileCLIP-S2** | 74.4% | **69 MB fp16** | ✅ Xenova/mobileclip_s2 |
+| **Apple MobileCLIP-S2** | 74.4% | **71.7 MB fp16** | ✅ Xenova/mobileclip_s2 |
 | SigLIP-Base | ~76% | ~90 MB | ✅ |
 
 Initial choice was S0-int8 for size; **empirical evaluation overturned it
@@ -98,11 +98,11 @@ twice** (this is why the eval harness exists):
    idli 2/10, naan 2/10 zero-shot top-1 on held-out images). MobileCLIP-S2
    fp16 scores 8/10, 8/10, 5/10 on the same samples (pizza 10/10, sushi 8/10).
 
-Decision: **MobileCLIP-S2, fp16 vision tower (69 MB)** — accuracy is the
+Decision: **MobileCLIP-S2, fp16 vision tower (71.7 MB)** — accuracy is the
 stated priority and the extended vocabulary is the entire point of this head.
 The S2 text tower (fp32, 254 MB) runs at build time only: label embeddings
-for the full vocabulary (211 foods + 8 non-food probes, prompt-ensembled) ship
-as a 438 KB binary matrix. The browser runs the vision tower and one matmul.
+for the full vocabulary (238 foods + 11 non-food probes, prompt-ensembled) ship
+as a 498 KiB binary matrix. The browser runs the vision tower and one matmul.
 
 Fusion strategy (implemented in `@nutrilens/food-recognition`):
 - Swin gives a calibrated distribution over 101 dishes.
@@ -118,7 +118,7 @@ Fusion strategy (implemented in `@nutrilens/food-recognition`):
 
 | Candidate | Verdict |
 |---|---|
-| **SlimSAM-77 (uniform)** | **chosen** — promptable SAM distillation, quantized ONNX 12.2 MB encoder + 4.9 MB decoder, MIT-licensed, proven in-browser via transformers.js demos. |
+| **SlimSAM-77 (uniform)** | **chosen** — promptable SAM distillation, quantized ONNX 8.9 MB encoder + 4.9 MB decoder, MIT-licensed, proven in-browser via transformers.js demos. |
 | MobileSAM | comparable, slightly larger; SlimSAM has official Xenova ONNX export. |
 | DeepLabV3 (TFJS) | closed 21-class Pascal set; useless for food. |
 | Custom GrabCut/saliency in JS | rejected — prototyping showed it markedly worse on textured food; instead the app falls back to FNDDS serving priors when segmentation is unavailable. |
@@ -163,8 +163,10 @@ unless the user pins an exact portion.
 Build pipeline (`tools/build-nutrition-db.mjs`) maps every vocabulary label
 to one or more FNDDS foods (hand-curated mapping table, reviewed food by
 food), extracts the full nutrient vector per 100 g + portion weights, and
-emits a compact JSON (~keyed by canonical label). Shipped size ≈ 400 KB
-gzipped; loaded into IndexedDB on first run.
+emits a compact JSON keyed by canonical label. Shipped size 172 KB, 39 KiB
+gzipped. It is fetched on load and held in memory, and precached by the service
+worker so it is there offline; IndexedDB holds what the *user* creates — the
+diary, custom foods, saved meals, scanned products — not the reference data.
 
 ## 8. Datasets for evaluation
 
@@ -182,12 +184,12 @@ gzipped; loaded into IndexedDB on first run.
 
 | Asset | Size |
 |---|---|
-| Swin-Food101 int8 | 93 MB |
-| MobileCLIP-S2 vision fp16 | 69 MB |
-| SlimSAM quantized (enc+dec) | 17.1 MB |
-| Label embeddings + nutrition DB | <1 MB |
-| App code + ORT wasm runtime | ~72 MB (4 wasm variants; ~13 MB actually loaded) |
-| **Total (one-time, cached)** | **~180 MB models+data** |
+| Swin-Food101 int8 | 93.3 MB |
+| MobileCLIP-S2 vision fp16 | 71.7 MB |
+| SlimSAM quantized (enc+dec) | 13.8 MB |
+| Nutrition DB + dish library + vocabulary + label embeddings + probe | 1.4 MB |
+| App code + ORT wasm runtime | 79.6 MB shipped as 4 variants; 13.5 MB actually loaded |
+| **Total (one-time, cached)** | **180.2 MB models + data** |
 
 Comparable to a small mobile app; cached via Cache Storage + streamed
 progress UI on first run. Models lazy-load: classification first, SlimSAM

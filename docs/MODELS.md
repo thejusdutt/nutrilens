@@ -12,7 +12,7 @@ app's own origin and cached in Cache Storage.
 | Architecture | Swin-Base transformer, 224×224 input |
 | Training | Fine-tuned on Food-101 (75,750 train images, 101 dishes) |
 | Accuracy | 92.1% top-1 self-reported; 91.4% verified by HF eval; see ACCURACY_REPORT for our measurement of the shipped int8 file |
-| Shipped file | `onnx/model_int8.onnx`, 93 MB (q4f16 variant unusable: ORT 1.27 fp16-fusion load bug) |
+| Shipped file | `onnx/model_int8.onnx`, 93.3 MB (q4f16 variant unusable: ORT 1.27 fp16-fusion load bug) |
 | Preprocessing | bicubic resize 224², rescale 1/255, ImageNet mean/std (`resizeBicubic` in @nutrilens/image-preprocess for training parity) |
 | License | Apache-2.0 |
 
@@ -21,9 +21,9 @@ app's own origin and cached in Cache Storage.
 | | |
 |---|---|
 | Source | `Xenova/mobileclip_s2` (ONNX export of Apple MobileCLIP-S2) |
-| Shipped file | `onnx/vision_model_fp16.onnx`, 69 MB |
+| Shipped file | `onnx/vision_model_fp16.onnx`, 71.7 MB |
 | Preprocessing | shortest-side 256 bilinear + center crop 256², rescale only (no mean/std) |
-| Text tower | **build-time only** (fp32, 254 MB + tokenizer, in `tools/data/`); produces the shipped `label-embeddings.bin` (219 labels × 512 dims, prompt-ensembled: "a photo of X", "a close-up photo of X, food photography", "a plate of X" + synonyms) |
+| Text tower | **build-time only** (fp32, 254 MB + tokenizer, in `tools/data/`); produces the shipped `label-embeddings.bin` (249 labels × 512 dims, prompt-ensembled: "a photo of X", "a close-up photo of X, food photography", "a plate of X" + synonyms) |
 | Zero-shot quality | 74.4% ImageNet top-1 (reference); see ACCURACY_REPORT for food-domain numbers |
 | License | Apple AML research license (weights), MIT (export tooling) |
 
@@ -40,7 +40,7 @@ mapping, rebuild embeddings + DB (two Node scripts, seconds).
 | | |
 |---|---|
 | Source | `Xenova/slimsam-77-uniform` (SlimSAM: 1.4%-size SAM distillation) |
-| Shipped files | `vision_encoder_quantized.onnx` 12.2 MB + `prompt_encoder_mask_decoder_quantized.onnx` 4.9 MB |
+| Shipped files | `vision_encoder_quantized.onnx` 8.9 MB + `prompt_encoder_mask_decoder_quantized.onnx` 4.9 MB |
 | I/O | encoder: 1024² padded image → embeddings; decoder: point prompts (int64 labels!) → 3 mask hypotheses at 256² + IoU scores |
 | Preprocessing | longest-side 1024 bilinear, zero pad, ImageNet mean/std |
 | Latency | ~1.7 s encode (CPU, once per image), ~90 ms per prompt |

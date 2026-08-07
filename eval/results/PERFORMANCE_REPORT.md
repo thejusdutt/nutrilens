@@ -13,8 +13,13 @@ Measured over 2782 images. Browser-side stage timings (SlimSAM encode ≈1.7 s C
 
 | Asset | Size |
 |---|---|
-| swin-food101 model_int8.onnx | 93 MB |
-| mobileclip-s2 vision fp16 | 69 MB |
-| slimsam encoder+decoder (quantized) | 17.1 MB |
-| label embeddings + nutrition DB + vocab | ~0.6 MB |
-| ORT runtime (wasm, jsep) | ~31 MB |
+| swin-food101 model_int8.onnx | 93.3 MB |
+| mobileclip-s2 vision fp16 | 71.7 MB |
+| slimsam encoder + decoder (quantized) | 13.8 MB |
+| data: nutrition DB, dish library, vocabulary, label embeddings, probe | 1.4 MB |
+| **cached after the first analysis** | **180.2 MB** |
+| ORT runtime, default WASM backend | 13.5 MB |
+
+Decimal MB, measured from `app/public` when the report was written. The jsep
+WASM variant (WebGPU, opt-in) is a further
+26.8 MB and is left out of Cloudflare Pages deploys.

@@ -3,7 +3,7 @@
  * Sweeps fusion parameters offline (head outputs were recorded raw) and
  * reports the best configuration alongside the shipped defaults.
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { FusionScorer } from '@nutrilens/food-recognition';
 import { root } from './lib/node-runtime.mjs';
@@ -230,6 +230,40 @@ const lat = (rows, key) => {
   const q = (p) => v[Math.floor(p * (v.length - 1))];
   return { p50: q(0.5), p90: q(0.9), p99: q(0.99), mean: v.reduce((a, b) => a + b, 0) / v.length };
 };
+/**
+ * What a first visit actually downloads, measured off the files rather than
+ * typed in. The hand-written version of this table still called the SlimSAM
+ * pair 17.1 MB long after it became 13.8, which is exactly the drift a
+ * generated report is supposed to prevent.
+ */
+function payloadTable() {
+  const size = (p) => { try { return statSync(join(root, 'app/public', p)).size; } catch { return 0; } };
+  const dirSize = (p) => {
+    try { return readdirSync(join(root, 'app/public', p)).reduce((t, f) => t + size(`${p}/${f}`), 0); } catch { return 0; }
+  };
+  const rows = [
+    ['swin-food101 model_int8.onnx', size('models/swin-food101/onnx/model_int8.onnx')],
+    ['mobileclip-s2 vision fp16', size('models/mobileclip-s2/onnx/vision_model_fp16.onnx')],
+    ['slimsam encoder + decoder (quantized)',
+      size('models/slimsam/onnx/vision_encoder_quantized.onnx')
+        + size('models/slimsam/onnx/prompt_encoder_mask_decoder_quantized.onnx')],
+    ['data: nutrition DB, dish library, vocabulary, label embeddings, probe', dirSize('data')],
+  ];
+  const total = rows.reduce((t, [, bytes]) => t + bytes, 0);
+  const mb = (bytes) => `${(bytes / 1e6).toFixed(1)} MB`;
+  return [
+    '| Asset | Size |',
+    '|---|---|',
+    ...rows.map(([name, bytes]) => `| ${name} | ${mb(bytes)} |`),
+    `| **cached after the first analysis** | **${mb(total)}** |`,
+    `| ORT runtime, default WASM backend | ${mb(size('ort/ort-wasm-simd-threaded.wasm'))} |`,
+    '',
+    'Decimal MB, measured from `app/public` when the report was written. The jsep',
+    'WASM variant (WebGPU, opt-in) is a further',
+    `${mb(size('ort/ort-wasm-simd-threaded.jsep.wasm'))} and is left out of Cloudflare Pages deploys.`,
+  ].join('\n');
+}
+
 const all = [...food101, ...extended];
 const sw = lat(all, 'swinMs'), zl = lat(all, 'zsMs');
 const perf = `# NutriLens Performance Report
@@ -245,13 +279,7 @@ Measured over ${all.length} images. Browser-side stage timings (SlimSAM encode â
 
 ## Model payload
 
-| Asset | Size |
-|---|---|
-| swin-food101 model_int8.onnx | 93 MB |
-| mobileclip-s2 vision fp16 | 69 MB |
-| slimsam encoder+decoder (quantized) | 17.1 MB |
-| label embeddings + nutrition DB + vocab | ~0.6 MB |
-| ORT runtime (wasm, jsep) | ~31 MB |
+${payloadTable()}
 `;
 writeFileSync(join(resultsDir, 'PERFORMANCE_REPORT.md'), perf);
 console.log('reports written to eval/results/');
