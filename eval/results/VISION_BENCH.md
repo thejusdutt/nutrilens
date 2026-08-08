@@ -13,14 +13,14 @@ overfitting to these 20 photos.
 | metric | value |
 |---|---|
 | images | 20 |
-| dish recall | 85.0% |
-| spurious dishes | 16 (10 images affected) |
-| kcal mean abs error | 4.1% (in band 16/20, within 25% 18/20) |
-| carbs mean abs error | 7.2% (in band 13/20, within 25% 18/20) |
-| protein mean abs error | 6.4% (in band 16/20, within 25% 17/20) |
-| fat mean abs error | 1.0% (in band 19/20, within 25% 20/20) |
-| grams mean abs error | 9.2% (in band 15/20, within 25% 18/20) |
-| median time per photo | 11.2 s |
+| dish recall | 52.1% |
+| spurious dishes | 6 (6 images affected) |
+| kcal mean abs error | 15.8% (in band 13/20, within 25% 15/20) |
+| carbs mean abs error | 21.9% (in band 12/20, within 25% 12/20) |
+| protein mean abs error | 21.4% (in band 12/20, within 25% 12/20) |
+| fat mean abs error | 11.2% (in band 13/20, within 25% 16/20) |
+| grams mean abs error | 22.6% (in band 11/20, within 25% 13/20) |
+| median time per photo | 12.0 s |
 
 Every row but the last is deterministic — the same photo gives the same
 dishes, the same grams and the same calories on every run. The time is only
@@ -31,26 +31,26 @@ laptop the median ranged from 11 s to 32 s a photo.
 
 | photo | reported | accepted band | dishes found | what it logged |
 |---|---|---|---|---|
-| dosa-thali | 380 kcal | 320–560 | 3/3 | Sambar 192 g + Coconut chutney 54 g + Dosa (plain) 44 g |
-| masala-dosa | 416 kcal | 340–660 | 3/3 | Masala dosa 146 g + Sambar 88 g + Tomato chutney 20 g + Coconut chutney 23 g |
-| masala-dosa-cropped-bowls | 382 kcal | 330–520 | 2/2 | Peanut chutney 14 g + Masala dosa 75 g + Omelette 113 g |
-| idli-vada-thali | 409 kcal | 560–980 | 2/4 | Idli 136 g + Vada 97 g |
-| sliders-watermelon | 1061 kcal | 520–950 | 1/1 | Hamburger 241 g + Crab cakes 75 g + Sashimi 63 g + Garlic bread 26 g |
-| fried-rice-bowl | 522 kcal | 350–780 | 1/1 | Fried rice 300 g |
+| dosa-thali | 449 kcal | 320–560 | 0/3 | Masala dosa 244 g |
+| masala-dosa | 304 kcal | 340–660 | 1/3 | Masala dosa 165 g |
+| masala-dosa-cropped-bowls | 416 kcal | 330–520 | 1/2 | Masala dosa 226 g |
+| idli-vada-thali | 157 kcal | 560–980 | 1/4 | Vada 65 g |
+| sliders-watermelon | 247 kcal | 520–950 | 0/1 | Crab cakes 107 g |
+| fried-rice-bowl | 209 kcal | 350–780 | 1/1 | Fried rice 120 g |
 | dal-bowl | 461 kcal | 230–500 | 1/1 | Dal 318 g |
-| north-indian-thali | 813 kcal | 900–2000 | 1/2 | Poori 111 g + Ice cream 40 g + Onion chutney 14 g + Chana masala 88 g + Orange juice 250 g |
+| north-indian-thali | 303 kcal | 900–2000 | 0/2 | Poori 74 g |
 | pizza-detroit | 649 kcal | 330–1050 | 1/1 | Pizza 244 g |
-| paratha-pan | 560 kcal | 160–420 | 1/1 | Kheer 286 g + Paratha 32 g |
-| samosa-chutney | 499 kcal | 400–800 | 2/2 | Samosa 110 g + Chutney (sweet) 43 g + Miso soup 160 g + Green chutney 22 g |
-| biryani-pan | 373 kcal | 150–480 | 1/1 | Biryani 133 g + Poha 72 g + Onion chutney 14 g |
-| collage-pizza-salad-fries | 715 kcal | 700–1500 | 3/3 | Pizza 183 g + French fries 53 g + Caesar salad 72 g |
-| caesar-plate | 459 kcal | 180–480 | 1/1 | Caesar salad 136 g + Sandwich 88 g |
+| paratha-pan | 396 kcal | 160–420 | 0/1 | Kheer 248 g |
+| samosa-chutney | 484 kcal | 400–800 | 1/2 | Samosa 156 g |
+| biryani-pan | 350 kcal | 150–480 | 0/1 | Poha 232 g |
+| collage-pizza-salad-fries | 282 kcal | 700–1500 | 1/3 | Caesar salad 186 g |
+| caesar-plate | 154 kcal | 180–480 | 1/1 | Caesar salad 102 g |
 | pancakes-berries | 615 kcal | 380–850 | 1/1 | Pancakes 218 g |
 | enchiladas-queso | 538 kcal | 350–800 | 0/1 | Chilaquiles 276 g |
 | naan-closeup | 358 kcal | 220–560 | 1/1 | Naan 115 g |
-| momos-chutney | 415 kcal | 230–620 | 1/1 | Dumplings 209 g |
-| tortilla-espanola | 463 kcal | 280–720 | 1/1 | Tortilla española 230 g + Orange juice 142 g |
-| kungpao-rice | 542 kcal | 400–800 | 0/2 | General Tso chicken 139 g + Chicken curry 123 g |
+| momos-chutney | 284 kcal | 230–620 | 1/1 | Dumplings 143 g |
+| tortilla-espanola | 347 kcal | 280–720 | 1/1 | Tortilla española 202 g |
+| kungpao-rice | 721 kcal | 400–800 | 1/2 | Kung pao chicken 355 g |
 
 <!-- /generated: everything below is written by hand -->
 
@@ -61,6 +61,45 @@ altered probe — a partial measurement that still reads like the full one is
 worse than a stale one.
 
 `masala-dosa-cropped-bowls` is a user-supplied photo rather than a fetched one.
+
+## 2026-08-08: the tables above score one dish, because that is what ships
+
+A photo is now read as a single dish, named from the whole frame and weighed off
+the dominant mask. Splitting it into separate items is a button. `npm run
+test:vision` scores the default; `--split` scores the opt-in path and refuses to
+write this file, so the published numbers always describe the screen a user gets
+without asking for anything.
+
+The reason is not accuracy, it is trust. Splitting the plate invents food:
+16 dishes across 20 photos that a reader looking at the picture says are not
+there. And it does so *confidently* — the invented dishes score 0.26 to 0.99
+against 0.40 to 1.00 for the real ones, so the two cannot be told apart by any
+threshold on confidence. Naming exactly one dish makes the failure impossible by
+construction rather than filtered afterwards.
+
+| | one dish (default) | split plate (opt-in) |
+|---|---|---|
+| dish recall | 52.1% | 85.0% |
+| wrong or invented entries | 6 | 16 |
+| calories in band | 13/20 | 16/20 |
+| calories mean abs error | 15.8% | 4.1% |
+
+The split path is better on every number and worse to use: it is right more
+often *and* it puts food in the diary that was never on the plate, which the
+person logging has to notice and delete. The default is wrong in a way you can
+see and fix with one tap on the dish name; the split path is wrong in a way you
+have to catch.
+
+Recall of 52.1% is not a regression, it is the definition: one dish named on a
+thali of five scores 1/5 by construction. Of the twenty photos, nine are right
+on both dish and portion untouched, five need the portion nudged, six name the
+wrong dish.
+
+The first attempt at this measured far worse — calories in band 7/20, mean error
+31% — because it prompted the segmenter at the centre of the frame, which
+returns a *fragment* of the food: pizza 96 g against 244 g, dumplings 94 g
+against 226 g. The dominant mask, which is what `buildPlate` already used once
+it decided a photo held a single dish, is the right one to weigh.
 
 ## 2026-08-07: the photos are now the size the app analyses
 

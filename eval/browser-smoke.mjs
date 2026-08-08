@@ -60,12 +60,26 @@ try {
   }
   const result = await page.evaluate(() => ({
     // meal-first flow: dishes live in the plate card; fall back to single-dish UI
-    topCandidate: document.querySelector('.dish .dish-name span')?.textContent
-      ?? document.querySelector('.candidate b')?.textContent,
-    kcal: document.getElementById('plate-kcal')?.textContent
-      ?? document.getElementById('kcal-value').textContent,
-    grams: document.querySelector('.dish')?.dataset.grams
-      ?? document.getElementById('portion-grams').value,
+    // Read whichever card is on screen. `??` is not enough: the plate card's
+    // elements exist in the document even when it is hidden, so plate-kcal
+    // answers "0" instead of deferring to the single-dish figure — which is
+    // what it did the moment one dish became the default.
+    ...(() => {
+      const plate = document.getElementById('meal-card');
+      const split = plate && !plate.hidden;
+      return {
+        topCandidate: split
+          ? document.querySelector('.dish .dish-name span')?.textContent
+          : document.querySelector('.candidate.selected b')?.textContent
+            ?? document.querySelector('.candidate b')?.textContent,
+        kcal: split
+          ? document.getElementById('plate-kcal').textContent
+          : document.getElementById('kcal-value').textContent,
+        grams: split
+          ? document.querySelector('.dish')?.dataset.grams
+          : document.getElementById('portion-grams').value,
+      };
+    })(),
     portion: document.querySelector('.dish .portion-read b')?.textContent,
     mealItems: document.querySelectorAll('.dish').length,
     macroRows: document.querySelectorAll('.macro-row').length,
@@ -83,6 +97,22 @@ try {
     ),
   }));
   console.log(JSON.stringify(result, null, 2));
+
+  // Splitting the plate is opt-in now, so exercise it here or the browser
+  // never sees that path at all.
+  await page.evaluate(() => document.getElementById('btn-split-plate').click());
+  await page.waitForFunction(() => !document.getElementById('meal-card').hidden, { timeout: 120000 });
+  const split = await page.evaluate(() => ({
+    dishes: document.querySelectorAll('.dish').length,
+    kcal: document.getElementById('plate-kcal').textContent,
+    offerHidden: document.getElementById('plate-offer').hidden,
+  }));
+  console.log('split plate:', JSON.stringify(split));
+
+  // Back to one dish for the save round-trip below, which is the default flow.
+  await page.reload({ waitUntil: 'networkidle2' });
+  await (await page.$('#file-input')).uploadFile(join(root, 'eval/data/smoke_0_beignets.jpg'));
+  await page.waitForFunction(() => !document.getElementById('nutrition-card').hidden, { timeout: 300000 });
 
   // Diary save round-trip: a photo of a plate logs one entry per dish.
   // Click through the DOM: the button sits below the fold in a scrolling
@@ -108,7 +138,9 @@ try {
     && logged.entries >= 1 && Number(logged.food.replace(/\D/g, '')) > 0
     // The fixture is 512 px; if this reads 512 the resize is only shrinking
     // again and the pipeline is back to answering per-camera.
-    && result.analysisSide === ANALYSIS_SIDE;
+    && result.analysisSide === ANALYSIS_SIDE
+    // One dish by default, and the opt-in split still reaches the plate card.
+    && result.mealItems === 0 && split.dishes >= 1 && split.offerHidden;
   console.log(ok ? 'BROWSER SMOKE PASS' : 'BROWSER SMOKE FAIL');
   process.exitCode = ok ? 0 : 1;
 } finally {

@@ -244,10 +244,14 @@ async function startAnalysis(blob) {
     state.isFood = result.isFood;
     $('nonfood-warning').hidden = result.isFood;
     renderCandidates();
-    // Full-plate analysis is the PRIMARY flow: find every item automatically.
-    if (state.candidates.length && result.isFood) {
-      await analyzeWholePlate({ auto: true });
-    } else if (state.candidates.length) {
+    // One dish, from the whole photograph. Splitting the plate into separate
+    // items is offered (btn-split-plate) rather than done automatically,
+    // because measured over the benchmark it invents food that is not on the
+    // plate — 16 phantom dishes across 20 photos — and does so *confidently*:
+    // the invented ones score 0.26–0.99 against 0.40–1.00 for the real ones, so
+    // no confidence threshold can tell them apart. Reading the whole frame is
+    // the stable half of the pipeline and it is what the user sees first.
+    if (state.candidates.length) {
       await selectFood(state.candidates[0].id);
     }
     setSpinner(null);
@@ -275,6 +279,9 @@ function resetResultUI() {
   $('correction').hidden = false;
   $('btn-whole-plate').disabled = false;
   $('btn-whole-plate').hidden = false;
+  // Offered again for the new photo; hidden while there is no result to split.
+  $('plate-offer').hidden = true;
+  $('btn-split-plate').disabled = false;
   $('btn-save').textContent = 'Add to diary';
   state.meal = null;
   const octx = $('overlay-canvas').getContext('2d');
@@ -306,6 +313,9 @@ async function selectFood(id, { point = null } = {}) {
   renderCandidates();
   await runPortionEstimation(point);
   renderNutritionCard();
+  // There is a result to split now, so offer it — unless the plate is already
+  // split, in which case the card's own rescan button is the way back.
+  $('plate-offer').hidden = !!state.meal;
 }
 
 async function runPortionEstimation(point) {
@@ -315,19 +325,43 @@ async function runPortionEstimation(point) {
   try {
     if (!state.seg || point) {
       setSpinner(state.imageEncoded ? 'Refining portion…' : 'Measuring portion…');
-      const pts = [point ?? { x: raw.width / 2, y: raw.height / 2 }];
       const detectPlate = !state.imageEncoded;
-      const m = await rpcImage({
-        type: 'segment',
-        image: detectPlate ? rawToMsg(raw) : undefined,
-        detectPlate,
-        points: pts,
-      });
+      let m;
+      if (point) {
+        // The user tapped a spot: that point is the answer to "which food",
+        // so prompt with it directly.
+        m = await rpcImage({
+          type: 'segment',
+          image: detectPlate ? rawToMsg(raw) : undefined,
+          detectPlate,
+          points: [point],
+        });
+        state.seg = { mask: new Uint8Array(m.mask), areaPx: m.areaPx };
+      } else {
+        // Nobody has pointed at anything, so weigh the largest plausible
+        // region rather than whatever a prompt at the centre of the frame
+        // happens to return. A centre prompt gives back a *fragment* of the
+        // food — measured over the benchmark it cost two thirds of the mass
+        // (pizza 96 g, dumplings 94 g) and put calories in band on only 7
+        // photos of 20. The dominant mask is the same one buildPlate uses when
+        // it decides a photo is a single dish.
+        m = await rpcImage({
+          type: 'segment-auto',
+          image: detectPlate ? rawToMsg(raw) : undefined,
+          detectPlate,
+          plate: state.plate,
+          width: raw.width,
+          height: raw.height,
+        });
+        const d = m.dominant;
+        state.seg = d
+          ? { mask: new Uint8Array(d.mask), areaPx: d.areaPx }
+          : { mask: new Uint8Array(raw.width * raw.height), areaPx: 0 };
+      }
       state.imageEncoded = true;
       // Only a run that actually looked for a plate may set it — and when one
       // did look, "no plate" is an answer, not a reason to keep the old one.
       if (detectPlate) state.plate = m.plate ?? null;
-      state.seg = { mask: new Uint8Array(m.mask), areaPx: m.areaPx };
       drawOverlay();
     }
     const estimator = new PortionEstimator({ plateDiameterCm: plateCm() });
@@ -543,6 +577,9 @@ function renderNutritionCard() {
 // Whole-plate mode
 // ---------------------------------------------------------------------------
 $('btn-whole-plate').onclick = () => analyzeWholePlate();
+// Same action from the single-dish view, where the plate card is not on screen
+// yet and the button inside it cannot be reached.
+$('btn-split-plate').onclick = () => analyzeWholePlate();
 $('btn-add-dish').onclick = () => openAddDish((id) => {
   const f = foodById(id);
   state.meal.items.push({
@@ -597,6 +634,9 @@ async function analyzeWholePlate({ auto = false } = {}) {
     fill($('candidates'));
     $('portion-card').hidden = true;
     $('nonfood-warning').hidden = true;
+    // The plate is split; the offer to split it has nothing left to do. The
+    // rescan button inside the plate card takes over from here.
+    $('plate-offer').hidden = true;
     // Every dish name is now its own "change this" button, so the free-text
     // correction box below the list has nothing left to correct.
     $('correction').hidden = true;

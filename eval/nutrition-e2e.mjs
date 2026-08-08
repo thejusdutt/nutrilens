@@ -141,6 +141,18 @@ try {
     const input = await page.$('#file-input');
     await input.uploadFile(join(root, 'eval/data', file));
     await waitFor(analysed, `analysis of ${file}`);
+    // A photo now resolves to a single dish and the plate card stays closed.
+    // Everything below drives the app through that card's rows, so open it —
+    // the arithmetic being checked is the same either way, and the split path
+    // is still shipped, just behind a tap.
+    await page.evaluate(() => document.getElementById('btn-split-plate')?.click());
+    // waitFor runs its argument inside the page, so this must be a plain
+    // browser-side predicate — not one that calls page.evaluate itself.
+    await waitFor(
+      () => !document.getElementById('meal-card').hidden
+        && document.querySelectorAll('.dish').length > 0,
+      `plate card for ${file}`,
+    );
   };
 
   // Clicks go through the DOM, not the mouse: rows can sit outside the viewport.

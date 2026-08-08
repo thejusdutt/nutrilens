@@ -19,13 +19,26 @@ careful human reader says is on them (`eval/vision-truth.json`). A full run
 rewrites [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md), so the
 published numbers are always the ones the current code produces.
 
-| | measured |
-|---|---|
-| Calories inside the accepted band | 16 / 20 |
-| Calories within 25% | 18 / 20 |
-| Mean calorie error | 4.1% |
-| Dishes named correctly | 85.0% |
-| Dishes invented that were not there | 16 |
+A photo is read as **one dish**, named from the whole frame. Splitting a plate
+into separate items is a button, not the default — it finds more on a thali, and
+it also puts food in the diary that was never on the plate.
+
+| | one dish (default) | split plate (opt-in) |
+|---|---|---|
+| Calories inside the accepted band | 13 / 20 | 16 / 20 |
+| Mean calorie error | 15.8% | 4.1% |
+| Dishes named correctly | 52.1%¹ | 85.0% |
+| **Dishes invented that were not there** | **6** | **16** |
+
+¹ One dish named on a thali of five scores 1/5 by construction; this is the cost
+of the default, not a fault in it. Nine of the twenty photos are right on both
+dish and portion with nothing to touch, five want the portion nudged, six name
+the wrong dish and take one tap to correct.
+
+The split path is better on every measure and worse to use. Its extra dishes are
+scored 0.26–0.99 confident against 0.40–1.00 for real ones, so no threshold can
+separate them — they have to be spotted and deleted by the person logging.
+Naming one dish makes that failure impossible rather than filtered.
 
 One image file gives the same dishes and the same calories on every run, and
 every photo is analysed at one fixed resolution (`ANALYSIS_SIDE`, 1280 px) so

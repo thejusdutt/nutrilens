@@ -63,6 +63,13 @@ reward overfitting to twenty photos. A full run in the shipping configuration
 writes `eval/results/VISION_BENCH.md`; a filtered or re-tuned run refuses to,
 so an experiment cannot leave its numbers under the shipped ones.
 
+It scores the **default** flow — one dish per photo. `--split` scores the
+opt-in plate breakdown and is treated as a tuned run, so it cannot overwrite the
+report. Both paths share one `summarise()`, so their arithmetic cannot drift
+apart. If the app's default ever changes again, this is the thing to change with
+it: a harness measuring a screen the user has to ask for is measuring the wrong
+product, in the same way that measuring a resolution nobody uploads did.
+
 ## 4. Tracker flows — "does the diary actually work?"
 
 `npm run test:tracker` (`eval/tracker-e2e.mjs`): 35 checks over 13 flows —
@@ -87,18 +94,27 @@ send `Access-Control-Allow-Origin` or the app only sees "Failed to fetch".
 5. saves to the diary and asserts the diary renders the entries,
 6. captures `eval/results/browser-smoke.png`.
 
-Verified on the beignets fixture: top-1 "Beignets", 500 kcal, 2 dishes, 25
-micronutrient rows, analysed at 1280, service worker active — PASS.
+Verified on the beignets fixture: top-1 "Beignets", 473 kcal as one dish, 25
+micronutrient rows, analysed at 1280, service worker active. It then taps
+*Split the plate* and asserts that path still reaches the plate card (2 dishes,
+500 kcal) — opt-in behaviour that no browser test would otherwise touch — PASS.
 
 `npm run test:offline` proves the offline claim: prefetch the models online →
 force the browser fully offline (CDP emulation) → reload → the shell serves from
 cache → a complete analysis succeeds with zero network. Verified: PASS
-("Beignets, 500 kcal" offline).
+("Beignets, 473 kcal" offline).
 
-That fixture is 512 px and now reaches the pipeline at 1280, which is why both
-numbers moved from 440 kcal: the plate is the same two dishes (beignets and a
-café au lait the app names "Lassi"), measured off a larger canvas. The
-whole-image label is unaffected — 100% beignets at either size.
+Both read the figure off whichever card is on screen, and **not** with `??`.
+The plate card's elements exist in the document even when it is hidden, so
+`plate-kcal ?? kcal-value` answers "0" the moment one dish became the default —
+which is exactly what happened. Smoke failed on it; the offline test did not,
+because it only checked that a dish had been *named*, and reported "Beignets,
+0 kcal" as a pass. It now fails a run that reports no energy.
+
+That fixture is 512 px and reaches the pipeline at 1280, which is why these
+numbers differ from the 440 kcal recorded before: same food, measured off a
+larger canvas. The whole-image label is unaffected — 100% beignets at either
+size.
 
 All four browser layers share port 5199 and **reuse whatever is already serving
 it** rather than starting a second one, so run them one at a time. The catch is

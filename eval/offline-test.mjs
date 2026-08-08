@@ -70,13 +70,28 @@ try {
     if (done) break;
     if (Date.now() - t0 > 240000) throw new Error('offline analysis timed out');
   }
-  const res = await page.evaluate(() => ({
-    top: document.querySelector('.dish .dish-name span')?.textContent
-      ?? document.querySelector('.candidate b')?.textContent,
-    kcal: document.getElementById('plate-kcal')?.textContent
-      ?? document.getElementById('kcal-value').textContent,
-  }));
+  // Read whichever card is on screen. The plate card's elements exist even
+  // while it is hidden, so `??` cannot be used to choose between them — it
+  // reported "0 kcal" here, and the test passed anyway because it only checked
+  // that a dish had been named.
+  const res = await page.evaluate(() => {
+    const plate = document.getElementById('meal-card');
+    const split = plate && !plate.hidden;
+    return {
+      top: split
+        ? document.querySelector('.dish .dish-name span')?.textContent
+        : document.querySelector('.candidate.selected b')?.textContent
+          ?? document.querySelector('.candidate b')?.textContent,
+      kcal: split
+        ? document.getElementById('plate-kcal').textContent
+        : document.getElementById('kcal-value').textContent,
+    };
+  });
   if (!res.top) throw new Error('offline analysis produced no named dish');
+  // An offline run that reports no energy has not proven anything.
+  if (!(Number(String(res.kcal).replace(/[^0-9.]/g, '')) > 0)) {
+    throw new Error(`offline analysis reported ${res.kcal} kcal`);
+  }
   console.log(`phase 3: offline analysis ✓ → ${res.top}, ${res.kcal} kcal`);
   console.log('OFFLINE TEST PASS');
 } catch (err) {

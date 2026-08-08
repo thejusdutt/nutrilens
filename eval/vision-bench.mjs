@@ -32,7 +32,9 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import * as ort from 'onnxruntime-node';
 import { SlimSamSegmenter } from '@nutrilens/food-segmentation';
-import { PortionEstimator, detectPlateEllipse } from '@nutrilens/portion-estimator';
+import {
+  PortionEstimator, detectPlateEllipse, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE,
+} from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
 import { proposeRegions, buildPlate, DEFAULTS } from '@nutrilens/plate-analyzer';
 import { decodeImage, createRecognizer, root } from './lib/node-runtime.mjs';
@@ -45,6 +47,8 @@ const jsonOut = flag('--json');
 // it off or re-weight it, so a run can be attributed to it or not.
 const noProbe = args.includes('--no-probe');
 const probeAlpha = flag('--probe-alpha');
+// Score the plate-splitting path instead of the shipped single-dish default.
+const splitPlate = args.includes('--split');
 const overrides = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] !== '--set') continue;
@@ -56,7 +60,7 @@ for (let i = 0; i < args.length; i++) {
 // skipped in silence, so the run reported the defaults under the name of the
 // setting it was meant to be testing — two benchmark runs that looked like an
 // A/B and were the same configuration twice.
-const KNOWN = new Set(['--only', '--json', '--set', '--probe-alpha', '--no-probe', '--flat-oov']);
+const KNOWN = new Set(['--only', '--json', '--set', '--probe-alpha', '--no-probe', '--flat-oov', '--split']);
 for (let i = 0; i < args.length; i++) {
   if (KNOWN.has(args[i])) { i++; continue; }
   console.error(`unknown argument: ${args[i]}`);
@@ -93,6 +97,14 @@ export async function analyzePhoto(image, options = {}) {
   const plate = detectPlateEllipse(image);
 
   await segmenter.setImage(image);
+
+  // The shipped default: one dish, named from the whole frame and measured from
+  // a single mask prompted at the centre — app/src/main.js startAnalysis →
+  // selectFood → runPortionEstimation. Splitting the plate into separate items
+  // is opt-in in the app, so it is opt-in here too (`--split`). A harness that
+  // only scored the split path would be measuring a screen the user has to ask
+  // for, which is the same class of mistake as scoring a resolution nobody
+  // uploads.
   const { regions, dominant } = await proposeRegions({
     segment: (points) => segmenter.segment(points),
     width: image.width,
@@ -100,6 +112,37 @@ export async function analyzePhoto(image, options = {}) {
     plate,
     options,
   });
+
+  if (!splitPlate) {
+    // One dish, named from the whole frame and weighed off the *dominant*
+    // mask — the largest plausible region, which is what buildPlate itself
+    // uses once it decides a photo is a single dish. Prompting SAM at the
+    // centre point instead returns a fragment of the food and was measured
+    // costing two thirds of the mass: pizza 96 g, dumplings 94 g, calories in
+    // band 7/20.
+    let items = [];
+    if (imageTop.length && dominant) {
+      const food = engine.food(imageTop[0].id);
+      const est = estimator.estimate({
+        areaPx: plate && plate.confidence >= MIN_PLATE_CONFIDENCE
+          ? maskAreaInsideEllipse(dominant.mask, image.width, image.height, plate)
+          : dominant.areaPx,
+        imageWidth: image.width,
+        imageHeight: image.height,
+        plate,
+        prior: food.prior,
+      });
+      items = [{
+        id: imageTop[0].id,
+        prob: imageTop[0].prob,
+        grams: est.grams,
+        portion: est,
+        singleDish: true,
+        region: dominant,
+      }];
+    }
+    return summarise(image, whole, plate, items, items, regions);
+  }
 
   const items = await buildPlate({
     image,
@@ -113,11 +156,19 @@ export async function analyzePhoto(image, options = {}) {
     options,
   });
 
-  // `rawItems` keeps the region masks, which the summary below throws away.
-  // Absorption bugs — a filling inside a dish surviving as its own line — are
-  // only diagnosable with the masks in hand.
-  const rawItems = items;
+  return summarise(image, whole, plate, items, items, regions);
+}
 
+/**
+ * Turn a list of named, weighed items into the record the scorer reads.
+ * Shared by both paths so the single-dish default and the split plate cannot
+ * drift apart in their arithmetic.
+ *
+ * `rawItems` keeps the region masks, which the summary throws away. Absorption
+ * bugs — a filling inside a dish surviving as its own line — are only
+ * diagnosable with the masks in hand.
+ */
+function summarise(image, whole, plate, items, rawItems, regions) {
   const named = items.map((it) => {
     const n = engine.forPortion(it.id, it.grams).nutrients;
     const v = (k) => n[k]?.value ?? 0;
@@ -294,7 +345,9 @@ if (jsonOut) {
  * partial measurement that still reads like the full one.
  */
 const tweaked = only || Object.keys(overrides).length || noProbe
-  || probeAlpha != null || args.includes('--flat-oov');
+  || probeAlpha != null || args.includes('--flat-oov')
+  // --split measures the opt-in path, not the default one the report describes.
+  || splitPlate;
 const complete = !skipped.length && rows.length === Object.keys(truth.images).length;
 
 if (tweaked) {

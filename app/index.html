@@ -145,6 +145,12 @@
             <input id="search-input" type="search" placeholder="Wrong? Search any food…" autocomplete="off" />
             <div id="search-results" class="search-results" hidden></div>
           </div>
+          <!-- Opt-in. A photo is read as one dish by default; splitting it into
+               separate items finds more on a thali but also invents food that is
+               not there, so it is offered rather than done automatically. -->
+          <div id="plate-offer" class="plate-offer">
+            <button id="btn-split-plate" class="ghost">⊞ More than one dish? Split the plate</button>
+          </div>
           <div id="portion-card" class="card" hidden>
             <div class="card-head">
               <h3>Portion</h3>
