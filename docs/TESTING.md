@@ -1,6 +1,6 @@
 # Testing Documentation
 
-Six layers, each answering a different question. All of them exercise the code
+Seven layers, each answering a different question. All of them exercise the code
 that ships; only the dataset fetch in layer 6 needs the network.
 
 ## 1. Unit tests — "is the math right?" (`npm test`)
@@ -65,10 +65,40 @@ so an experiment cannot leave its numbers under the shipped ones.
 
 It scores the **default** flow — one dish per photo. `--split` scores the
 opt-in plate breakdown and is treated as a tuned run, so it cannot overwrite the
-report. Both paths share one `summarise()`, so their arithmetic cannot drift
-apart. If the app's default ever changes again, this is the thing to change with
-it: a harness measuring a screen the user has to ask for is measuring the wrong
-product, in the same way that measuring a resolution nobody uploads did.
+report. If the app's default ever changes again, this is the thing to change
+with it: a harness measuring a screen the user has to ask for is measuring the
+wrong product, in the same way that measuring a resolution nobody uploads did.
+
+The pipeline itself lives in `eval/lib/pipeline.mjs` and is imported by both
+this harness and the stability one. That module exists because they must not
+measure different code — and it did not work the first time: the benchmark kept
+a private copy for an hour and went stale, reporting numbers for a path the app
+had already stopped taking. Extracting the module was not the fix; migrating
+every caller was.
+
+## 3b. Stability — "is it the same number twice?"
+
+`npm run test:stability` (`eval/stability.mjs`) asks a different question from
+the benchmark: not whether the answer is right, but whether it holds still. Each
+photo is re-encoded five ways — lossless PNG, JPEG at q95/q85/q75, and a 1%
+resize. None of those change what is on the plate, so none of them should change
+what is logged.
+
+It found that they did, badly: portions were scaled by a segmentation mask that
+swung up to 6.5× across those variants, moving calories by up to 67% on one
+photo. Portions are now the food's typical serving with no mask involved, and
+seventeen of twenty photos give an identical answer every time.
+
+Two standards, deliberately:
+
+- **portions must not move at all** on a photo whose dish did not change (2%).
+  Any wobble means something has started scaling by an unstable measurement
+  again, which is the regression this file exists to prevent;
+- **dish-name flips are pinned at the current three**, not accepted. They are
+  classifier near-ties (`biryani`/`poha`, `kung-pao-chicken`/`general-tso-chicken`).
+  The pass message prints the count so it cannot be read as all-clear, and a
+  fourth fails the build. Relaxing this to make the build green is how a real
+  defect becomes invisible.
 
 ## 4. Tracker flows — "does the diary actually work?"
 

@@ -25,10 +25,12 @@ it also puts food in the diary that was never on the plate.
 
 | | one dish (default) | split plate (opt-in) |
 |---|---|---|
-| Calories inside the accepted band | 13 / 20 | 16 / 20 |
-| Mean calorie error | 15.8% | 4.1% |
+| Calories inside the accepted band | 14 / 20 | 16 / 20 |
+| Mean calorie error | 13.7% | 4.1% |
 | Dishes named correctly | 52.1%¹ | 85.0% |
 | **Dishes invented that were not there** | **6** | **16** |
+| **Same answer when the file is re-saved** | **17 / 20** | 7 / 20 |
+| Seconds per photo | **2.6** | 11.7 |
 
 ¹ One dish named on a thali of five scores 1/5 by construction; this is the cost
 of the default, not a fault in it. Nine of the twenty photos are right on both
@@ -44,14 +46,18 @@ One image file gives the same dishes and the same calories on every run, and
 every photo is analysed at one fixed resolution (`ANALYSIS_SIDE`, 1280 px) so
 the framing handed to the models never depends on the camera.
 
-**It is not yet stable across different copies of the same photograph.**
-Measured on one plate of dumplings, re-encoding the identical picture as PNG
-instead of JPEG — a change no eye can see — moves the result between 415 kcal
-(one dish) and 671 kcal (a phantom second dish worth ~270 kcal). Letterboxing it
-to different frame shapes spreads it 328–691 kcal. A marginal region sits near
-the threshold that decides whether it becomes a diary line, and imperceptible
-pixel noise tips it either way. This is a real defect, it predates the
-fixed-resolution work, and it is not fixed. See
+**Stable across copies of the same photograph**, which it was not: re-encoding a
+picture as PNG rather than JPEG — a change no eye can see — used to move the
+answer by up to 67%, because portions were scaled by a segmentation mask that
+swung 6.5× under that noise. Portions are now the food's own typical serving and
+nothing is segmented on the default path, which also took a photo from 11.7 s to
+2.6 s. `npm run test:stability` re-encodes every benchmark photo five ways and
+fails the build if a portion moves.
+
+Seventeen of the twenty give an identical answer every time. The other three
+change *dish name* — `biryani`/`poha` and `kung-pao-chicken`/`general-tso-chicken`
+are near ties in the classifier, and noise picks the winner. That is a real
+remaining defect, pinned by the gate so it cannot grow. See
 [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md).
 
 Time per photo is 9–32 s on a laptop CPU, depending on what else it is doing.

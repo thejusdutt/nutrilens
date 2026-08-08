@@ -15,12 +15,12 @@ overfitting to these 20 photos.
 | images | 20 |
 | dish recall | 52.1% |
 | spurious dishes | 6 (6 images affected) |
-| kcal mean abs error | 15.8% (in band 13/20, within 25% 15/20) |
-| carbs mean abs error | 21.9% (in band 12/20, within 25% 12/20) |
-| protein mean abs error | 21.4% (in band 12/20, within 25% 12/20) |
-| fat mean abs error | 11.2% (in band 13/20, within 25% 16/20) |
-| grams mean abs error | 22.6% (in band 11/20, within 25% 13/20) |
-| median time per photo | 12.0 s |
+| kcal mean abs error | 13.7% (in band 14/20, within 25% 16/20) |
+| carbs mean abs error | 20.8% (in band 13/20, within 25% 13/20) |
+| protein mean abs error | 16.5% (in band 14/20, within 25% 15/20) |
+| fat mean abs error | 10.5% (in band 13/20, within 25% 16/20) |
+| grams mean abs error | 17.4% (in band 11/20, within 25% 15/20) |
+| median time per photo | 2.6 s |
 
 Every row but the last is deterministic — the same photo gives the same
 dishes, the same grams and the same calories on every run. The time is only
@@ -31,26 +31,26 @@ laptop the median ranged from 11 s to 32 s a photo.
 
 | photo | reported | accepted band | dishes found | what it logged |
 |---|---|---|---|---|
-| dosa-thali | 449 kcal | 320–560 | 0/3 | Masala dosa 244 g |
-| masala-dosa | 304 kcal | 340–660 | 1/3 | Masala dosa 165 g |
-| masala-dosa-cropped-bowls | 416 kcal | 330–520 | 1/2 | Masala dosa 226 g |
-| idli-vada-thali | 157 kcal | 560–980 | 1/4 | Vada 65 g |
-| sliders-watermelon | 247 kcal | 520–950 | 0/1 | Crab cakes 107 g |
-| fried-rice-bowl | 209 kcal | 350–780 | 1/1 | Fried rice 120 g |
-| dal-bowl | 461 kcal | 230–500 | 1/1 | Dal 318 g |
-| north-indian-thali | 303 kcal | 900–2000 | 0/2 | Poori 74 g |
-| pizza-detroit | 649 kcal | 330–1050 | 1/1 | Pizza 244 g |
-| paratha-pan | 396 kcal | 160–420 | 0/1 | Kheer 248 g |
-| samosa-chutney | 484 kcal | 400–800 | 1/2 | Samosa 156 g |
-| biryani-pan | 350 kcal | 150–480 | 0/1 | Poha 232 g |
-| collage-pizza-salad-fries | 282 kcal | 700–1500 | 1/3 | Caesar salad 186 g |
-| caesar-plate | 154 kcal | 180–480 | 1/1 | Caesar salad 102 g |
-| pancakes-berries | 615 kcal | 380–850 | 1/1 | Pancakes 218 g |
-| enchiladas-queso | 538 kcal | 350–800 | 0/1 | Chilaquiles 276 g |
-| naan-closeup | 358 kcal | 220–560 | 1/1 | Naan 115 g |
-| momos-chutney | 284 kcal | 230–620 | 1/1 | Dumplings 143 g |
-| tortilla-espanola | 347 kcal | 280–720 | 1/1 | Tortilla española 202 g |
-| kungpao-rice | 721 kcal | 400–800 | 1/2 | Kung pao chicken 355 g |
+| dosa-thali | 331 kcal | 320–560 | 0/3 | Masala dosa 180 g |
+| masala-dosa | 331 kcal | 340–660 | 1/3 | Masala dosa 180 g |
+| masala-dosa-cropped-bowls | 331 kcal | 330–520 | 1/2 | Masala dosa 180 g |
+| idli-vada-thali | 218 kcal | 560–980 | 1/4 | Vada 90 g |
+| sliders-watermelon | 277 kcal | 520–950 | 0/1 | Crab cakes 120 g |
+| fried-rice-bowl | 522 kcal | 350–780 | 1/1 | Fried rice 300 g |
+| dal-bowl | 290 kcal | 230–500 | 1/1 | Dal 200 g |
+| north-indian-thali | 184 kcal | 900–2000 | 0/2 | Poori 45 g |
+| pizza-detroit | 638 kcal | 330–1050 | 1/1 | Pizza 240 g |
+| paratha-pan | 239 kcal | 160–420 | 0/1 | Kheer 150 g |
+| samosa-chutney | 310 kcal | 400–800 | 1/2 | Samosa 100 g |
+| biryani-pan | 272 kcal | 150–480 | 0/1 | Poha 180 g |
+| collage-pizza-salad-fries | 273 kcal | 700–1500 | 1/3 | Caesar salad 180 g |
+| caesar-plate | 273 kcal | 180–480 | 1/1 | Caesar salad 180 g |
+| pancakes-berries | 423 kcal | 380–850 | 1/1 | Pancakes 150 g |
+| enchiladas-queso | 429 kcal | 350–800 | 0/1 | Chilaquiles 220 g |
+| naan-closeup | 311 kcal | 220–560 | 1/1 | Naan 100 g |
+| momos-chutney | 357 kcal | 230–620 | 1/1 | Dumplings 180 g |
+| tortilla-espanola | 344 kcal | 280–720 | 1/1 | Tortilla española 200 g |
+| kungpao-rice | 508 kcal | 400–800 | 1/2 | Kung pao chicken 250 g |
 
 <!-- /generated: everything below is written by hand -->
 
@@ -61,6 +61,59 @@ altered probe — a partial measurement that still reads like the full one is
 worse than a stale one.
 
 `masala-dosa-cropped-bowls` is a user-supplied photo rather than a fetched one.
+
+## 2026-08-08: the portion is the food's typical serving, and nothing is segmented
+
+Scaling a portion by how much of the plate a mask covers was measured to carry
+more noise than information, so the default stopped doing it.
+
+The evidence is `npm run test:stability`, which re-encodes each photograph five
+ways — lossless PNG, JPEG at three qualities, a 1% resize — none of which change
+what is on the plate. Against the mask-scaled portion, the dominant mask swung
+up to 6.5× across those variants (caesar-plate 91,858 → 596,492 px) and the
+plate ellipse it is measured against moved with it, which is how momos-chutney
+got a *larger* mask and *fewer* grams.
+
+Sweeping how far that reading is allowed to move a portion from the food's
+typical serving, measuring accuracy and stability on the same runs:
+
+| maxFactor | kcal in band | mean err | mean spread | worst spread |
+|---|---|---|---|---|
+| 2.5 (was) | 13/20 | 15.8% | 8.1% | 53.8% |
+| 1.8 | 13/20 | 14.6% | 8.1% | 53.8% |
+| 1.4 | 15/20 | 13.3% | 7.2% | 41.4% |
+| **1.0 (no area)** | 14/20 | 13.7% | **2.1%** | **22.0%** |
+
+Constraining the signal improved accuracy *and* stability at every step, which
+is what a measurement carrying more noise than information looks like. Removing
+it entirely is four times steadier for one photo of accuracy — noise at n=20.
+
+Measured over the whole set, before and after:
+
+| | mask-scaled | typical serving |
+|---|---|---|
+| mean kcal spread | 20.7% | **3.2%** |
+| worst kcal spread | 67.3% | **22.0%** |
+| photos moving >10% | 13 | **3** |
+| median time per photo | 11.7 s | **2.6 s** |
+
+Seventeen of twenty photos are now *identical* across every re-encoding. The
+three that are not are exactly the three whose dish name changes, so portion
+instability is gone and what remains is the classifier: `biryani`/`poha`,
+`kung-pao-chicken`/`general-tso-chicken` and one panel of the collage are near
+ties, and imperceptible noise picks the winner. Averaging over augmented views
+would damp that but cannot break a genuine tie, so it is recorded rather than
+attempted, and pinned at three by the gate.
+
+Because the area is no longer used, the default segments nothing at all — no
+encode, no region proposals. That is where 11.7 s a photo became 2.6 s. The
+split path still segments, and still uses area, where it compares dishes inside
+one frame and earns the cost.
+
+`eval/lib/pipeline.mjs` holds the pipeline that both harnesses and the app
+agree on. It was briefly duplicated in vision-bench, and the duplicate went
+stale within the hour — the benchmark kept weighing the dominant mask after the
+app had stopped, and reported numbers for a path nothing shipped.
 
 ## 2026-08-08: the tables above score one dish, because that is what ships
 

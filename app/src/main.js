@@ -323,55 +323,53 @@ async function runPortionEstimation(point) {
   const foodRec = engine.food(state.selectedId);
   const prior = foodRec?.prior ?? {};
   try {
-    if (!state.seg || point) {
-      setSpinner(state.imageEncoded ? 'Refining portion…' : 'Measuring portion…');
-      const detectPlate = !state.imageEncoded;
-      let m;
-      if (point) {
-        // The user tapped a spot: that point is the answer to "which food",
-        // so prompt with it directly.
-        m = await rpcImage({
+    // A tap says "this food, here", so it is worth segmenting. Without one the
+    // portion is the food's typical serving and nothing is segmented at all.
+    //
+    // Scaling a portion by how much of the plate a mask covers was measured to
+    // carry more noise than information: the mask swings up to 6.5x across
+    // re-encodings of the identical photograph — changes no eye can see — and
+    // the plate ellipse it is measured against moves with it. Bounding how far
+    // that reading may move the answer, over the whole benchmark:
+    //
+    //   maxFactor   in band   mean err   mean spread   worst spread
+    //   2.5 (was)     13/20      15.8%          8.1%          53.8%
+    //   1.4           15/20      13.3%          7.2%          41.4%
+    //   1.0 (none)    14/20      13.7%          2.1%          22.0%
+    //
+    // Four times steadier for one photo of accuracy, which is noise at n=20.
+    // It also takes ~8 SAM prompts and the encode out of the common path, so
+    // the answer arrives in about a second instead of ten.
+    if (point) {
+      if (!state.seg || point) {
+        setSpinner(state.imageEncoded ? 'Refining portion…' : 'Measuring portion…');
+        const detectPlate = !state.imageEncoded;
+        const m = await rpcImage({
           type: 'segment',
           image: detectPlate ? rawToMsg(raw) : undefined,
           detectPlate,
           points: [point],
         });
+        state.imageEncoded = true;
+        // Only a run that actually looked for a plate may set it — and when one
+        // did look, "no plate" is an answer, not a reason to keep the old one.
+        if (detectPlate) state.plate = m.plate ?? null;
         state.seg = { mask: new Uint8Array(m.mask), areaPx: m.areaPx };
-      } else {
-        // Nobody has pointed at anything, so weigh the largest plausible
-        // region rather than whatever a prompt at the centre of the frame
-        // happens to return. A centre prompt gives back a *fragment* of the
-        // food — measured over the benchmark it cost two thirds of the mass
-        // (pizza 96 g, dumplings 94 g) and put calories in band on only 7
-        // photos of 20. The dominant mask is the same one buildPlate uses when
-        // it decides a photo is a single dish.
-        m = await rpcImage({
-          type: 'segment-auto',
-          image: detectPlate ? rawToMsg(raw) : undefined,
-          detectPlate,
-          plate: state.plate,
-          width: raw.width,
-          height: raw.height,
-        });
-        const d = m.dominant;
-        state.seg = d
-          ? { mask: new Uint8Array(d.mask), areaPx: d.areaPx }
-          : { mask: new Uint8Array(raw.width * raw.height), areaPx: 0 };
+        drawOverlay();
       }
-      state.imageEncoded = true;
-      // Only a run that actually looked for a plate may set it — and when one
-      // did look, "no plate" is an answer, not a reason to keep the old one.
-      if (detectPlate) state.plate = m.plate ?? null;
-      drawOverlay();
+      const estimator = new PortionEstimator({ plateDiameterCm: plateCm() });
+      state.portion = estimator.estimate({
+        areaPx: foodAreaPx(state.seg.mask, raw.width, raw.height, state.seg.areaPx),
+        imageWidth: raw.width,
+        imageHeight: raw.height,
+        plate: state.plate,
+        prior,
+      });
+    } else {
+      state.portion = new PortionEstimator().estimate({
+        areaPx: 0, imageWidth: raw.width, imageHeight: raw.height, prior,
+      });
     }
-    const estimator = new PortionEstimator({ plateDiameterCm: plateCm() });
-    state.portion = estimator.estimate({
-      areaPx: foodAreaPx(state.seg.mask, raw.width, raw.height, state.seg.areaPx),
-      imageWidth: raw.width,
-      imageHeight: raw.height,
-      plate: state.plate,
-      prior,
-    });
   } catch (err) {
     console.warn('portion estimation failed, using serving prior', err);
     const s = prior.servingG ?? 250;

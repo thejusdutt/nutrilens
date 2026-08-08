@@ -30,14 +30,10 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import * as ort from 'onnxruntime-node';
-import { SlimSamSegmenter } from '@nutrilens/food-segmentation';
-import {
-  PortionEstimator, detectPlateEllipse, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE,
-} from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
-import { proposeRegions, buildPlate, DEFAULTS } from '@nutrilens/plate-analyzer';
-import { decodeImage, createRecognizer, root } from './lib/node-runtime.mjs';
+import { DEFAULTS } from '@nutrilens/plate-analyzer';
+import { decodeImage, root } from './lib/node-runtime.mjs';
+import { createPipeline } from './lib/pipeline.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i < 0 ? null : args[i + 1]; };
@@ -72,90 +68,27 @@ const truth = JSON.parse(readFileSync(join(root, 'eval/vision-truth.json'), 'utf
 const db = JSON.parse(readFileSync(join(root, 'app/public/data/nutrition-db.json'), 'utf8'));
 const engine = new NutritionEngine(db);
 
-const MODELS = join(root, 'app/public/models');
-
 console.log('loading models…');
-const { recognizer } = await createRecognizer({
+const { analyse } = await createPipeline({
   probe: !noProbe,
   probeAlpha: probeAlpha == null ? undefined : Number(probeAlpha),
   fusion: args.includes('--flat-oov') ? { oovAdaptive: false } : {},
 });
-const segmenter = await SlimSamSegmenter.load(
-  ort,
-  join(MODELS, 'slimsam/onnx/vision_encoder_quantized.onnx'),
-  join(MODELS, 'slimsam/onnx/prompt_encoder_mask_decoder_quantized.onnx'),
-);
-const estimator = new PortionEstimator();
 
 /**
  * Run the exact pipeline the app runs on one photo.
+ *
+ * The pipeline itself lives in ./lib/pipeline.mjs and is shared with the
+ * stability harness. It was briefly duplicated here, and the duplicate went
+ * stale within the hour: this file kept weighing the dominant mask after the
+ * app had stopped, so the benchmark reported numbers for a path nothing
+ * shipped. One copy, or the copies disagree and the disagreement reads as a
+ * result.
+ *
  * @returns {{items:{id,name,grams,kcal}[], totals:object, plate:object|null}}
  */
 export async function analyzePhoto(image, options = {}) {
-  const whole = await recognizer.recognize(image, { whole: true });
-  const imageTop = whole.top.filter((t) => engine.food(t.id));
-  const plate = detectPlateEllipse(image);
-
-  await segmenter.setImage(image);
-
-  // The shipped default: one dish, named from the whole frame and measured from
-  // a single mask prompted at the centre — app/src/main.js startAnalysis →
-  // selectFood → runPortionEstimation. Splitting the plate into separate items
-  // is opt-in in the app, so it is opt-in here too (`--split`). A harness that
-  // only scored the split path would be measuring a screen the user has to ask
-  // for, which is the same class of mistake as scoring a resolution nobody
-  // uploads.
-  const { regions, dominant } = await proposeRegions({
-    segment: (points) => segmenter.segment(points),
-    width: image.width,
-    height: image.height,
-    plate,
-    options,
-  });
-
-  if (!splitPlate) {
-    // One dish, named from the whole frame and weighed off the *dominant*
-    // mask — the largest plausible region, which is what buildPlate itself
-    // uses once it decides a photo is a single dish. Prompting SAM at the
-    // centre point instead returns a fragment of the food and was measured
-    // costing two thirds of the mass: pizza 96 g, dumplings 94 g, calories in
-    // band 7/20.
-    let items = [];
-    if (imageTop.length && dominant) {
-      const food = engine.food(imageTop[0].id);
-      const est = estimator.estimate({
-        areaPx: plate && plate.confidence >= MIN_PLATE_CONFIDENCE
-          ? maskAreaInsideEllipse(dominant.mask, image.width, image.height, plate)
-          : dominant.areaPx,
-        imageWidth: image.width,
-        imageHeight: image.height,
-        plate,
-        prior: food.prior,
-      });
-      items = [{
-        id: imageTop[0].id,
-        prob: imageTop[0].prob,
-        grams: est.grams,
-        portion: est,
-        singleDish: true,
-        region: dominant,
-      }];
-    }
-    return summarise(image, whole, plate, items, items, regions);
-  }
-
-  const items = await buildPlate({
-    image,
-    regions,
-    dominant,
-    imageTop,
-    plate,
-    classify: (img) => recognizer.recognize(img),
-    foodById: (id) => engine.food(id),
-    estimator,
-    options,
-  });
-
+  const { whole, plate, regions, items } = await analyse(image, options, { split: splitPlate });
   return summarise(image, whole, plate, items, items, regions);
 }
 
