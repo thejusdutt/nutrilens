@@ -25,14 +25,23 @@ published numbers are always the ones the current code produces.
 | Calories within 25% | 18 / 20 |
 | Mean calorie error | 4.1% |
 | Dishes named correctly | 85.0% |
-| Dishes invented that were not there | 17 |
+| Dishes invented that were not there | 16 |
 
-Deterministic: one image file gives the same dishes and the same calories on
-every run. Every photo is analysed at one fixed resolution
-(`ANALYSIS_SIDE`, 1280 px) so the answer does not depend on the camera that
-took it — though a low-resolution *copy* of a photo still carries less
-information than the original and can be read differently. Time per photo is
-9–32 s on a laptop CPU, depending on what else it is doing.
+One image file gives the same dishes and the same calories on every run, and
+every photo is analysed at one fixed resolution (`ANALYSIS_SIDE`, 1280 px) so
+the framing handed to the models never depends on the camera.
+
+**It is not yet stable across different copies of the same photograph.**
+Measured on one plate of dumplings, re-encoding the identical picture as PNG
+instead of JPEG — a change no eye can see — moves the result between 415 kcal
+(one dish) and 671 kcal (a phantom second dish worth ~270 kcal). Letterboxing it
+to different frame shapes spreads it 328–691 kcal. A marginal region sits near
+the threshold that decides whether it becomes a diary line, and imperceptible
+pixel noise tips it either way. This is a real defect, it predates the
+fixed-resolution work, and it is not fixed. See
+[eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md).
+
+Time per photo is 9–32 s on a laptop CPU, depending on what else it is doing.
 
 Before the accuracy rebuild, on the 19 plates that existed then: 10/19 inside
 the band, 13/19 within 25%, 31.7% mean calorie error, 54.7% of dishes named,
