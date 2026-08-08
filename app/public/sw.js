@@ -11,7 +11,7 @@
  */
 
 /** Bump to ship an app-shell update. Does NOT touch the model cache. */
-const SHELL_VERSION = 'v14';
+const SHELL_VERSION = 'v15';
 /**
  * Versioned separately on purpose: the models are ~180 MB and immutable, so
  * shipping a UI fix must never evict them and force a re-download. Bump this

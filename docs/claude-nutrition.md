@@ -126,6 +126,48 @@ consistency, physical limits, no fabricated micronutrients, no shadowing of a US
 food, and that the engine can price a library row through the same code path as
 every other food.
 
+## 2026-08-08: the tolerance that disabled the protein check
+
+A user looked at a masala dosa logged with 9.8 g of protein and said it did not
+look right. It traced to USDA FNDDS exactly — 5.46 g per 100 g, and internally
+consistent, its own macros summing to its own 184 kcal. The extraction was
+faithful. The *check* was not.
+
+`crossVerify` compares protein with a relative tolerance of 30% **or** an
+absolute escape. The escape was 2 g. Most cooked dishes carry 3–8 g of protein
+per 100 g, so 2 g is a quarter to two thirds of the whole figure, and no protein
+disagreement on a grain or lentil dish could ever fail. Masala dosa was 30.4%
+apart and stamped `agree: true, score 0.811` on a 1.66 g gap. Across the 238
+shipped foods, 19 disagreements on protein and 15 on fat were passed as
+"two-source confirmed" without their macros being compared at all.
+
+The signature was visible once looked for: calories agreed everywhere (−1% to
++7% across the affected family) while protein ran 32–125% apart. Two estimates
+that agree on the total and disagree on how to divide it both satisfy Atwater,
+so neither the energy check nor the consistency check could see it.
+
+The floor is now 0.5 g — about 2 kcal, below the noise of any recipe. At that
+size it excuses one food on protein (banana, 0.36 g) and two on fat, and the
+relative test does the work it was written to do. `rel()` already floors its own
+denominator at 1, so a small absolute clause was all it ever needed.
+
+The 29 foods that re-opened were reviewed one at a time in
+`tools/adjudicate-manual.mjs`, which records a verdict and a reason for each.
+Seven were corrected — the USDA row described a different preparation from the
+dish its name promises, or a value its own ingredients cannot produce. Fourteen
+were kept: a thick rajma and a thin one are both rajma, and a survey of what
+people actually ate is not worse evidence than a recipe reasoned from scratch.
+Eight were already corrected by the earlier two-model consensus and were left
+alone — the sweep that found them had compared the pristine USDA base rather
+than the shipped values, so those disagreements were stale, and replacing a
+blended two-model figure with a single estimate would have been a downgrade
+wearing the word "correction".
+
+Corrections take the model's macro set, which is Atwater-consistent by
+construction, over USDA's micronutrients, which come from measurement rather
+than reasoning — and rescale the fat sub-fractions so the parts still sum to the
+whole. Every one still clears the build's validation gate.
+
 ## The written-up results
 
 `docs/nutrition-accuracy-report.html` is the readable version of what this

@@ -15,12 +15,12 @@ overfitting to these 20 photos.
 | images | 20 |
 | dish recall | 52.1% |
 | spurious dishes | 6 (6 images affected) |
-| kcal mean abs error | 13.7% (in band 14/20, within 25% 16/20) |
-| carbs mean abs error | 20.8% (in band 13/20, within 25% 13/20) |
-| protein mean abs error | 16.5% (in band 14/20, within 25% 15/20) |
-| fat mean abs error | 10.5% (in band 13/20, within 25% 16/20) |
+| kcal mean abs error | 13.9% (in band 13/20, within 25% 16/20) |
+| carbs mean abs error | 21.2% (in band 11/20, within 25% 13/20) |
+| protein mean abs error | 17.7% (in band 12/20, within 25% 15/20) |
+| fat mean abs error | 9.0% (in band 15/20, within 25% 16/20) |
 | grams mean abs error | 17.4% (in band 11/20, within 25% 15/20) |
-| median time per photo | 2.6 s |
+| median time per photo | 2.5 s |
 
 Every row but the last is deterministic — the same photo gives the same
 dishes, the same grams and the same calories on every run. The time is only
@@ -31,9 +31,9 @@ laptop the median ranged from 11 s to 32 s a photo.
 
 | photo | reported | accepted band | dishes found | what it logged |
 |---|---|---|---|---|
-| dosa-thali | 331 kcal | 320–560 | 0/3 | Masala dosa 180 g |
-| masala-dosa | 331 kcal | 340–660 | 1/3 | Masala dosa 180 g |
-| masala-dosa-cropped-bowls | 331 kcal | 330–520 | 1/2 | Masala dosa 180 g |
+| dosa-thali | 324 kcal | 320–560 | 0/3 | Masala dosa 180 g |
+| masala-dosa | 324 kcal | 340–660 | 1/3 | Masala dosa 180 g |
+| masala-dosa-cropped-bowls | 324 kcal | 330–520 | 1/2 | Masala dosa 180 g |
 | idli-vada-thali | 218 kcal | 560–980 | 1/4 | Vada 90 g |
 | sliders-watermelon | 277 kcal | 520–950 | 0/1 | Crab cakes 120 g |
 | fried-rice-bowl | 522 kcal | 350–780 | 1/1 | Fried rice 300 g |

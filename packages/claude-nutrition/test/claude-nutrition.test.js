@@ -113,6 +113,32 @@ describe('crossVerify', () => {
     expect(r.score).toBeLessThan(0.7);
   });
 
+  it('does not call a 30%-apart protein "agreed" because the gap is small in grams', () => {
+    // The real case: masala dosa. USDA 5.46 g of protein against 3.80 from an
+    // independent recipe — 30.4% apart, which the relative tolerance is meant
+    // to catch. It was passed as two-source-confirmed anyway, because the gap
+    // is 1.66 g and the absolute escape was 2 g. Most cooked dishes carry
+    // 3–8 g per 100 g, so that clause disabled the check for a whole family of
+    // foods rather than excusing trivia.
+    const usda = { kcal: 184, protein: 5.46, carbs: 30.8, fat: 4.27 };
+    const claude = { kcal: 180, protein: 3.8, carbs: 26, fat: 6.5 };
+    const r = crossVerify(usda, claude);
+    expect(r.kcalAgree).toBe(true);      // the calories really do agree
+    expect(r.proteinAgree).toBe(false);  // the protein really does not
+    expect(r.agree).toBe(false);         // so the food goes to adjudication
+  });
+
+  it('still excuses a gap too small to mean anything', () => {
+    // Banana: 0.74 vs 1.10 g. Relatively 33%, absolutely 0.36 g — under 2 kcal,
+    // below the noise of any recipe. The floor exists for exactly this.
+    const r = crossVerify(
+      { kcal: 97, protein: 0.74, carbs: 23, fat: 0.3 },
+      { kcal: 95, protein: 1.1, carbs: 22.5, fat: 0.35 },
+    );
+    expect(r.proteinAgree).toBe(true);
+    expect(r.agree).toBe(true);
+  });
+
   it('blend interpolates macros and keeps USDA-only micronutrients', () => {
     const usda = { kcal: 100, protein: 10, iron: 2 };
     const claude = { kcal: 200, protein: 20 };

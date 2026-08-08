@@ -135,7 +135,14 @@ d('shipped nutrition database', () => {
     const foods = Object.entries(engine.db.foods);
     const tagged = foods.filter(([, f]) => f.src);
     expect(tagged.length, 'foods with a verification src tag').toBeGreaterThan(80);
-    const okSrc = new Set(['usda-verified', 'claude-corrected', 'two-model-consensus', 'two-model-outlier']);
+    // `manual-review` and `usda-kept-on-review` come from tools/adjudicate-manual.mjs:
+    // foods the automated cross-check waved through because its absolute
+    // tolerance was wider than the whole nutrient, reviewed one at a time and
+    // either corrected or explicitly left alone with a recorded reason.
+    const okSrc = new Set([
+      'usda-verified', 'claude-corrected', 'two-model-consensus', 'two-model-outlier',
+      'manual-review', 'usda-kept-on-review',
+    ]);
     for (const [id, f] of foods) {
       if (!f.src) continue;
       expect(okSrc.has(f.src), `${id} has unknown src "${f.src}"`).toBe(true);

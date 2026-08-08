@@ -26,6 +26,25 @@ export function crossVerify(usda, claude, opts = {}) {
   const kcalTolAbs = opts.kcalTolAbs ?? 15;
   const proteinTol = opts.proteinTol ?? 0.30;
   const fatTol = opts.fatTol ?? 0.35;
+  /**
+   * Absolute escape from the relative test, for gaps too small to matter.
+   *
+   * It was 2 g of protein and 2.5 g of fat, and at that size it did not excuse
+   * trivia, it disabled the check. Most cooked dishes carry 3–8 g of protein
+   * per 100 g, so 2 g is 25–67% of the whole figure — no protein disagreement
+   * on a grain or lentil dish could fail. Measured over the 238 shipped foods,
+   * 19 that disagreed on protein by more than the 30% tolerance were passed as
+   * "two-source confirmed" anyway, and 15 more on fat. Masala dosa was one:
+   * 5.46 against 3.80, 30.4% apart, waved through on a 1.66 g absolute gap and
+   * never adjudicated.
+   *
+   * 0.5 g is about 2 kcal, which is genuinely below the noise of any recipe.
+   * At that floor the same sweep excuses one food on protein (banana, 0.36 g)
+   * and two on fat, and the relative test does the work it was written to do.
+   * `rel()` already floors its own denominator at 1, so near-zero nutrients
+   * cannot blow up the ratio — this clause never needed to be large.
+   */
+  const macroTolAbs = opts.macroTolAbs ?? 0.5;
 
   const keys = ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'sugars', 'sodium'];
   const deltas = {};
@@ -42,8 +61,10 @@ export function crossVerify(usda, claude, opts = {}) {
   const kcalAgree = deltas.kcal
     ? kcalAbs <= Math.max(kcalTolAbs, deltas.kcal.usda * kcalTolPct)
     : false;
-  const proteinAgree = deltas.protein ? deltas.protein.relDelta <= proteinTol || deltas.protein.absDelta <= 2 : true;
-  const fatAgree = deltas.fat ? deltas.fat.relDelta <= fatTol || deltas.fat.absDelta <= 2.5 : true;
+  const proteinAgree = deltas.protein
+    ? deltas.protein.relDelta <= proteinTol || deltas.protein.absDelta <= macroTolAbs : true;
+  const fatAgree = deltas.fat
+    ? deltas.fat.relDelta <= fatTol || deltas.fat.absDelta <= macroTolAbs : true;
   const agree = kcalAgree && proteinAgree && fatAgree;
 
   // Overall agreement scalar: kcal weighted heaviest, then the macros.
