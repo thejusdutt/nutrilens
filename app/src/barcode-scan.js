@@ -15,12 +15,16 @@
  */
 import { decodeImage, isValidBarcode, toEan13 } from '@nutrilens/barcode';
 import { fromOffProduct, productUrl } from '@nutrilens/off-food';
-import { $, el, fill, openSheet, closeSheet, toast, show, emit } from './ui.js';
+import { $, el, fill, openSheet, closeSheet, toast, emit } from './ui.js';
 import { rememberProduct, cachedProduct } from './foods.js';
+
+export const ONLINE_LOOKUP_KEY = 'onlineBarcodeLookup';
+export const onlineBarcodeLookupEnabled = () => localStorage.getItem(ONLINE_LOOKUP_KEY) !== 'false';
 
 let stream = null;
 let running = false;
 let detector = null;
+let navigate = () => {};
 
 /** Does this browser have a native detector that can read product codes? */
 async function nativeDetector() {
@@ -40,8 +44,8 @@ async function nativeDetector() {
  * @param {{date:string, slot:string}} ctx
  */
 export async function openBarcodeScanner(ctx) {
-  closeSheet({ all: true });
-  show('barcode');
+  closeSheet({ all: true, historyMode: 'replace' });
+  await navigate('barcode');
   const video = $('scan-video');
   const status = $('scan-status');
   status.textContent = 'Starting camera…';
@@ -116,24 +120,32 @@ async function scanLoop(video, native, ctx) {
  * @param {{date:string, slot:string}} ctx
  */
 export async function handleCode(barcode, ctx) {
-  show('home');
+  await navigate('home', { history: 'replace' });
   const cached = await cachedProduct(barcode);
   if (cached) { openProduct(cached, barcode, ctx, 'from your device'); return; }
 
+  if (!onlineBarcodeLookupEnabled()) {
+    openUnknown(barcode, ctx, 'Online barcode lookup is off. Turn it on in Settings, or create this product from its label.');
+    return;
+  }
   if (!navigator.onLine) { openUnknown(barcode, ctx, 'You are offline and this product has not been scanned before.'); return; }
 
-  openSheet({ title: 'Looking up…', body: el('div.stack', null, el('div.spinner'), el('p.muted', null, barcode)) });
+  openSheet({
+    title: 'Looking up…',
+    body: el('div.stack', null, el('div.spinner'), el('p.muted', null, barcode),
+      el('p.muted.tiny', null, 'Sending this barcode to Open Food Facts.')),
+  });
   try {
     const res = await fetch(productUrl(barcode), { headers: { Accept: 'application/json' } });
     const json = await res.json();
     const mapped = fromOffProduct(json.product ?? json, { barcode });
-    closeSheet();
+    closeSheet({ historyMode: 'replace' });
     if (!mapped.ok) { openUnknown(barcode, ctx, mapped.reason); return; }
     await rememberProduct(barcode, mapped.food);
     emit('foods');
     openProduct(mapped.food, barcode, ctx, 'Open Food Facts');
   } catch (err) {
-    closeSheet();
+    closeSheet({ historyMode: 'replace' });
     openUnknown(barcode, ctx, `Lookup failed: ${err.message}`);
   }
 }
@@ -191,7 +203,7 @@ export function openManualEntry(ctx) {
   const submit = async () => {
     const code = input.value.replace(/\D/g, '');
     if (!isValidBarcode(code)) { toast('That is not a valid barcode — check the digits'); return; }
-    closeSheet({ all: true });
+    closeSheet({ all: true, historyMode: 'replace' });
     await handleCode(toEan13(code), ctx);
   };
   openSheet({
@@ -204,7 +216,15 @@ export function openManualEntry(ctx) {
 }
 
 /** Wire the scanner view's own controls once at startup. */
-export function initBarcodeView(getContext) {
-  $('scan-cancel').onclick = () => { closeBarcodeScanner(); show('home'); };
-  $('scan-manual').onclick = () => { closeBarcodeScanner(); show('home'); openManualEntry(getContext()); };
+export function initBarcodeView(getContext, navigateTo) {
+  navigate = navigateTo;
+  $('scan-cancel').onclick = () => {
+    closeBarcodeScanner();
+    navigate('home', { history: 'replace' });
+  };
+  $('scan-manual').onclick = async () => {
+    closeBarcodeScanner();
+    await navigate('home', { history: 'replace' });
+    openManualEntry(getContext());
+  };
 }

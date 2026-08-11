@@ -44,7 +44,7 @@
   --surface-2: #f0f2f5;
   --ink: #12161b;
   --ink-2: #5c6874;
-  --ink-3: #8b97a4;
+  --ink-3: #5c6975;
   --rule: #d5dbe1;
   --rule-strong: #b9c3cd;
 
@@ -75,7 +75,7 @@
   --surface-2: #1e242b;
   --ink: #e9edf2;
   --ink-2: #96a2af;
-  --ink-3: #6c7987;
+  --ink-3: #8996a3;
   --rule: #252c34;
   --rule-strong: #333c46;
   --accent: #e6a244;
@@ -93,7 +93,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper: #0f1216; --surface: #171b21; --surface-2: #1e242b;
-    --ink: #e9edf2; --ink-2: #96a2af; --ink-3: #6c7987;
+    --ink: #e9edf2; --ink-2: #96a2af; --ink-3: #8996a3;
     --rule: #252c34; --rule-strong: #333c46;
     --accent: #e6a244; --accent-soft: #2c2113; --accent-ink: #16110a;
     --alert: #f2796a; --alert-soft: #2e1613;
@@ -387,8 +387,8 @@ main {
 .habit-actions button { padding: 5px 11px; font-size: 13px; }
 .habit-input { width: 92px; text-align: right; }
 .water-track { display: flex; gap: 3px; }
-.water-track i { width: 6px; height: 15px; border-radius: 1px; background: var(--rule); display: block; }
-.water-track i.fill { background: var(--m-fiber); }
+.water-track .drop { width: 6px; height: 15px; border-radius: 1px; background: var(--rule); display: block; }
+.water-track .drop.full { background: var(--m-fiber); }
 
 .notes textarea { width: 100%; min-height: 66px; resize: vertical; }
 .complete-card .projection { font-size: 13px; color: var(--ink-2); margin-top: 8px; }
@@ -809,11 +809,37 @@ details.card > *:last-child { padding-bottom: 15px; }
 
 .toast-host { position: fixed; inset: auto 0 88px 0; z-index: 70; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
 .toast {
-  background: var(--ink); color: var(--paper); padding: 9px 16px; border-radius: 999px;
+  background: var(--ink); color: var(--paper); padding: 9px 10px 9px 16px; border-radius: 999px;
   font-size: 13px; animation: toast-in .2s ease-out;
+  display: flex; align-items: center; gap: 12px; pointer-events: auto;
+}
+.toast-action {
+  min-height: 32px; padding: 5px 10px; border: 1px solid currentColor;
+  border-radius: 999px; background: transparent; color: inherit; font-weight: 600;
 }
 .toast.out { opacity: 0; transition: opacity .3s ease; }
 @keyframes toast-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Finger-sized targets without making mouse-first layouts unnecessarily loose. */
+@media (pointer: coarse) {
+  .icon-btn, .de-del, .dish-del, .builder-item .mi-del, .chip-x,
+  .portion-ctl .step, .fr-add, .toast-action {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  button, input:not([type="checkbox"]):not([type="radio"]), select,
+  details.card > summary, .link {
+    min-height: 44px;
+  }
+  .meal-log, .candidate, .fix-row, .search-results button, .fr-main {
+    min-height: 44px;
+  }
+  .portion-read { min-height: 44px; }
+  .de-del, .dish-del { margin: -8px -10px -8px 0; padding: 8px 10px; }
+  .meal-section-head .icon-btn.small { margin: -6px -8px -6px 0; }
+  .diary-date-nav .icon-btn { flex: none; }
+  .habit-actions { gap: 2px; }
+}
 
 @media (max-width: 480px) {
   .readout-figure { font-size: 38px; }

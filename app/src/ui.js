@@ -69,15 +69,22 @@ export const VIEWS = ['home', 'camera', 'analyze', 'diary', 'nutrition', 'progre
 let currentView = 'home';
 const listeners = new Set();
 
-/** @param {string} name @param {{silent?:boolean}} [opts] */
-export function show(name, { silent = false } = {}) {
+/** @param {string} name @param {{silent?:boolean, history?:'push'|'replace'|'none'}} [opts] */
+export function show(name, { silent = false, history: historyMode = 'push' } = {}) {
+  if (!VIEWS.includes(name)) return;
   currentView = name;
   for (const v of VIEWS) {
     const node = $(`view-${v}`);
     if (node) node.hidden = v !== name;
   }
   for (const btn of document.querySelectorAll('.tab-btn')) {
-    btn.classList.toggle('active', btn.dataset.view === name);
+    const active = btn.dataset.view === name;
+    btn.classList.toggle('active', active);
+    if (active) btn.setAttribute('aria-current', 'page'); else btn.removeAttribute('aria-current');
+  }
+  if (historyMode !== 'none') {
+    const method = historyMode === 'replace' ? 'replaceState' : 'pushState';
+    history[method]({ ...(history.state ?? {}), view: name, sheetDepth: 0 }, '', location.href);
   }
   document.querySelector('main')?.scrollTo?.({ top: 0 });
   if (!silent) for (const fn of listeners) fn(name);
@@ -90,24 +97,64 @@ export const onViewChange = (fn) => { listeners.add(fn); return () => listeners.
 // Bottom sheet — the surface every "log something" flow lives in
 // ---------------------------------------------------------------------------
 let sheetStack = [];
+let sheetId = 0;
+const focusable = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+
+/** Enter/Space activation for the few controls that cannot be native buttons. */
+export const enterKey = (fn) => (event) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    fn(event);
+  }
+};
 
 /**
- * Open a bottom sheet. Sheets stack (search → food detail), and closing one
- * returns to the previous, which is how a food tracker's add-flow behaves.
+ * Open a bottom sheet. Each depth gets a history entry, so Android Back closes
+ * one nested sheet at a time before it navigates away from the current view.
  * @param {{title:string, body:Node, actions?:Node, onClose?:Function}} spec
  */
 export function openSheet(spec) {
-  sheetStack.push(spec);
+  sheetStack.push({ ...spec, opener: document.activeElement, id: `sheet-title-${++sheetId}` });
+  history.pushState({ ...(history.state ?? {}), sheetDepth: sheetStack.length }, '', location.href);
   renderSheet();
 }
 
-export function closeSheet({ all = false } = {}) {
+export function closeSheet({ all = false, historyMode = 'back' } = {}) {
+  const count = all ? sheetStack.length : Math.min(1, sheetStack.length);
+  if (!count) return;
   const closed = all ? sheetStack.splice(0) : sheetStack.splice(-1);
-  for (const s of closed.reverse()) s.onClose?.();
+  for (const s of closed.slice().reverse()) s.onClose?.();
   renderSheet();
+  if (historyMode === 'back') history.go(-count);
+  else if (historyMode === 'replace') {
+    history.replaceState({ ...(history.state ?? {}), sheetDepth: sheetStack.length }, '', location.href);
+  }
+  const restore = all ? closed[0]?.opener : closed.at(-1)?.opener;
+  if (sheetStack.length) focusSheet(sheetStack.at(-1).lastFocus);
+  else if (restore?.isConnected) restore.focus({ preventScroll: true });
+}
+
+/** Reconcile the visible sheet stack to a history entry without writing history. */
+export function restoreSheetDepth(depth = 0) {
+  const target = Math.max(0, Number(depth) || 0);
+  if (target >= sheetStack.length) return false;
+  while (sheetStack.length > target) closeSheet({ historyMode: 'none' });
+  return true;
 }
 
 export const sheetDepth = () => sheetStack.length;
+
+function setBackgroundInert(value) {
+  for (const node of [$('view-root'), document.querySelector('.topbar'), document.querySelector('.tabbar')]) {
+    if (node) node.inert = value;
+  }
+}
+
+function focusSheet(preferred) {
+  const sheet = $('sheet-host')?.querySelector('.sheet');
+  const target = preferred?.isConnected ? preferred : sheet?.querySelector(focusable) ?? sheet;
+  target?.focus?.({ preventScroll: true });
+}
 
 function renderSheet() {
   const host = $('sheet-host');
@@ -116,35 +163,63 @@ function renderSheet() {
     host.hidden = true;
     fill(host);
     document.body.classList.remove('sheet-open');
+    setBackgroundInert(false);
     return;
   }
+  const active = document.activeElement;
+  const previous = sheetStack.at(-2);
+  if (previous && host.contains(active)) previous.lastFocus = active;
   host.hidden = false;
   document.body.classList.add('sheet-open');
+  setBackgroundInert(true);
   fill(host,
     el('div.sheet-backdrop', { onclick: () => closeSheet() }),
-    el('div.sheet', { role: 'dialog', 'aria-modal': 'true', 'aria-label': spec.title },
+    el('div.sheet', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': spec.id, tabindex: '-1' },
       el('div.sheet-head', null,
         el('button.icon-btn', {
           onclick: () => closeSheet(),
           'aria-label': sheetStack.length > 1 ? 'Back' : 'Close',
         }, sheetStack.length > 1 ? '‹' : el('span.i', { html: CLOSE_MARK })),
-        el('h2', null, spec.title),
+        el('h2', { id: spec.id }, spec.title),
         spec.actions ?? el('span.sheet-spacer')),
       el('div.sheet-body', null, spec.body)),
   );
-  host.querySelector('.sheet-body input, .sheet-body select, .sheet-body button')?.focus?.({ preventScroll: true });
+  queueMicrotask(() => focusSheet(spec.lastFocus));
 }
 
-addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && sheetStack.length) { e.preventDefault(); closeSheet(); }
+addEventListener('keydown', (event) => {
+  if (!sheetStack.length) return;
+  if (event.key === 'Escape') { event.preventDefault(); closeSheet(); return; }
+  if (event.key !== 'Tab') return;
+  const sheet = $('sheet-host')?.querySelector('.sheet');
+  const items = [...(sheet?.querySelectorAll(focusable) ?? [])].filter((node) => node.offsetParent !== null);
+  if (!items.length) { event.preventDefault(); sheet?.focus(); return; }
+  const first = items[0], last = items.at(-1);
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 });
 
-/** Brief confirmation message. Non-blocking: logging food should never need an OK button. */
-export function toast(text, { ms = 2200 } = {}) {
+/** Brief message, optionally with one reversible action. */
+export function toast(text, { ms = 2200, action, onAction } = {}) {
   const host = $('toast-host');
-  const node = el('div.toast', null, text);
+  let finished = false;
+  let acting = false;
+  const dismiss = () => {
+    if (finished) return;
+    finished = true;
+    node.classList.add('out');
+    setTimeout(() => node.remove(), 300);
+  };
+  const node = el('div.toast', null, el('span', null, text), action && el('button.toast-action', {
+    onclick: async (event) => {
+      if (finished || acting) return;
+      acting = true;
+      event.currentTarget.disabled = true;
+      try { await onAction?.(); } finally { dismiss(); }
+    },
+  }, action));
   host.append(node);
-  setTimeout(() => { node.classList.add('out'); setTimeout(() => node.remove(), 300); }, ms);
+  setTimeout(dismiss, ms);
 }
 
 /** Formatters used across every screen. */

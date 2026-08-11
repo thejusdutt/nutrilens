@@ -4,9 +4,9 @@
 A complete food diary — search, barcode scan, serving sizes, custom foods,
 recipes, exercise, weight and a nutrition dashboard — plus the part no other
 tracker does locally: photograph a plate and get every dish, its portion and its
-full micronutrient profile. Everything is computed **100% on your device**. No
-backend, no account, no cloud APIs, no telemetry; after the first visit it works
-in airplane mode.
+full micronutrient profile. Photos are analysed **100% on your device**. There is
+no backend, account, or telemetry. Optional unknown-barcode lookups use Open Food
+Facts; cached products and the rest of the tracker work in airplane mode.
 
 ![pipeline](docs/img/pipeline.svg)
 
@@ -255,9 +255,11 @@ and [eval/results/](eval/results/) for the generated reports.
 
 ## Privacy & disclaimer
 
-Photos never leave the device; there is nothing to send them to. Nutrition
-values are estimates derived from USDA reference data and single-image portion
-approximation — informational, not medical advice.
+Photos never leave the device; there is nothing to send them to. If online
+barcode lookup is enabled, an unknown barcode is sent to Open Food Facts and the
+result is cached locally. It can be disabled in Settings. Nutrition values are
+estimates derived from USDA reference data and single-image portion approximation
+— informational, not medical advice.
 
 ## Licenses
 

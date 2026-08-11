@@ -13,9 +13,7 @@ import { el, fill, fmt, openSheet, closeSheet } from './ui.js';
 import { food as foodById, servingsFor, search } from './foods.js';
 import { bestServing, niceCount, stepFor } from './servings.js';
 import { iconEl } from './icons.js';
-
-/** Below this fused probability a dish is flagged for the user to confirm. */
-const UNSURE_BELOW = 0.5;
+import { confidenceNeedsReview } from './confidence.js';
 
 /**
  * Per-dish colours: the mask outline on the photo and the numbered badge beside
@@ -55,7 +53,7 @@ export function renderPlate(host, plate, hooks) {
 function dishRow(it, i, plate, hooks) {
   const foodRecord = foodById(it.id);
   const name = foodRecord?.name ?? it.id;
-  const unsure = it.prob < UNSURE_BELOW;
+  const unsure = confidenceNeedsReview(it.prob);
 
   const kcalEl = el('span.dish-kcal', null, `${fmt.kcal(kcalOf(it.id, it.grams))} kcal`);
   let row;
@@ -108,7 +106,7 @@ function dishRow(it, i, plate, hooks) {
  * anyone who weighed it. Stepping by serving is what makes a wrong portion a
  * one-tap fix instead of arithmetic.
  */
-function portionControl(it, foodRecord, refresh) {
+export function portionControl(it, foodRecord, refresh, { gramsId } = {}) {
   const wrap = el('div.portion-ctl');
 
   const draw = () => {
@@ -120,17 +118,18 @@ function portionControl(it, foodRecord, refresh) {
     const step = (delta) => {
       it.grams = Math.min(2000, Math.max(1, Math.round((shown + delta) * unit.grams)));
       draw();
-      refresh();
+      refresh(it, unit);
     };
 
     fill(wrap,
       el('button.step', { onclick: () => step(-inc), 'aria-label': 'Smaller portion' }, '−'),
       el('button.portion-read', {
-        onclick: () => openGramEntry(it, () => { draw(); refresh(); }),
+        onclick: () => openGramEntry(it, () => { draw(); refresh(it, bestServing(servingsFor(foodRecord), it.grams, foodRecord?.name)); }),
         title: 'Enter an exact weight',
       },
       el('b', null, `${niceCount(unit.count)} ${unit.label}`),
-      el('span.portion-g', null, `${Math.round(it.grams)} g`)),
+      el('span.portion-g', null,
+        el('output', { id: gramsId, value: String(Math.round(it.grams)) }), ' g')),
       el('button.step', { onclick: () => step(inc), 'aria-label': 'Bigger portion' }, '+'),
     );
   };

@@ -172,9 +172,23 @@ try {
     ['#p-goal-weight', 75], ['#p-start-weight', 82]]) await setValue(sel, v);
   const summary = await text('#goal-summary');
   check('goal summary states maintenance and goal', summary.includes(tdee.toLocaleString()) && summary.includes(goalKcal.toLocaleString()), true);
+  check('settings exposes full backup and restore controls', await page.evaluate(() =>
+    !!document.getElementById('btn-backup') && !!document.getElementById('btn-restore')), true);
+  check('settings discloses optional online barcode lookup', await page.evaluate(() =>
+    !!document.getElementById('setting-barcode-online')), true);
 
   await page.evaluate(() => document.querySelector('.tab-btn[data-view="diary"]').click());
   await page.waitForSelector('#rem-goal');
+  check('active tab exposes aria-current', await page.$eval('.tab-btn[data-view="diary"]', (node) => node.getAttribute('aria-current')), 'page');
+  await page.evaluate(() => {
+    const opener = document.getElementById('btn-add');
+    opener.focus();
+    opener.click();
+  });
+  await page.waitForSelector('.sheet');
+  await page.evaluate(() => document.querySelector('.sheet-head .icon-btn').click());
+  await sleep(300);
+  check('closing a sheet restores its opener focus', await page.evaluate(() => document.activeElement?.id), 'btn-add');
   let d = await diary();
   check('goal reaches the diary banner', d.goal, goalKcal);
   check('nothing logged yet', [d.food, d.left], [0, goalKcal]);
@@ -211,6 +225,26 @@ try {
   d = await diary();
   check('editing rescales the entry', d.sections.breakfast[0].kcal, kcalOf('pizza', serving.grams * 0.5));
   check('editing does not duplicate it', d.sections.breakfast.length, 1);
+
+  const beforeUndo = JSON.stringify(d.sections.breakfast);
+  await clickIn('.meal-section[data-slot="breakfast"] .de-del');
+  await page.waitForSelector('.toast-action');
+  await sleep(250);
+  check('single delete removes the entry before Undo', (await diary()).sections.breakfast.length, 0);
+  await clickIn('.toast-action');
+  await sleep(700);
+  check('Undo restores the exact diary entry', JSON.stringify((await diary()).sections.breakfast), beforeUndo);
+
+  await clickIn('.meal-section[data-slot="breakfast"] .icon-btn.small');
+  await page.waitForSelector('.sheet');
+  await clickText('Clear breakfast', '.sheet');
+  await page.waitForSelector('.sheet');
+  check('clear meal requires an explicit confirmation', await text('.sheet-head h2'), 'Clear Breakfast?');
+  await clickText('Cancel', '.sheet');
+  await sleep(300);
+  await page.evaluate(() => document.querySelector('.sheet-head .icon-btn')?.click());
+  await sleep(300);
+  check('cancelling clear keeps every meal entry', JSON.stringify((await diary()).sections.breakfast), beforeUndo);
 
   // ---- 4. quick add --------------------------------------------------------
   await clickIn('#btn-add');
@@ -352,6 +386,22 @@ try {
   // ---- 9. water, steps, notes, complete diary ------------------------------
   for (let i = 0; i < 3; i++) { await clickIn('#water-plus'); await sleep(220); }
   check('water counts glasses toward the goal', (await text('#water-count')).startsWith('3 /'), true);
+  check('water fills one visible pip per glass', await page.$$eval('.water-track .drop.full', (nodes) => nodes.length), 3);
+  for (let i = 0; i < 30 && !(await page.$eval('#water-plus', (node) => node.disabled)); i++) {
+    await clickIn('#water-plus'); await sleep(80);
+  }
+  const waterAtGoal = await page.evaluate(() => ({
+    count: document.getElementById('water-count').textContent.trim(),
+    pips: document.querySelectorAll('.water-track .drop.full').length,
+    total: document.querySelectorAll('.water-track .drop').length,
+    disabled: document.getElementById('water-plus').disabled,
+  }));
+  check('water stops at the configured goal', waterAtGoal, {
+    count: `${waterAtGoal.total} / ${waterAtGoal.total}`,
+    pips: waterAtGoal.total,
+    total: waterAtGoal.total,
+    disabled: true,
+  });
   await setValue('#steps-input', 8200);
   await sleep(300);
   await page.evaluate(() => {
@@ -426,7 +476,24 @@ try {
     weightSummary.includes('79.4') && weightSummary.includes('75'), true);
   check('weight chart plots the point', await page.$eval('#weight-chart', (n) => n.innerHTML.includes('<circle')), true);
 
-  console.log(`flows verified: goals, search+servings, edit, quick add, custom food, recipe, barcode, exercise, habits, complete, copy, dashboard, progress`);
+  // ---- review-specific accessibility checks --------------------------------
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+  await clickIn('.tab-btn[data-view="diary"]');
+  await page.waitForSelector('#water-plus');
+  const targets = await page.evaluate(() => ({
+    coarse: matchMedia('(pointer: coarse)').matches,
+    tab: document.querySelector('.tab-btn[data-view="diary"]').getBoundingClientRect().height,
+    date: document.querySelector('.diary-date-nav .icon-btn').getBoundingClientRect().height,
+    meal: document.querySelector('.meal-log').getBoundingClientRect().height,
+    water: document.getElementById('water-plus').getBoundingClientRect().height,
+    delete: document.querySelector('.de-del')?.getBoundingClientRect().height ?? 44,
+  }));
+  check('touch viewport activates coarse-pointer styles', targets.coarse, true);
+  for (const [name, size] of Object.entries(targets).filter(([name]) => name !== 'coarse')) {
+    check(`${name} touch target is at least 44 px`, size >= 44, true);
+  }
+
+  console.log(`flows verified: goals, search+servings, edit+undo, quick add, custom food, recipe, barcode, exercise, habits, complete, copy, dashboard, progress, accessibility`);
 } finally {
   await browser.close();
   server?.kill();

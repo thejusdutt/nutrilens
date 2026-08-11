@@ -109,35 +109,33 @@ export async function openLogFood({ date, slot, onPhoto }) {
     if (!f) return null;
     const choice = lastServing.get(hit.id) ?? servingsFor(f)[0];
     const kcal = kcalFor(f, choice.grams * (choice.servings ?? 1));
-    return el('button.food-row', { onclick: () => log(hit.id, { slot: s.slot }) },
-      el('span.fr-main', null,
+    return el('div.food-row', null,
+      el('button.fr-main', { onclick: () => log(hit.id, { slot: s.slot }) },
         el('b', null, f.name),
         el('span.muted', null, [f.brand, `${fmt.servings(choice.servings ?? 1)} × ${choice.label}`].filter(Boolean).join(' · '))),
       el('span.fr-kcal', null, `${fmt.kcal(kcal)} kcal`),
-      el('span.fr-add', {
-        role: 'button', tabindex: '0', title: 'Log this serving',
-        onclick: (e) => { e.stopPropagation(); quickLog(hit.id, choice, s); },
-        onkeydown: (e) => { if (e.key === 'Enter') { e.stopPropagation(); quickLog(hit.id, choice, s); } },
+      el('button.fr-add', {
+        title: 'Log this serving', 'aria-label': `Quick log ${f.name}`,
+        onclick: () => quickLog(hit.id, choice, s),
       }, '＋'));
   }
 
   /** A row rebuilt from something already logged — one tap repeats it exactly. */
   function historyRow(entry, s, note) {
     const f = entry.foodId ? foodById(entry.foodId) : null;
-    return el('button.food-row', {
-      onclick: () => (f
-        ? log(entry.foodId, { slot: s.slot, servingLabel: entry.servingLabel, servingGrams: entry.servingGrams, servings: entry.servings })
-        : repeatOrphan(entry, s)),
-    },
-    el('span.fr-main', null,
+    return el('div.food-row', null,
+      el('button.fr-main', {
+        onclick: () => (f
+          ? log(entry.foodId, { slot: s.slot, servingLabel: entry.servingLabel, servingGrams: entry.servingGrams, servings: entry.servings })
+          : repeatOrphan(entry, s)),
+      },
       el('b', null, entry.foodName),
       el('span.muted', null, [note, `${fmt.servings(entry.servings)} × ${entry.servingLabel}`].filter(Boolean).join(' · '))),
-    el('span.fr-kcal', null, `${fmt.kcal(entry.kcal)} kcal`),
-    el('span.fr-add', {
-      role: 'button', tabindex: '0', title: 'Log again',
-      onclick: (e) => { e.stopPropagation(); repeatEntry(entry, s); },
-      onkeydown: (e) => { if (e.key === 'Enter') { e.stopPropagation(); repeatEntry(entry, s); } },
-    }, '＋'));
+      el('span.fr-kcal', null, `${fmt.kcal(entry.kcal)} kcal`),
+      el('button.fr-add', {
+        title: 'Log again', 'aria-label': `Log ${entry.foodName} again`,
+        onclick: () => repeatEntry(entry, s),
+      }, '＋'));
   }
 
   async function quickLog(id, choice, s) {
@@ -175,7 +173,7 @@ export async function openLogFood({ date, slot, onPhoto }) {
         el('input', { type: 'date', value: state.date, 'aria-label': 'Date', onchange: (e) => { state.date = e.target.value || state.date; } })),
       searchInput,
       el('div.log-actions', null,
-        el('button', { onclick: () => { closeSheet({ all: true }); onPhoto?.(state); } }, iconEl('camera'), ' Photo'),
+        el('button', { onclick: () => { closeSheet({ all: true, historyMode: 'replace' }); onPhoto?.(state); } }, iconEl('camera'), ' Photo'),
         el('button', { onclick: () => openBarcodeScanner({ date: state.date, slot: state.slot }) }, iconEl('barcode'), ' Barcode'),
         el('button', { onclick: () => openQuickAdd({ date: state.date, slot: state.slot }) }, iconEl('quick'), ' Quick add'),
         el('button', { onclick: () => openCreateFood({ onSaved: (id) => log(id, { slot: state.slot }) }) }, '＋ New food')),
@@ -398,7 +396,7 @@ export function openCreateFood({ onSaved, existing, prefill } = {}) {
     });
     emit('foods');
     toast(existing ? 'Food updated' : 'Food created');
-    closeSheet();
+    closeSheet({ historyMode: onSaved ? 'replace' : 'back' });
     onSaved?.(id);
   };
 
@@ -506,7 +504,7 @@ export function openMealBuilder({ kind = 'meal', existing, seedItems = [], onSav
     });
     emit('foods');
     toast(kind === 'recipe' ? 'Recipe saved' : 'Meal saved');
-    closeSheet();
+    closeSheet({ historyMode: onSaved ? 'replace' : 'back' });
     onSaved?.(id);
   };
 

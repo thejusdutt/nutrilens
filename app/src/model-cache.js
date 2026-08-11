@@ -13,7 +13,7 @@
  * service workers mid-transfer on ~100 MB bodies).
  */
 
-/** Cache Storage name for model bytes. Must match MODEL_CACHE in public/sw.js. */
+/** Cache Storage name for model bytes. Stamped into the built service worker. */
 export const MODEL_CACHE = 'nutrilens-models-v1';
 
 /**

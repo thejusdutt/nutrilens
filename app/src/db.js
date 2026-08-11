@@ -10,12 +10,14 @@
  *   measurements  weight and body measures    key: [date]    index: date
  *   products      barcode lookups, cached     key: barcode
  *
- * Everything is per-device and never leaves it. Reads are cheap enough to keep
- * the whole diary in memory for a day at a time; nothing here caches beyond a
+ * These records stay on the device unless the user exports a backup. Reads are
+ * cheap enough to keep the whole diary in memory for a day at a time; nothing here caches beyond a
  * single shared connection.
  */
+import { buildBackup, parseBackup, STORE_NAMES } from './backup.js';
+
 const DB_NAME = 'nutrilens';
-const DB_VERSION = 3;
+export const DB_VERSION = 3;
 
 // One connection, opened once. Re-opening per call (as this module used to do)
 // leaks connections and blocks future version upgrades.
@@ -105,6 +107,9 @@ export function dateKey(d = new Date()) {
 // ---------------------------------------------------------------------------
 export const saveMeal = (entry) => putOrAdd('history', entry);
 export const deleteMeal = (id) => tx('history', 'readwrite', (s) => s.delete(id));
+export const deleteMeals = (ids) => tx('history', 'readwrite', (store) => {
+  for (const id of ids) store.delete(id);
+});
 export const getMeal = (id) => tx('history', 'readonly', (s) => s.get(id));
 
 export async function updateMeal(id, patch) {
@@ -201,3 +206,34 @@ export const getMeasurement = (date) => tx('measurements', 'readonly', (s) => s.
 export const getProduct = (barcode) => tx('products', 'readonly', (s) => s.get(barcode));
 export const putProduct = (product) => tx('products', 'readwrite', (s) => s.put(product));
 export const listProducts = () => all('products');
+
+// ---------------------------------------------------------------------------
+// Full-device backup and atomic restore
+// ---------------------------------------------------------------------------
+
+/** Export every user-owned record plus the supported local preferences. */
+export async function exportBackup(preferences) {
+  const rows = await Promise.all(STORE_NAMES.map((name) => all(name)));
+  return buildBackup(Object.fromEntries(STORE_NAMES.map((name, i) => [name, rows[i]])), preferences, DB_VERSION);
+}
+
+/**
+ * Validate first, then replace all stores in one transaction. If any put fails,
+ * IndexedDB aborts the whole transaction and the existing diary stays intact.
+ */
+export async function restoreBackup(text) {
+  const backup = parseBackup(text, DB_VERSION);
+  const db = await open();
+  await new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAMES, 'readwrite');
+    for (const name of STORE_NAMES) {
+      const store = transaction.objectStore(name);
+      store.clear();
+      for (const record of backup.stores[name]) store.put(record);
+    }
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error ?? new Error('Restore failed'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('Restore was cancelled'));
+  });
+  return backup;
+}

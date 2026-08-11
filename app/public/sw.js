@@ -3,24 +3,21 @@
  *
  * Strategy:
  *  - App shell (small, changes with releases): precached at install,
- *    cache-first at runtime. Bump SHELL_VERSION to ship updates.
+ *    cache-first at runtime. The build stamps its content hash as the version.
  *  - Models + data (large, immutable per release): runtime cache-first into a
  *    separate cache; fetched lazily by the inference worker (with progress UI)
  *    or eagerly via Settings → "Download all models".
  *  - Navigations fall back to the cached shell when offline.
  */
 
-/** Bump to ship an app-shell update. Does NOT touch the model cache. */
-const SHELL_VERSION = 'v15';
+/** Stamped from the precached file contents by tools/postbuild.mjs. */
+const SHELL_VERSION = '__NUTRILENS_SHELL_VERSION__';
 /**
- * Versioned separately on purpose: the models are ~180 MB and immutable, so
- * shipping a UI fix must never evict them and force a re-download. Bump this
- * only when the model files themselves change — and keep it in step with
- * MODEL_CACHE in app/src/model-cache.js, which is what writes these bytes.
+ * Stamped from app/src/model-cache.js by tools/postbuild.mjs. Models are
+ * versioned separately so a UI release never forces a ~180 MB re-download.
  */
-const MODEL_VERSION = 'v1';
+const MODEL_CACHE = '__NUTRILENS_MODEL_CACHE__';
 const SHELL_CACHE = `nutrilens-shell-${SHELL_VERSION}`;
-const MODEL_CACHE = `nutrilens-models-${MODEL_VERSION}`;
 
 const SHELL_ASSETS = [
   '/',
@@ -60,7 +57,13 @@ self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(SHELL_CACHE);
     // allSettled: optional files (e.g. jsep variants across ORT versions) may 404.
-    await Promise.allSettled(SHELL_ASSETS.map((u) => cache.add(u)));
+    // `reload` prevents a new shell cache being populated from a stale HTTP cache.
+    await Promise.allSettled(SHELL_ASSETS.map(async (url) => {
+      const request = new Request(url, { cache: 'reload' });
+      const response = await fetch(request);
+      if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+      await cache.put(url, response);
+    }));
     await self.skipWaiting();
   })());
 });

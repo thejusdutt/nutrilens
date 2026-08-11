@@ -14,24 +14,31 @@ import { exerciseKcal, exerciseMinutes } from '@nutrilens/exercise-db';
 import { donut, barRows } from '@nutrilens/charts';
 import { stackedScale } from './readout.js';
 import {
-  $, el, fill, fmt, show, toast, openSheet, closeSheet, emit, on,
-  MACRO_COLORS, SLOT_COLORS,
+  $, el, fill, fmt, toast, openSheet, closeSheet, emit, on, enterKey,
+  MACRO_COLORS,
 } from './ui.js';
 import {
-  listMealsByDate, getDay, setDay, deleteMeal, dateKey, loggedDates,
+  listMealsByDate, getDay, setDay, deleteMeal, deleteMeals, getMeal, dateKey, loggedDates,
   listExerciseByDate, saveMeal, listMealsBetween, deleteExercise, setMeasurement,
 } from './db.js';
 import { getProfile, dailyGoal, setProfile, suggestSlot } from './goals.js';
 import { openLogFood, openFoodDetail, openQuickAdd, openMealBuilder } from './logfood.js';
 import { openExerciseSheet } from './exercise-view.js';
-import { openBarcodeScanner } from './barcode-scan.js';
 import { openWeightSheet } from './progress-view.js';
 import { iconEl } from './icons.js';
 
 let current = dateKey();
+let navigate = () => {};
+let startPhoto = () => {};
+let startBarcode = () => {};
 
 export const diaryDate = () => current;
 export const setDiaryDate = (d) => { current = d; };
+export function initTodayActions(actions) {
+  navigate = actions.navigate;
+  startPhoto = actions.startPhoto;
+  startBarcode = actions.startBarcode;
+}
 
 /** Rebuild the whole screen for `current`. */
 export async function renderToday() {
@@ -100,8 +107,8 @@ function caloriesCard(rem, totals, goal) {
   return el('div.card.cal-card', {
     id: 'calories-card', role: 'button', tabindex: '0',
     'aria-label': `${Math.round(rem.left)} kcal ${over ? 'over' : 'remaining'}. Open the nutrition dashboard.`,
-    onclick: () => show('nutrition'),
-    onkeydown: enterKey(() => show('nutrition')),
+    onclick: () => navigate('nutrition'),
+    onkeydown: enterKey(() => navigate('nutrition')),
   },
   el('div.readout', null,
     el('div.readout-line', null,
@@ -118,7 +125,6 @@ function caloriesCard(rem, totals, goal) {
 }
 
 const mathCell = (id, value, label) => el('div', null, el('b', { id }, Math.round(value).toLocaleString()), el('span', null, label));
-const enterKey = (fn) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
 
 function macrosCard(totals, goal) {
   const energy = macroEnergy(totals.nutrients);
@@ -130,7 +136,7 @@ function macrosCard(totals, goal) {
     text: `${Math.round(totals.nutrients[k] ?? 0)} / ${goal.macros[k]} g`,
   }));
   return el('div.card.macro-card', { id: 'macros-card', role: 'button', tabindex: '0',
-    onclick: () => show('nutrition'), onkeydown: enterKey(() => show('nutrition')) },
+    onclick: () => navigate('nutrition'), onkeydown: enterKey(() => navigate('nutrition')) },
   el('div.card-head', null, el('h3', null, 'Macros'),
     el('span.tag', null, energy.total > 0
       ? `C ${Math.round(energy.pct.carbs)}% · P ${Math.round(energy.pct.protein)}% · F ${Math.round(energy.pct.fat)}%`
@@ -159,8 +165,10 @@ function mealSection(slot, entries, date) {
         onclick: () => openMealMenu(slot, entries, date),
       }, '⋯')),
     entries.map((e) => entryRow(e, date)),
-    el('button.meal-log', { dataset: { slot }, onclick: () => openLogFood({ date, slot, onPhoto: () => show('home') }) },
-      `＋ Log ${slot}`));
+    el('button.meal-log', {
+      dataset: { slot },
+      onclick: () => openLogFood({ date, slot, onPhoto: () => startPhoto({ date, slot }) }),
+    }, `＋ Log ${slot}`));
 }
 
 function entryRow(entry, date) {
@@ -180,7 +188,20 @@ function entryRow(entry, date) {
     el('span.de-kcal', null, `${fmt.kcal(entry.kcal)} kcal`),
     el('button.de-del', {
       title: 'Remove', 'aria-label': `Remove ${entry.foodName}`,
-      onclick: async () => { await deleteMeal(entry.id); emit('diary', { date }); toast('Entry removed'); },
+      onclick: async () => {
+        const snapshot = await getMeal(entry.id);
+        if (!snapshot) return;
+        await deleteMeal(entry.id);
+        emit('diary', { date });
+        toast('Entry removed', {
+          ms: 5000,
+          action: 'Undo',
+          onAction: async () => {
+            await saveMeal(snapshot);
+            emit('diary', { date: snapshot.date });
+          },
+        });
+      },
     }, iconEl('close', { size: 14 })));
 }
 
@@ -218,7 +239,7 @@ function openMealMenu(slot, entries, date) {
       el('button.wide', {
         onclick: () => {
           if (!entries.length) { toast('This meal is empty'); return; }
-          closeSheet();
+          closeSheet({ historyMode: 'replace' });
           openMealBuilder({
             kind: 'meal',
             seedItems: entries.map((e) => ({ id: e.foodId, name: e.foodName, grams: e.grams, nutrients: e.nutrients })),
@@ -226,13 +247,26 @@ function openMealMenu(slot, entries, date) {
         },
       }, `Save ${slot} as a reusable meal`),
       entries.length > 0 && el('button.wide.danger', {
-        onclick: async () => {
-          for (const e of entries) await deleteMeal(e.id);
-          emit('diary', { date });
-          toast(`${slot} cleared`);
-          closeSheet();
-        },
+        onclick: () => openClearMealConfirm(slot, entries, date),
       }, `Clear ${slot} (${entries.length} items)`)),
+  });
+}
+
+function openClearMealConfirm(slot, entries, date) {
+  openSheet({
+    title: `Clear ${SLOT_LABEL[slot]}?`,
+    body: el('div.stack', null,
+      el('p', null, `Remove all ${entries.length} ${entries.length === 1 ? 'item' : 'items'} from ${SLOT_LABEL[slot].toLowerCase()}?`),
+      el('p.muted', null, 'This cannot be undone.'),
+      el('button.primary.wide.danger', {
+        onclick: async () => {
+          await deleteMeals(entries.map((entry) => entry.id));
+          emit('diary', { date });
+          closeSheet({ all: true });
+          toast(`${SLOT_LABEL[slot]} cleared`);
+        },
+      }, `Clear ${entries.length} ${entries.length === 1 ? 'item' : 'items'}`),
+      el('button.wide', { onclick: () => closeSheet() }, 'Cancel')),
   });
 }
 
@@ -262,12 +296,18 @@ function habitsCard(day, profile) {
     el('div.card-head', null, el('h3', null, 'Healthy habits')),
     el('div.habit-row', null,
       el('span.habit-label', null, iconEl('water'), ' Water'),
-      el('span.habit-value', { id: 'water-count' }, `${glasses} / ${profile.waterGoal}`),
+      el('span.habit-value', { id: 'water-count', role: 'status', 'aria-live': 'polite' }, `${glasses} / ${profile.waterGoal}`),
       el('span.muted', null, 'glasses'),
       el('div.habit-actions', null,
-        el('button.icon-btn', { id: 'water-minus', 'aria-label': 'One glass less', onclick: () => bumpWater(day, -1) }, '−'),
-        el('button.icon-btn', { id: 'water-plus', 'aria-label': 'One glass more', onclick: () => bumpWater(day, 1) }, '+'))),
-    el('div.water-track', null, Array.from({ length: profile.waterGoal }, (_, i) => el('span', { class: i < glasses ? 'drop full' : 'drop' }))),
+        el('button.icon-btn', {
+          id: 'water-minus', disabled: glasses <= 0, 'aria-label': 'One glass less',
+          onclick: () => bumpWater(day, -1, profile.waterGoal),
+        }, '−'),
+        el('button.icon-btn', {
+          id: 'water-plus', disabled: glasses >= profile.waterGoal, 'aria-label': 'One glass more',
+          onclick: () => bumpWater(day, 1, profile.waterGoal),
+        }, '+'))),
+    el('div.water-track', { 'aria-hidden': 'true' }, Array.from({ length: profile.waterGoal }, (_, i) => el('span', { class: i < glasses ? 'drop full' : 'drop' }))),
     el('div.habit-row', null,
       el('span.habit-label', null, iconEl('steps'), ' Steps'),
       el('input.habit-input', {
@@ -294,9 +334,17 @@ function habitsCard(day, profile) {
       el('span.muted', null, 'kg')));
 }
 
-async function bumpWater(day, delta) {
-  await setDay({ ...day, water: Math.max(0, (day.water || 0) + delta) });
-  emit('day', { date: day.date });
+async function bumpWater(day, delta, goal) {
+  const water = Math.min(goal, Math.max(0, (day.water || 0) + delta));
+  if (water === (day.water || 0)) return;
+  await setDay({ ...day, water });
+  day.water = water;
+  $('water-count').textContent = `${water} / ${goal}`;
+  $('water-minus').disabled = water <= 0;
+  $('water-plus').disabled = water >= goal;
+  document.querySelectorAll('.water-track .drop').forEach((drop, index) => {
+    drop.classList.toggle('full', index < water);
+  });
 }
 
 function notesCard(day) {
@@ -342,20 +390,24 @@ const projectionText = (p) => (p.direction === 'maintain'
 
 // ---------------------------------------------------------------------------
 /** The add button: every way into the diary, in one place. */
-export function openAddMenu({ onPhoto }) {
+export function openAddMenu({ onPhoto = startPhoto } = {}) {
   const date = current;
   // The meal defaults to whatever fits the clock, the same guess the meal
   // sections make — nobody logging lunch at 13:00 should have to say so.
   const slot = suggestSlot();
+  const handoff = (open) => {
+    closeSheet({ historyMode: 'replace' });
+    open();
+  };
   openSheet({
     title: 'Add to diary',
     body: el('div.add-menu', null,
-      el('button', { id: 'add-search', onclick: () => { closeSheet(); openLogFood({ date, slot, onPhoto }); } }, iconEl('search'), ' Search foods'),
-      el('button', { id: 'add-photo', onclick: () => { closeSheet(); onPhoto?.(); } }, iconEl('camera'), ' Photograph a meal'),
-      el('button', { id: 'add-barcode', onclick: () => { closeSheet(); openBarcodeScanner({ date, slot }); } }, iconEl('barcode'), ' Scan a barcode'),
-      el('button', { id: 'add-quick', onclick: () => { closeSheet(); openQuickAdd({ date, slot }); } }, iconEl('quick'), ' Quick add calories'),
-      el('button', { id: 'add-exercise', onclick: () => { closeSheet(); openExerciseSheet({ date }); } }, iconEl('exercise'), ' Log exercise'),
-      el('button', { id: 'add-weight', onclick: () => { closeSheet(); openWeightSheet(); } }, iconEl('scale'), ' Log weight')),
+      el('button', { id: 'add-search', onclick: () => handoff(() => openLogFood({ date, slot, onPhoto: () => onPhoto({ date, slot }) })) }, iconEl('search'), ' Search foods'),
+      el('button', { id: 'add-photo', onclick: () => handoff(() => onPhoto({ date, slot })) }, iconEl('camera'), ' Photograph a meal'),
+      el('button', { id: 'add-barcode', onclick: () => handoff(() => startBarcode({ date, slot })) }, iconEl('barcode'), ' Scan a barcode'),
+      el('button', { id: 'add-quick', onclick: () => handoff(() => openQuickAdd({ date, slot })) }, iconEl('quick'), ' Quick add calories'),
+      el('button', { id: 'add-exercise', onclick: () => handoff(() => openExerciseSheet({ date })) }, iconEl('exercise'), ' Log exercise'),
+      el('button', { id: 'add-weight', onclick: () => handoff(() => openWeightSheet()) }, iconEl('scale'), ' Log weight')),
   });
 }
 

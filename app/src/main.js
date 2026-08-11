@@ -8,26 +8,31 @@ import { overlayMask, outlineMask } from '@nutrilens/food-segmentation';
 import { PortionEstimator, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
 import { buildPlate, regionCrop } from '@nutrilens/plate-analyzer';
-import { renderPlate, openAddDish, REGION_COLORS } from './plate-ui.js';
+import { renderPlate, openAddDish, portionControl, REGION_COLORS } from './plate-ui.js';
 import { makeEntry, normalizeEntry, toCSV } from '@nutrilens/diary';
-import { saveMeal, listMeals, dateKey } from './db.js';
+import { saveMeal, listMeals, dateKey, exportBackup, restoreBackup } from './db.js';
 import {
   getProfile, setProfile, dailyGoal, suggestSlot, macroPctSum, macroKcal,
   ACTIVITY, RATE,
 } from './goals.js';
 import {
-  $, el, fill, fmt, show, view, toast, emit, on, openSheet, closeSheet, MACRO_COLORS,
+  $, el, fill, fmt, show, view, toast, emit, on, openSheet, closeSheet,
+  restoreSheetDepth, MACRO_COLORS,
 } from './ui.js';
-import { initFoods, food as foodById, servingsFor, nutrients as nutrientsFor } from './foods.js';
+import { initFoods, food as foodById, search as searchFoods, nutrients as nutrientsFor } from './foods.js';
 import { fillNutritionCard } from './nutrients-ui.js';
-import { renderToday, diaryDate, setDiaryDate, openAddMenu } from './today.js';
+import { renderToday, diaryDate, setDiaryDate, openAddMenu, initTodayActions } from './today.js';
 import { renderNutrition } from './nutrition-view.js';
 import { renderProgress, openWeightSheet } from './progress-view.js';
 import { renderMyFoods } from './myfoods.js';
 import { openExerciseSheet } from './exercise-view.js';
-import { initBarcodeView, openBarcodeScanner, closeBarcodeScanner } from './barcode-scan.js';
+import {
+  initBarcodeView, openBarcodeScanner, closeBarcodeScanner,
+  ONLINE_LOOKUP_KEY, onlineBarcodeLookupEnabled,
+} from './barcode-scan.js';
 import { loadModelBytes } from './model-cache.js';
 import { hydrateIcons } from './icons.js';
+import { confidenceLevel, confidenceNeedsReview } from './confidence.js';
 import InferenceWorker from './workers/inference-worker.js?worker';
 
 // The static markup declares its icons by name; draw them before anything else,
@@ -94,6 +99,7 @@ function ensureWorker() {
       workerReady = null;
       worker?.terminate();
       worker = null;
+      state.imageEncoded = false;
       for (const { reject: rej } of pending.values()) rej(err);
       pending.clear();
       reject(err);
@@ -146,9 +152,11 @@ function setModelStatus(text, pct) {
   fill(node, el('div', null, text), pct != null && el('progress', { max: 1, value: pct }));
 }
 function setSpinner(text) {
-  if (text == null) { $('analyze-spinner').hidden = true; return; }
-  $('analyze-spinner').hidden = false;
+  const busy = text != null;
+  $('view-analyze').setAttribute('aria-busy', String(busy));
+  if (!busy) { $('analyze-spinner').hidden = true; return; }
   $('spinner-text').textContent = text;
+  $('analyze-spinner').hidden = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -178,7 +186,7 @@ async function openCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1920 } } });
     $('camera-video').srcObject = stream;
-    show('camera');
+    await goTo('camera');
   } catch {
     $('file-input').setAttribute('capture', 'environment');
     $('file-input').click();
@@ -187,7 +195,7 @@ async function openCamera() {
 }
 function closeCamera() { stream?.getTracks().forEach((t) => t.stop()); stream = null; }
 $('btn-camera').onclick = openCamera;
-$('btn-cam-cancel').onclick = () => { closeCamera(); show('home'); };
+$('btn-cam-cancel').onclick = () => history.back();
 $('btn-cam-flip').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; closeCamera(); openCamera(); };
 $('btn-shutter').onclick = () => {
   const video = $('camera-video');
@@ -210,17 +218,45 @@ const state = {
   plate: null,
   portion: null,
   userGrams: null,
-  servingLabel: null,   // set when a household measure is chosen
+  servingLabel: null,
   imageEncoded: false,
   meal: null,
+  saveDate: null,
 };
 
-let pendingSlot = null;
+let pendingPhotoContext = null;
+
+function beginPhotoFlow(context = {}) {
+  pendingPhotoContext = {
+    date: context.date || diaryDate(),
+    slot: context.slot || suggestSlot(),
+  };
+  goTo('home');
+}
+
+function discardAnalysis() {
+  state.raw = null;
+  state.candidates = [];
+  state.selectedId = null;
+  state.seg = null;
+  state.plate = null;
+  state.portion = null;
+  state.userGrams = null;
+  state.servingLabel = null;
+  state.imageEncoded = false;
+  state.meal = null;
+  state.saveDate = null;
+  pendingPhotoContext = null;
+  $('btn-resume-analysis').hidden = true;
+}
 
 async function startAnalysis(blob) {
-  show('analyze');
+  const context = pendingPhotoContext ?? { date: diaryDate(), slot: suggestSlot() };
+  pendingPhotoContext = null;
+  await goTo('analyze', { history: view() === 'camera' ? 'replace' : 'push' });
   resetResultUI();
-  $('save-slot').value = pendingSlot ?? suggestSlot();
+  state.saveDate = context.date;
+  $('save-slot').value = context.slot;
   setSpinner('Preparing photo…');
   state.raw = await toRawImage(blob, { fitSide: ANALYSIS_SIDE });
   // Everything measured from the previous photo is now meaningless. Leaving
@@ -272,6 +308,7 @@ function resetResultUI() {
   fill($('candidates'));
   $('portion-card').hidden = true;
   $('nutrition-card').hidden = true;
+  $('nonfood-warning').textContent = 'This does not look like food. Pick one of the guesses below, or search for it.';
   $('nonfood-warning').hidden = true;
   $('search-results').hidden = true;
   $('search-input').value = '';
@@ -300,6 +337,7 @@ function drawPhoto() {
 function renderCandidates() {
   fill($('candidates'), state.candidates.slice(0, 5).map((c) => el('button', {
     class: `candidate${c.id === state.selectedId ? ' selected' : ''}`,
+    'aria-pressed': c.id === state.selectedId,
     onclick: () => selectFood(c.id),
   },
   el('b', null, engine.food(c.id)?.name ?? c.name),
@@ -463,8 +501,7 @@ $('search-input').addEventListener('input', async (e) => {
   const box = $('search-results');
   if (q.length < 2) { box.hidden = true; return; }
   await dataReady;
-  const { search } = await import('./foods.js');
-  const hits = search(q, { limit: 12 });
+  const hits = searchFoods(q, { limit: 12 });
   box.hidden = hits.length === 0;
   fill(box, hits.map((h) => el('button', {
     onclick: () => {
@@ -518,30 +555,16 @@ function renderPortion() {
     methodTag.className = 'tag warn';
     $('portion-note').textContent = 'No plate found for scale — showing a typical serving. Adjust to match your portion.';
   }
-  $('portion-slider').value = currentGrams();
-  $('portion-grams').value = currentGrams();
-
-  const sel = $('portion-select');
-  fill(sel, el('option', { value: '' }, 'Household measures…'),
-    (engine.portions(state.selectedId) ?? []).map(([label, g]) => el('option', { value: String(g), dataset: { label } }, `${label} (${g} g)`)));
+  const item = { id: state.selectedId, grams: currentGrams() };
+  fill($('single-portion-control'), portionControl(item, foodById(state.selectedId), (_changed, unit) => {
+    state.userGrams = item.grams;
+    state.servingLabel = unit?.label ?? null;
+    $('portion-method').textContent = 'manual';
+    $('portion-method').className = 'tag';
+    $('portion-note').textContent = 'Portion set manually.';
+    renderNutritionCard();
+  }, { gramsId: 'portion-grams' }));
 }
-
-$('portion-slider').addEventListener('input', (e) => {
-  state.userGrams = Number(e.target.value);
-  state.servingLabel = null;
-  $('portion-grams').value = state.userGrams;
-  $('portion-method').textContent = 'manual';
-  $('portion-method').className = 'tag';
-  renderNutritionCard();
-});
-$('portion-select').addEventListener('change', (e) => {
-  if (!e.target.value) return;
-  state.userGrams = Number(e.target.value);
-  state.servingLabel = e.target.selectedOptions[0]?.dataset.label ?? null;
-  $('portion-slider').value = state.userGrams;
-  $('portion-grams').value = state.userGrams;
-  renderNutritionCard();
-});
 
 const CARD_NODES = () => ({
   card: $('nutrition-card'), tag: $('confidence-tag'), kcal: $('kcal-value'),
@@ -560,14 +583,14 @@ function renderNutritionCard() {
   if (!r) return;
 
   const conf = state.candidates.find((c) => c.id === id)?.prob ?? 1;
-  const level = conf >= 0.6 ? 'high' : conf >= 0.3 ? 'medium' : 'low';
+  const level = confidenceLevel(conf);
   const kcal = r.nutrients.kcal;
   const nodes = CARD_NODES();
   nodes.title.textContent = 'Nutrition';
   fillNutritionCard(nodes, r.nutrients, {
     kcalRange: kcal && !manual && kcal.low !== kcal.high ? `(${Math.round(kcal.low)}–${Math.round(kcal.high)})` : '',
     confText: state.candidates[0]?.sources?.manual ? 'manual' : `${level} confidence · ${(conf * 100).toFixed(0)}%`,
-    confWarn: level === 'low',
+    confWarn: confidenceNeedsReview(conf),
   });
 }
 
@@ -745,7 +768,7 @@ function renderMealNutrition() {
 $('btn-save').onclick = async () => {
   const thumb = await makeThumb(state.raw);
   const slot = $('save-slot').value;
-  const date = diaryDate();
+  const date = state.saveDate ?? diaryDate();
   if (state.meal) {
     // Each detected dish becomes its own diary line: that is what makes them
     // individually editable, swappable and deletable afterwards.
@@ -771,7 +794,7 @@ $('btn-save').onclick = async () => {
     }));
     toast(`${f.name} added to ${slot}`);
   }
-  pendingSlot = null;
+  state.saveDate = date;
   emit('diary', { date });
   $('btn-save').textContent = 'Added';
   setTimeout(() => { $('btn-save').textContent = 'Add to diary'; }, 1600);
@@ -802,9 +825,8 @@ async function renderRecent() {
       // save and delete, and each un-revoked URL pins its blob for the session.
       img.onload = () => URL.revokeObjectURL(url);
     }
-    return el('div.recent-card', {
-      role: 'button', tabindex: '0',
-      onclick: () => { show('diary'); renderToday(); },
+    return el('button.recent-card', {
+      onclick: () => goTo('diary', { history: 'replace' }),
     }, img, el('div.meta', null, el('b', null, m.foodName), el('span.muted', null, `${m.kcal} kcal · ${Math.round(m.grams)} g`)));
   }));
 }
@@ -902,27 +924,77 @@ loadProfileForm();
 
 async function refreshStorageStatus() {
   try {
-    const { usage, quota } = await navigator.storage.estimate();
-    $('storage-status').textContent = `Using ${(usage / 1e6).toFixed(0)} MB of ${(quota / 1e9).toFixed(1)} GB available.`;
-  } catch { $('storage-status').textContent = ''; }
+    const [{ usage = 0, quota = 0 }, persisted] = await Promise.all([
+      navigator.storage.estimate(),
+      navigator.storage.persisted?.() ?? Promise.resolve(false),
+    ]);
+    const quotaText = quota ? `${(quota / 1e9).toFixed(1)} GB available` : 'browser-managed storage';
+    $('storage-status').textContent = `Using ${(usage / 1e6).toFixed(0)} MB of ${quotaText}. ${persisted ? 'Protected from automatic cleanup.' : 'The browser may clear it under storage pressure.'}`;
+  } catch { $('storage-status').textContent = 'Storage status is unavailable in this browser.'; }
 }
 
-/** Diary export — a real file, written locally, no upload anywhere. */
-async function exportDiary() {
-  await dataReady;
-  const entries = (await listMeals(20000)).map(normalizeEntry);
-  if (!entries.length) { toast('Nothing logged yet'); return; }
-  const csv = toCSV(entries, engine.db.nutrients);
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  const a = el('a', { href: url, download: `nutrilens-diary-${dateKey()}.csv` });
+function downloadFile(contents, type, filename) {
+  const url = URL.createObjectURL(new Blob([contents], { type }));
+  const a = el('a', { href: url, download: filename });
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/** Diary CSV — a readable report, not a restorable backup. */
+async function exportDiary() {
+  await dataReady;
+  const entries = (await listMeals(20000)).map(normalizeEntry);
+  if (!entries.length) { toast('Nothing logged yet'); return; }
+  downloadFile(toCSV(entries, engine.db.nutrients), 'text/csv', `nutrilens-diary-${dateKey()}.csv`);
   toast(`${entries.length} entries exported`);
 }
 $('btn-export').onclick = exportDiary;
 $('more-export').onclick = exportDiary;
+
+const BACKUP_PREFS = ['theme', 'plateCm', 'profile', ONLINE_LOOKUP_KEY];
+$('btn-backup').onclick = async () => {
+  try {
+    const preferences = Object.fromEntries(BACKUP_PREFS.map((key) => [key, localStorage.getItem(key)]));
+    const backup = await exportBackup(preferences);
+    downloadFile(JSON.stringify(backup), 'application/json', `nutrilens-backup-${dateKey()}.json`);
+    toast('Full backup exported');
+  } catch (err) { toast(`Backup failed: ${err.message}`, { ms: 5000 }); }
+};
+$('btn-restore').onclick = () => $('restore-file').click();
+$('restore-file').onchange = async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  let text;
+  try { text = await file.text(); } catch { toast('Could not read that backup'); return; }
+  openSheet({
+    title: 'Replace all local data?',
+    body: el('div.stack', null,
+      el('p', null, 'Restoring replaces this device’s diary, foods, measurements, cached products and supported preferences.'),
+      el('p.warning', null, 'Export a current backup first if you may need it.'),
+      el('button.danger.wide', {
+        onclick: async () => {
+          try {
+            const backup = await restoreBackup(text);
+            for (const key of BACKUP_PREFS) {
+              const value = backup.preferences[key];
+              if (value == null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+            }
+            closeSheet({ all: true });
+            location.reload();
+          } catch (err) { toast(`Restore failed: ${err.message}`, { ms: 6000 }); }
+        },
+      }, 'Replace and restore'),
+      el('button.wide', { onclick: () => closeSheet() }, 'Cancel')),
+  });
+};
+
+$('setting-barcode-online').checked = onlineBarcodeLookupEnabled();
+$('setting-barcode-online').onchange = (event) => {
+  localStorage.setItem(ONLINE_LOOKUP_KEY, String(event.target.checked));
+};
 
 const PREFETCH_URLS = [
   '/models/swin-food101/onnx/model_int8.onnx',
@@ -963,6 +1035,7 @@ $('btn-prefetch').onclick = async () => {
   $('btn-prefetch').disabled = true;
   $('btn-prefetch').textContent = 'Downloading models…';
   try {
+    await navigator.storage.persist?.().catch(() => false);
     await swPrefetch((p) => { prog.value = p; });
     $('btn-prefetch').textContent = 'Available offline';
   } catch (err) {
@@ -984,29 +1057,44 @@ const RENDERERS = {
   settings: () => { loadProfileForm(); refreshStorageStatus(); },
 };
 
-async function goTo(name) {
+async function goTo(name, { history: historyMode = 'push' } = {}) {
   if (name !== 'barcode') closeBarcodeScanner();
   if (name !== 'camera') closeCamera();
-  show(name);
+  show(name, { history: historyMode });
+  $('btn-resume-analysis').hidden = !state.raw || name === 'analyze';
   await dataReady.catch(() => {});
   await RENDERERS[name]?.();
 }
 
 for (const btn of document.querySelectorAll('.tab-btn')) {
-  btn.onclick = () => goTo(btn.dataset.view);
+  btn.onclick = () => goTo(btn.dataset.view, { history: 'replace' });
 }
-$('btn-add').onclick = () => openAddMenu({ onPhoto: () => goTo('home') });
+initTodayActions({
+  navigate: goTo,
+  startPhoto: beginPhotoFlow,
+  startBarcode: openBarcodeScanner,
+});
+
+$('btn-add').onclick = () => openAddMenu();
 $('btn-settings').onclick = () => goTo('settings');
-$('btn-back').onclick = () => goTo('home');
+$('btn-back').onclick = () => { discardAnalysis(); goTo('home', { history: 'replace' }); };
+$('btn-resume-analysis').onclick = () => goTo('analyze');
 
 $('more-myfoods').onclick = () => goTo('myfoods');
-$('more-photo').onclick = () => goTo('home');
+$('more-photo').onclick = () => beginPhotoFlow({ date: diaryDate(), slot: suggestSlot() });
 $('more-barcode').onclick = () => openBarcodeScanner({ date: diaryDate(), slot: suggestSlot() });
 $('more-exercise').onclick = () => openExerciseSheet({ date: diaryDate() });
 $('more-weight').onclick = () => openWeightSheet();
 $('more-settings').onclick = () => goTo('settings');
 
-initBarcodeView(() => ({ date: diaryDate(), slot: suggestSlot() }));
+initBarcodeView(() => ({ date: diaryDate(), slot: suggestSlot() }), goTo);
+
+addEventListener('popstate', (event) => {
+  const targetDepth = event.state?.sheetDepth ?? 0;
+  if (restoreSheetDepth(targetDepth)) return;
+  const target = event.state?.view;
+  if (target) goTo(target, { history: 'none' });
+});
 
 // Keep the diary date honest across midnight and long-lived tabs.
 on('diary', () => { if (view() === 'home') renderRecent(); });
@@ -1015,14 +1103,6 @@ addEventListener('visibilitychange', () => {
   if (diaryDate() < dateKey()) { setDiaryDate(dateKey()); if (view() === 'diary') renderToday(); }
 });
 
-// First paint: the diary, because that is what a food tracker is for.
-goTo('diary');
-
-// Warm the model download in the background on a metered-friendly connection.
-// Recognition needs ~180 MB, so a saveData or 2G/3G hint means wait to be asked.
-const conn = navigator.connection ?? {};
-const metered = conn.saveData || /^(slow-)?2g$|^3g$/.test(conn.effectiveType ?? '');
-if (navigator.onLine && !metered) {
-  setTimeout(() => ensureWorker().catch(() => {}), 2000);
-  setTimeout(() => swPrefetch().catch(() => {}), 20000);
-}
+// First paint: the diary, because that is what a food tracker is for. Models are
+// loaded only when analysis starts or the user explicitly downloads them.
+goTo('diary', { history: 'replace' });

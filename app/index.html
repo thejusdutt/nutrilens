@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>NutriLens — offline food & nutrition tracker</title>
-  <meta name="description" content="Track calories, macros and micronutrients offline. Photo recognition, barcode scanning, recipes and a full food diary — all on your device." />
+  <meta name="description" content="Track calories, macros and micronutrients offline. Photos are analysed on your device; optional barcode lookups use Open Food Facts." />
   <meta name="theme-color" content="#101418" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
@@ -61,13 +61,13 @@
         <button id="more-export"><span class="i" data-icon="download"></span> Export the diary as CSV</button>
         <button id="more-settings"><span class="i" data-icon="settings"></span> Settings and goals</button>
       </div>
-      <p class="muted tiny">Everything runs on this device. Nothing is uploaded, and there is no account.</p>
+      <p class="muted tiny">Photos and diary data stay on this device. Optional lookups send an unknown barcode to Open Food Facts. No account is required.</p>
     </section>
 
     <!-- Photo capture -->
     <section id="view-home" class="view" hidden>
-      <div id="drop-zone" class="drop-zone" tabindex="0" role="button"
-           aria-label="Add a food photo: drop, paste, browse or use the camera">
+      <button id="btn-resume-analysis" class="primary wide" hidden>Return to current analysis</button>
+      <div id="drop-zone" class="drop-zone" aria-label="Add a food photo: drop, paste, browse or use the camera">
         <div class="drop-inner">
           <div class="drop-emoji" aria-hidden="true"></div>
           <p class="drop-title">Snap or drop a food photo</p>
@@ -79,7 +79,7 @@
         </div>
         <input id="file-input" type="file" accept="image/*" hidden />
       </div>
-      <div id="model-status" class="model-status" hidden></div>
+      <div id="model-status" class="model-status" role="status" aria-live="polite" hidden></div>
       <section id="recent" class="recent" hidden>
         <h2>Recent photos</h2>
         <div id="recent-list" class="recent-list"></div>
@@ -103,7 +103,7 @@
       <div class="camera-wrap">
         <video id="scan-video" autoplay playsinline muted></video>
         <div class="scan-guide" aria-hidden="true"></div>
-        <p id="scan-status" class="scan-status">Starting camera…</p>
+        <p id="scan-status" class="scan-status" role="status" aria-live="polite">Starting camera…</p>
         <div class="camera-controls">
           <button id="scan-cancel" class="icon-btn big" aria-label="Cancel"><span class="i" data-icon="close" data-icon-size="22"></span></button>
           <button id="scan-manual"><span class="i" data-icon="keyboard"></span> Type the number</button>
@@ -112,19 +112,19 @@
     </section>
 
     <!-- Photo analysis -->
-    <section id="view-analyze" class="view" hidden>
+    <section id="view-analyze" class="view" aria-busy="false" hidden>
       <button id="btn-back" class="back-btn">← New photo</button>
       <div class="analyze-grid">
         <div class="photo-pane">
           <div class="photo-stack">
             <canvas id="photo-canvas"></canvas>
             <canvas id="overlay-canvas"></canvas>
-            <div id="analyze-spinner" class="spinner-overlay"><div class="spinner"></div><p id="spinner-text">Loading models…</p></div>
+            <div id="analyze-spinner" class="spinner-overlay" role="status" aria-live="polite"><div class="spinner"></div><p id="spinner-text">Loading models…</p></div>
           </div>
           <p class="photo-hint">Tap a dish in the photo to re-analyze that spot.</p>
         </div>
         <div class="result-pane">
-          <div id="nonfood-warning" class="warning" hidden>This does not look like food. Pick one of the guesses below, or search for it.</div>
+          <div id="nonfood-warning" class="warning" role="alert" hidden>This does not look like food. Pick one of the guesses below, or search for it.</div>
           <div id="meal-card" class="card plate-card" hidden>
             <div class="plate-summary">
               <div>
@@ -156,13 +156,7 @@
               <h3>Portion</h3>
               <span id="portion-method" class="tag"></span>
             </div>
-            <div class="portion-row">
-              <input id="portion-slider" type="range" min="10" max="1500" step="5" />
-              <div class="portion-value"><output id="portion-grams">0</output> g</div>
-            </div>
-            <div class="portion-row">
-              <select id="portion-select" aria-label="Household portion"></select>
-            </div>
+            <div id="single-portion-control" class="single-portion-control"></div>
             <p id="portion-note" class="muted"></p>
           </div>
           <div id="nutrition-card" class="card" hidden>
@@ -250,16 +244,29 @@
 
       <details class="card">
         <summary><h3>Offline models</h3></summary>
-        <p class="muted">Download the recognition models once to use the camera with no network at all (~180 MB).</p>
+        <p class="muted">Download the recognition models once to use photo analysis with no network (~180 MB). The download starts only when you press the button.</p>
         <button id="btn-prefetch" class="primary"><span class="i" data-icon="download"></span> Download all models</button>
         <progress id="prefetch-progress" max="1" value="0" hidden></progress>
-        <p id="storage-status" class="muted tiny"></p>
+        <p id="storage-status" class="muted tiny" role="status" aria-live="polite"></p>
+      </details>
+
+      <details class="card">
+        <summary><h3>Privacy</h3></summary>
+        <label class="check" for="setting-barcode-online">
+          <input id="setting-barcode-online" type="checkbox" /> Look up unknown barcodes with Open Food Facts
+        </label>
+        <p class="muted tiny">Photos are analysed locally. When this option is on, an unknown barcode and your network address are sent to Open Food Facts. Previously scanned products still work when it is off.</p>
       </details>
 
       <details class="card">
         <summary><h3>Your data</h3></summary>
-        <button id="btn-export"><span class="i" data-icon="download"></span> Export the diary as CSV</button>
-        <p class="muted tiny">A plain CSV of every entry with daily totals. It never leaves your device unless you share it.</p>
+        <div class="stack">
+          <button id="btn-export"><span class="i" data-icon="download"></span> Export diary CSV</button>
+          <button id="btn-backup"><span class="i" data-icon="download"></span> Export full backup</button>
+          <button id="btn-restore">Restore full backup</button>
+          <input id="restore-file" type="file" accept="application/json,.json" hidden />
+        </div>
+        <p class="muted tiny">CSV is a readable report. A full backup can restore your diary, custom foods, saved meals, measurements, cached products, preferences and photo thumbnails. Files stay on this device unless you share them.</p>
       </details>
 
       <details class="card">
