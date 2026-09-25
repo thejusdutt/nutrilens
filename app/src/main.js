@@ -28,9 +28,9 @@ import { renderMyFoods } from './myfoods.js';
 import { openExerciseSheet } from './exercise-view.js';
 import {
   initBarcodeView, openBarcodeScanner, closeBarcodeScanner,
-  ONLINE_LOOKUP_KEY, onlineBarcodeLookupEnabled,
 } from './barcode-scan.js';
-import { loadModelBytes } from './model-cache.js';
+import { loadModelBytes, MODEL_CACHE } from './model-cache.js';
+import { openBarcodeDb, warmBarcodeDb } from './barcode-db.js';
 import { hydrateIcons } from './icons.js';
 import { confidenceLevel, confidenceNeedsReview } from './confidence.js';
 import InferenceWorker from './workers/inference-worker.js?worker';
@@ -93,7 +93,12 @@ function ensureWorker() {
   if (workerReady) return workerReady;
   worker = new InferenceWorker();
   workerReady = new Promise((resolve, reject) => {
-    const fail = (err) => {
+    const fail = (cause) => {
+      // Offline with models never downloaded surfaces as a bare "Failed to
+      // fetch"; say what is missing and how to get it instead.
+      const err = navigator.onLine ? cause : new Error(
+        'Photo analysis needs its models on this device first. Connect once, then use Settings → Offline models → Download all models.',
+      );
       // Clear the memo so a network blip during the first download does not
       // leave the app permanently broken until a reload.
       workerReady = null;
@@ -953,7 +958,7 @@ async function exportDiary() {
 $('btn-export').onclick = exportDiary;
 $('more-export').onclick = exportDiary;
 
-const BACKUP_PREFS = ['theme', 'plateCm', 'profile', ONLINE_LOOKUP_KEY];
+const BACKUP_PREFS = ['theme', 'plateCm', 'profile'];
 $('btn-backup').onclick = async () => {
   try {
     const preferences = Object.fromEntries(BACKUP_PREFS.map((key) => [key, localStorage.getItem(key)]));
@@ -991,10 +996,6 @@ $('restore-file').onchange = async (event) => {
   });
 };
 
-$('setting-barcode-online').checked = onlineBarcodeLookupEnabled();
-$('setting-barcode-online').onchange = (event) => {
-  localStorage.setItem(ONLINE_LOOKUP_KEY, String(event.target.checked));
-};
 
 const PREFETCH_URLS = [
   '/models/swin-food101/onnx/model_int8.onnx',
@@ -1029,6 +1030,42 @@ function swPrefetch(onProgress) {
   return prefetchRun;
 }
 
+/**
+ * The barcode table is small next to the models (~4 MB against ~180 MB), so it
+ * is fetched in the background on the first online visit rather than behind a
+ * button: the first scan should work even if that scan happens offline.
+ */
+async function refreshBarcodeDbStatus() {
+  const out = $('barcode-db-status');
+  try {
+    const index = await openBarcodeDb();
+    out.textContent = index
+      ? `Barcodes: ${index.count.toLocaleString()} packaged products stored on this device (Open Food Facts, ${index.meta.built}).`
+      : 'Barcodes: no offline table in this build.';
+  } catch (err) {
+    out.textContent = navigator.onLine
+      ? `Barcodes: offline table failed to load (${err.message}).`
+      : 'Barcodes: the offline table downloads the next time you are online.';
+  }
+}
+dataReady.then(() => (globalThis.requestIdleCallback ?? setTimeout)(() => {
+  if (navigator.onLine) warmBarcodeDb().catch(() => {});
+}));
+
+/** Say so when every model is already cached, instead of offering a download. */
+async function refreshPrefetchButton() {
+  const btn = $('btn-prefetch');
+  if (prefetchRun) return;
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    // Only the model binaries: the data files are precached by the shell too.
+    const hits = await Promise.all(PREFETCH_URLS.filter((u) => u.endsWith('.onnx')).map((u) => cache.match(u)));
+    const ready = hits.every(Boolean);
+    btn.disabled = ready;
+    btn.textContent = ready ? 'Available offline' : 'Download all models';
+  } catch { /* Cache Storage unavailable: leave the button as it is */ }
+}
+
 $('btn-prefetch').onclick = async () => {
   const prog = $('prefetch-progress');
   prog.hidden = false;
@@ -1054,7 +1091,7 @@ const RENDERERS = {
   progress: renderProgress,
   myfoods: renderMyFoods,
   home: renderRecent,
-  settings: () => { loadProfileForm(); refreshStorageStatus(); },
+  settings: () => { loadProfileForm(); refreshStorageStatus(); refreshBarcodeDbStatus(); refreshPrefetchButton(); },
 };
 
 async function goTo(name, { history: historyMode = 'push' } = {}) {

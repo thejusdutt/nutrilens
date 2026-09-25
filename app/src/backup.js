@@ -2,7 +2,7 @@
 export const BACKUP_FORMAT = 'nutrilens-backup';
 export const BACKUP_VERSION = 1;
 export const STORE_NAMES = ['history', 'day', 'foods', 'meals', 'exercise', 'measurements', 'products'];
-export const PREFERENCE_KEYS = ['theme', 'plateCm', 'profile', 'onlineBarcodeLookup'];
+export const PREFERENCE_KEYS = ['theme', 'plateCm', 'profile'];
 
 const KEY_FIELDS = {
   history: 'id', day: 'date', foods: 'id', meals: 'id', exercise: 'id',

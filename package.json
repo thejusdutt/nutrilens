@@ -11,6 +11,7 @@
   "scripts": {
     "fetch-assets": "bash tools/fetch-assets.sh",
     "build:db": "node tools/build-nutrition-db.mjs",
+    "build:barcodes": "python tools/extract-off.py && node tools/build-barcode-db.mjs --budget-mb 4",
     "build:embeddings": "node tools/build-embeddings.mjs",
     "dev": "npm --workspace app run dev",
     "build": "npm --workspace app run build",

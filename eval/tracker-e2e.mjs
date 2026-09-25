@@ -12,8 +12,9 @@
  *
  * Expected numbers are computed here, independently of the app, from
  * app/public/data/nutrition-db.json and the published formulas (Mifflin-St Jeor,
- * ACSM, Atwater). The Open Food Facts response is intercepted with a fixture, so
- * the barcode path is deterministic and needs no network.
+ * ACSM, Atwater). The barcode is resolved from the bundled table, and every
+ * request that leaves localhost is refused and counted, so the check that the
+ * tracker needs no network is a number, not an assumption.
  *
  * Usage: node eval/tracker-e2e.mjs [--headed]
  */
@@ -22,6 +23,8 @@ import { spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
+import { BarcodeIndex } from '@nutrilens/off-food';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -37,22 +40,13 @@ const goalKcal = Math.max(1200, Math.round(tdee + PROFILE.rate * 7700 / 7));
 const kcalOf = (id, grams) => Math.round((db.foods[id].per100g.kcal ?? 0) * (grams / 100));
 const acsmNet = (met, minutes, kg) => Math.round((met - 1) * 3.5 * kg / 200 * minutes);
 
-const OFF_FIXTURE = {
-  status: 1,
-  product: {
-    code: '5449000000996',
-    product_name: 'Coca-Cola',
-    brands: 'Coca-Cola',
-    serving_size: '330 ml (330 g)',
-    completeness: 0.9,
-    nutriments: {
-      'energy-kcal_100g': 42, proteins_100g: 0, carbohydrates_100g: 10.6,
-      sugars_100g: 10.6, fat_100g: 0, sodium_100g: 0.005,
-    },
-  },
-};
-const COLA_SERVING_G = 330;
-const colaKcal = Math.round(OFF_FIXTURE.product.nutriments['energy-kcal_100g'] * COLA_SERVING_G / 100);
+// The product is read from the shipped table here, independently of the app.
+const barcodeMeta = JSON.parse(readFileSync(join(root, 'app/public/data/barcodes.json'), 'utf8'));
+const barcodes = new BarcodeIndex(gunzipSync(readFileSync(join(root, 'app/public/data', barcodeMeta.file))));
+const COLA_CODE = '5449000000996';
+const cola = barcodes.lookup(COLA_CODE);
+if (!cola) throw new Error(`${COLA_CODE} is not in the bundled barcode table`);
+const colaKcal = Math.round(cola.per100g.kcal * cola.prior.servingG / 100);
 
 // --- harness ----------------------------------------------------------------
 const failures = [];
@@ -85,18 +79,14 @@ try {
   page.on('pageerror', (e) => failures.push(`pageerror: ${e.message.slice(0, 300)}`));
   page.on('console', (m) => { if (m.type() === 'error') console.log('[console.error]', m.text().slice(0, 300)); });
 
-  // Serve the Open Food Facts fixture; let everything else through.
+  // Nothing may leave the machine. Refuse and record anything that tries.
+  const external = [];
   await page.setRequestInterception(true);
   page.on('request', (req) => {
-    if (req.url().includes('openfoodfacts.org')) {
-      req.respond({
-        status: 200,
-        contentType: 'application/json',
-        // The live API sends CORS headers; a synthesized reply must too, or the
-        // browser blocks it and the app sees a network failure.
-        headers: { 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify(OFF_FIXTURE),
-      });
+    const { hostname, protocol } = new URL(req.url());
+    if (/^https?:$/.test(protocol) && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      external.push(req.url());
+      req.abort();
     } else req.continue();
   });
 
@@ -174,8 +164,8 @@ try {
   check('goal summary states maintenance and goal', summary.includes(tdee.toLocaleString()) && summary.includes(goalKcal.toLocaleString()), true);
   check('settings exposes full backup and restore controls', await page.evaluate(() =>
     !!document.getElementById('btn-backup') && !!document.getElementById('btn-restore')), true);
-  check('settings discloses optional online barcode lookup', await page.evaluate(() =>
-    !!document.getElementById('setting-barcode-online')), true);
+  check('settings has no online lookup switch to turn on', await page.evaluate(() =>
+    !document.getElementById('setting-barcode-online')), true);
 
   await page.evaluate(() => document.querySelector('.tab-btn[data-view="diary"]').click());
   await page.waitForSelector('#rem-goal');
@@ -355,8 +345,9 @@ try {
   await clickText('Look it up', '.sheet');
   await page.waitForSelector('.sheet .detail-summary', { timeout: 15000 });
   const productSheet = await page.evaluate(() => document.querySelector('.sheet').textContent);
-  check('product sheet names the scanned product', productSheet.includes('Coca-Cola'), true);
+  check('product sheet names the scanned product', productSheet.includes(cola.name), true);
   check('product sheet credits Open Food Facts', productSheet.includes('Open Food Facts'), true);
+  check('product came from the offline table', productSheet.includes('offline database'), true);
   await clickText('Choose serving and add', '.sheet');
   await page.waitForSelector('#detail-serving');
   await clickText('Add to', '.sheet');
@@ -364,8 +355,8 @@ try {
   await clickIn('.tab-btn[data-view="diary"]');
   await sleep(500);
   d = await diary();
-  const cola = Object.values(d.sections).flat().find((r) => r.name === 'Coca-Cola');
-  check('scanned product logs the label serving', cola?.kcal, colaKcal);
+  const colaRow = Object.values(d.sections).flat().find((r) => r.name === cola.name);
+  check('scanned product logs the label serving', colaRow?.kcal, colaKcal);
 
   // ---- 8. exercise, credited back -----------------------------------------
   await page.evaluate(() => document.querySelector('#exercise-section .meal-log').click());
@@ -492,6 +483,8 @@ try {
   for (const [name, size] of Object.entries(targets).filter(([name]) => name !== 'coarse')) {
     check(`${name} touch target is at least 44 px`, size >= 44, true);
   }
+
+  check('no request left localhost during the whole run', external, []);
 
   console.log(`flows verified: goals, search+servings, edit+undo, quick add, custom food, recipe, barcode, exercise, habits, complete, copy, dashboard, progress, accessibility`);
 } finally {

@@ -51,6 +51,9 @@ const SHELL_ASSETS = [
   // region. Precached with them so offline naming is identical to online.
   '/data/probe.json',
   '/data/probe.bin',
+  // Names the current barcode table. The table itself is ~4 MB and lives in
+  // the model cache (see app/src/barcode-db.js), so it is not listed here.
+  '/data/barcodes.json',
 ];
 
 self.addEventListener('install', (event) => {
@@ -93,6 +96,9 @@ self.addEventListener('fetch', (event) => {
   // dies when the browser terminates the SW mid-transfer. The inference worker
   // reads/writes them via the Cache API itself (cache-first), so offline works
   // without the SW ever touching those requests.
+  // The barcode table is written to the model cache by the page itself; letting
+  // the shell handler also copy it would store it twice and drop it every release.
+  if (/^\/data\/barcodes-/.test(url.pathname)) return;
   if (url.pathname.startsWith('/models/')) {
     if (url.pathname.endsWith('.json')) {
       event.respondWith(cacheFirst(MODEL_CACHE, event.request));

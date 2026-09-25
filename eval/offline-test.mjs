@@ -6,6 +6,7 @@
  * 2. Force the browser fully offline (CDP network emulation).
  * 3. Reload → app shell must come from cache; upload a photo → recognition,
  *    portion and nutrition must all complete offline.
+ * 4. Type a barcode → the product must resolve from the bundled table.
  *
  * Usage: node eval/offline-test.mjs   (requires `npm run build`; starts vite preview)
  */
@@ -51,7 +52,12 @@ try {
   );
   const prefetch = await page.$eval('#btn-prefetch', (n) => n.textContent);
   if (!prefetch.includes('Available offline')) throw new Error(`prefetch did not finish: ${prefetch}`);
-  console.log('phase 1: models prefetched, SW active ✓');
+  // The barcode table is fetched in the background, not by the button.
+  await page.waitForFunction(async () => {
+    const cache = await caches.open('nutrilens-models-v1');
+    return (await cache.keys()).some((r) => new URL(r.url).pathname.startsWith('/data/barcodes-'));
+  }, { timeout: 120000, polling: 1000 });
+  console.log('phase 1: models prefetched, barcode table cached, SW active ✓');
 
   // --- Phase 2: go fully offline, reload ---
   await page.emulateNetworkConditions({ offline: true, download: 0, upload: 0, latency: 0 });
@@ -93,6 +99,23 @@ try {
     throw new Error(`offline analysis reported ${res.kcal} kcal`);
   }
   console.log(`phase 3: offline analysis ✓ → ${res.top}, ${res.kcal} kcal`);
+
+  // --- Phase 4: barcode offline, from the bundled table ---
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#more-barcode', { timeout: 30000 });
+  await page.evaluate(() => document.querySelector('.tab-btn[data-view="more"]').click());
+  await page.evaluate(() => document.getElementById('more-barcode').click());
+  await page.waitForSelector('#manual-barcode', { timeout: 15000 });
+  await page.evaluate(() => {
+    const input = document.getElementById('manual-barcode');
+    input.value = '5449000000996';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    [...document.querySelectorAll('.sheet button')].find((b) => b.textContent.includes('Look it up')).click();
+  });
+  await page.waitForSelector('.sheet .detail-summary', { timeout: 30000 });
+  const sheet = await page.$eval('.sheet', (n) => n.textContent);
+  if (!sheet.includes('offline database')) throw new Error(`barcode did not resolve offline: ${sheet.slice(0, 200)}`);
+  console.log(`phase 4: barcode offline ✓ → ${sheet.match(/^\s*(.*?)\d{13}/)?.[1]?.slice(0, 60) ?? 'found'}`);
   console.log('OFFLINE TEST PASS');
 } catch (err) {
   console.error('OFFLINE TEST FAIL:', err.message);

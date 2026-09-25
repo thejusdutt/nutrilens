@@ -4,9 +4,11 @@
 A complete food diary — search, barcode scan, serving sizes, custom foods,
 recipes, exercise, weight and a nutrition dashboard — plus the part no other
 tracker does locally: photograph a plate and get every dish, its portion and its
-full micronutrient profile. Photos are analysed **100% on your device**. There is
-no backend, account, or telemetry. Optional unknown-barcode lookups use Open Food
-Facts; cached products and the rest of the tracker work in airplane mode.
+full micronutrient profile. Photos **and barcodes** are resolved **100% on your
+device**. There is no backend, account, or telemetry, and after install the app
+makes no network requests at all: `app/test/no-network.test.js` fails the build
+if shipped code names another origin, and the tracker e2e counts every request
+that leaves localhost (it must be zero).
 
 ![pipeline](docs/img/pipeline.svg)
 
@@ -125,8 +127,15 @@ biryani vs. pulao); see the per-class table in the report.
   Recent/Frequent, quick add, edit-in-place, copy a meal to another day, logging
   streaks, notes, and "complete this entry" with a five-week weight projection.
 - **Barcode scanning** — own EAN-13/EAN-8/UPC-A decoder (`packages/barcode`), with
-  the native `BarcodeDetector` used when present; products come from Open Food
-  Facts and are cached, so re-scanning works offline forever.
+  the native `BarcodeDetector` used when present. Products come from a bundled
+  table of the 137k most-scanned Open Food Facts products (3.9 MB gzipped,
+  64% of all real-world scans; India 82%, UK 74%, Germany 65%, US 50%). It is
+  column-packed typed arrays, not JSON: opening it takes ~40 ms and a lookup
+  under 1 µs. Every product passes the same mapper the app uses plus an
+  Atwater gate (stated kcal must match 4P+4C+9F within 15%), which drops ~160k
+  crowdsourced rows with a kJ figure in the kcal box or per-serving values in
+  per-100 g fields. A product outside the table is created once from its label
+  and found locally after that. Rebuild: `npm run build:barcodes` (see below).
 - **Your own food** — create foods from a nutrition label, save reusable meals,
   and build recipes that divide into servings.
 - **Exercise** — MET database (2011 Compendium) with the ACSM energy formula,
@@ -197,7 +206,19 @@ required for camera + service worker.
 Open the site in Chrome/Edge (desktop or Android) → "Install NutriLens".
 First analysis downloads the models with a progress bar (~180 MB, cached
 permanently); Settings → *Download all models* prefetches everything explicitly.
+The barcode table (~4 MB) downloads in the background on the first visit.
 After that: fully offline.
+
+### Rebuilding the barcode table
+
+```bash
+curl -L -o tools/data/off-food.parquet   https://huggingface.co/datasets/openfoodfacts/product-database/resolve/main/food.parquet  # 7.8 GB
+npm run build:barcodes     # extract (pyarrow, ~30 min) + rank, gate, pack (~2 min)
+```
+
+`--budget-mb` trades size for coverage: 2 MB covers 53% of scans, 4 MB 64%,
+8 MB 76%. The data is © Open Food Facts contributors under ODbL 1.0, and the
+derived table carries the same licence.
 
 ## Repository layout
 
@@ -212,7 +233,8 @@ packages/
   diary/               serving maths, day totals, streaks, projections, CSV export
   exercise-db/         MET activity table + ACSM energy expenditure
   barcode/             EAN-13/EAN-8/UPC-A encoder + scanline image decoder
-  off-food/            Open Food Facts product → food record (unit-corrected)
+  off-food/            Open Food Facts product → food record (unit-corrected),
+                       plus the packed barcode table codec (pack.js)
   charts/              dependency-free SVG donut/bar/column/line charts
   plate-analyzer/      region proposals → named dishes with masses (multi-dish logic)
 app/                   the PWA (Vite, vanilla ES modules, Web Worker inference)
@@ -229,7 +251,7 @@ docs/                  research, architecture, models, datasets, testing, compat
 ## Tests & evaluation
 
 ```bash
-npm test                   # 308 unit tests across all packages (vitest), including:
+npm test                   # 331 unit tests across all packages (vitest), including:
                            #  · every per-100 g value traced back to the FNDDS CSVs
                            #  · every food × nutrient × 11 portion sizes recomputed
 npm run test:vision        # dish names + calories vs human ground truth on 20
@@ -240,7 +262,7 @@ npm run test:tracker       # every tracker flow end to end: goals, serving-size
                            #   logging, editing, quick add, custom foods, recipes,
                            #   barcode, exercise, habits, copy-day, dashboard
 npm run test:smoke         # end-to-end PWA test in headless Chrome
-npm run test:offline       # proves full analysis works with the network disabled
+npm run test:offline       # photo analysis and barcode lookup with the network disabled
 npm run eval:fetch         # Food-101 val subsample (25/class) + Indian food set
 npm run eval               # run both heads over every image (Node, same code as browser)
 npm run eval:report        # ACCURACY_REPORT.md + PERFORMANCE_REPORT.md + fusion sweep
@@ -255,9 +277,8 @@ and [eval/results/](eval/results/) for the generated reports.
 
 ## Privacy & disclaimer
 
-Photos never leave the device; there is nothing to send them to. If online
-barcode lookup is enabled, an unknown barcode is sent to Open Food Facts and the
-result is cached locally. It can be disabled in Settings. Nutrition values are
+Photos and barcodes never leave the device; there is nothing to send them to.
+Nutrition values are
 estimates derived from USDA reference data and single-image portion approximation
 — informational, not medical advice.
 

@@ -7,19 +7,17 @@
  *      (desktop browsers, every iOS browser). A scanner that only works on some
  *      phones is not a feature.
  *
- * Product data comes from Open Food Facts and is cached in IndexedDB on first
- * scan, so scanning the same yoghurt next week works with no network at all.
- * When a code is unknown — or the device is offline and has never seen it — the
- * flow lands on "create this food" with the barcode attached, instead of a dead
- * end.
+ * Product data comes from the bundled table (app/src/barcode-db.js, built
+ * from Open Food Facts at release time), so a scan needs no network. Whatever
+ * resolves is copied into IndexedDB, which is also where products the user
+ * created from a label live. When a code is in neither, the flow lands on
+ * "create this food" with the barcode attached, instead of a dead end.
  */
 import { decodeImage, isValidBarcode, toEan13 } from '@nutrilens/barcode';
-import { fromOffProduct, productUrl } from '@nutrilens/off-food';
 import { $, el, fill, openSheet, closeSheet, toast, emit } from './ui.js';
 import { rememberProduct, cachedProduct } from './foods.js';
+import { bundledProduct } from './barcode-db.js';
 
-export const ONLINE_LOOKUP_KEY = 'onlineBarcodeLookup';
-export const onlineBarcodeLookupEnabled = () => localStorage.getItem(ONLINE_LOOKUP_KEY) !== 'false';
 
 let stream = null;
 let running = false;
@@ -115,7 +113,8 @@ async function scanLoop(video, native, ctx) {
 }
 
 /**
- * Resolve a code to a food: cache first (offline-proof), then Open Food Facts.
+ * Resolve a code to a food: device cache, then the bundled table. Nothing is
+ * ever sent over the network.
  * @param {string} barcode
  * @param {{date:string, slot:string}} ctx
  */
@@ -124,30 +123,18 @@ export async function handleCode(barcode, ctx) {
   const cached = await cachedProduct(barcode);
   if (cached) { openProduct(cached, barcode, ctx, 'from your device'); return; }
 
-  if (!onlineBarcodeLookupEnabled()) {
-    openUnknown(barcode, ctx, 'Online barcode lookup is off. Turn it on in Settings, or create this product from its label.');
+  let bundled = null;
+  try { bundled = await bundledProduct(barcode); } catch (err) {
+    toast(`Offline barcode table unavailable: ${err.message}`, { ms: 5000 });
+  }
+  if (bundled) {
+    await rememberProduct(barcode, bundled);
+    emit('foods');
+    openProduct(bundled, barcode, ctx, 'offline database · Open Food Facts');
     return;
   }
-  if (!navigator.onLine) { openUnknown(barcode, ctx, 'You are offline and this product has not been scanned before.'); return; }
 
-  openSheet({
-    title: 'Looking up…',
-    body: el('div.stack', null, el('div.spinner'), el('p.muted', null, barcode),
-      el('p.muted.tiny', null, 'Sending this barcode to Open Food Facts.')),
-  });
-  try {
-    const res = await fetch(productUrl(barcode), { headers: { Accept: 'application/json' } });
-    const json = await res.json();
-    const mapped = fromOffProduct(json.product ?? json, { barcode });
-    closeSheet({ historyMode: 'replace' });
-    if (!mapped.ok) { openUnknown(barcode, ctx, mapped.reason); return; }
-    await rememberProduct(barcode, mapped.food);
-    emit('foods');
-    openProduct(mapped.food, barcode, ctx, 'Open Food Facts');
-  } catch (err) {
-    closeSheet({ historyMode: 'replace' });
-    openUnknown(barcode, ctx, `Lookup failed: ${err.message}`);
-  }
+  openUnknown(barcode, ctx, 'This product is not in the offline table yet. Create it once from the label and it will be found next time.');
 }
 
 /** Found it: show what we know, then hand over to the normal food detail sheet. */

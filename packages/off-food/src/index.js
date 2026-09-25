@@ -14,6 +14,8 @@
  *     no energy, or with macros that cannot physically fit in 100 g, is rejected
  *     rather than logged as a confident number.
  *
+ * Used at build time (tools/build-barcode-db.mjs) to turn the Open Food Facts
+ * export into the bundled table; the app itself never calls Open Food Facts.
  * Data is ODbL-licensed and requires attribution, which the UI shows next to any
  * scanned product.
  */
@@ -163,18 +165,4 @@ export function fromOffProduct(product, { barcode } = {}) {
   };
 }
 
-/**
- * The v2 product endpoint, asking only for the fields we map. Open Food Facts
- * requests a descriptive User-Agent; browsers forbid setting that header, so the
- * app identifies itself with the `app_name`/`app_version` query parameters the
- * API also accepts.
- * @param {string} barcode
- * @param {{appName?:string, appVersion?:string}} [opts]
- */
-export function productUrl(barcode, { appName = 'NutriLens', appVersion = '1.0' } = {}) {
-  const fields = [
-    'code', 'product_name', 'generic_name', 'brands', 'serving_size', 'completeness', 'nutriments',
-  ].join(',');
-  const q = new URLSearchParams({ fields, app_name: appName, app_version: appVersion });
-  return `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?${q}`;
-}
+export * from './pack.js';

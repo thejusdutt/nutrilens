@@ -12,11 +12,11 @@ describe('full backup format', () => {
     });
     data.products.push({ barcode: '0123456789012', name: 'Yoghurt' });
 
-    const envelope = await buildBackup(data, { theme: 'dark', onlineBarcodeLookup: 'false' }, 3);
+    const envelope = await buildBackup(data, { theme: 'dark', plateCm: '27' }, 3);
     const restored = parseBackup(JSON.stringify(envelope), 3);
 
     expect(restored.preferences.theme).toBe('dark');
-    expect(restored.preferences.onlineBarcodeLookup).toBe('false');
+    expect(restored.preferences.plateCm).toBe('27');
     expect(restored.stores.products[0].barcode).toBe('0123456789012');
     expect(restored.stores.history[0].thumb).toBeInstanceOf(Blob);
     expect(restored.stores.history[0].thumb.type).toBe('image/jpeg');

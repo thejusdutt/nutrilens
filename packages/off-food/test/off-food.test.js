@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fromOffProduct, parseServing, productUrl } from '../src/index.js';
+import { fromOffProduct, parseServing } from '../src/index.js';
 
 const nutella = {
   code: '3017624010701',
@@ -198,17 +198,5 @@ describe('serving-size parsing', () => {
     for (const s of ['1 portion', '', null, undefined, 'about a handful', '0 g', '99999 g']) {
       expect(parseServing(s), String(s)).toBeNull();
     }
-  });
-});
-
-describe('API url', () => {
-  it('asks only for the fields we map and identifies the app', () => {
-    const url = productUrl('3017624010701');
-    expect(url).toContain('/api/v2/product/3017624010701.json');
-    expect(url).toContain('nutriments');
-    expect(url).toContain('app_name=NutriLens');
-  });
-  it('escapes the barcode', () => {
-    expect(productUrl('../etc')).toContain('%2F');
   });
 });

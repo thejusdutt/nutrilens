@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>NutriLens — offline food & nutrition tracker</title>
-  <meta name="description" content="Track calories, macros and micronutrients offline. Photos are analysed on your device; optional barcode lookups use Open Food Facts." />
+  <meta name="description" content="Track calories, macros and micronutrients offline. Photos and barcodes are analysed on your device, with no network." />
   <meta name="theme-color" content="#101418" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
@@ -61,7 +61,7 @@
         <button id="more-export"><span class="i" data-icon="download"></span> Export the diary as CSV</button>
         <button id="more-settings"><span class="i" data-icon="settings"></span> Settings and goals</button>
       </div>
-      <p class="muted tiny">Photos and diary data stay on this device. Optional lookups send an unknown barcode to Open Food Facts. No account is required.</p>
+      <p class="muted tiny">Photos, barcodes and diary data stay on this device. Nothing is sent anywhere. No account is required.</p>
     </section>
 
     <!-- Photo capture -->
@@ -247,15 +247,13 @@
         <p class="muted">Download the recognition models once to use photo analysis with no network (~180 MB). The download starts only when you press the button.</p>
         <button id="btn-prefetch" class="primary"><span class="i" data-icon="download"></span> Download all models</button>
         <progress id="prefetch-progress" max="1" value="0" hidden></progress>
+        <p id="barcode-db-status" class="muted tiny" role="status" aria-live="polite"></p>
         <p id="storage-status" class="muted tiny" role="status" aria-live="polite"></p>
       </details>
 
       <details class="card">
         <summary><h3>Privacy</h3></summary>
-        <label class="check" for="setting-barcode-online">
-          <input id="setting-barcode-online" type="checkbox" /> Look up unknown barcodes with Open Food Facts
-        </label>
-        <p class="muted tiny">Photos are analysed locally. When this option is on, an unknown barcode and your network address are sent to Open Food Facts. Previously scanned products still work when it is off.</p>
+        <p class="muted tiny">Photos are analysed on this device and barcodes are looked up in a table stored on it. The app makes no network requests after it has been installed.</p>
       </details>
 
       <details class="card">
@@ -272,7 +270,7 @@
       <details class="card">
         <summary><h3>About</h3></summary>
         <p class="muted tiny">Recognition runs Swin-Food101, MobileCLIP-S2 and SlimSAM in your browser via ONNX Runtime Web.
-          Nutrition data: USDA FoodData Central (FNDDS 2024-10-31). Packaged products: Open Food Facts (ODbL).
+          Nutrition data: USDA FoodData Central (FNDDS 2024-10-31). Packaged products: © Open Food Facts contributors, bundled under the Open Database License (ODbL 1.0); the bundled table is a derived database under the same licence.
           Exercise energy: 2011 Compendium of Physical Activities with the ACSM formula.
           Estimates are informational, not medical advice.</p>
       </details>
