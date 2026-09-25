@@ -19,13 +19,17 @@
  *  - a size budget: products are added in scan order until the gzipped table
  *    would pass --budget-mb, so the least-scanned tail is what gets cut;
  *  - completeness: protein, carbs and fat must all be on the label;
- *  - Atwater agreement: stated kcal must match 4P + 4C + 9F (+2 per g fibre is
- *    allowed for, as is alcohol-free rounding) within 15% or 20 kcal. OFF is
- *    crowdsourced; a kJ figure typed into the kcal box or a per-serving value
- *    in a per-100 g field fails this, and would otherwise be logged confidently.
+ *  - Atwater agreement (packages/off-food/src/plausible.js): stated kcal must
+ *    match 4P + 4C + 9F + 7·alcohol, under the US or EU way of counting fibre,
+ *    within 15% or 20 kcal. A kJ figure typed into the kcal box or a
+ *    per-serving value in a per-100 g field fails this.
+ *
+ * Coverage is reported against every product with a valid barcode and an
+ * energy value in the export, before any gate, so rejected products count as
+ * misses.
  *
  * Data is (c) Open Food Facts contributors, licensed ODbL 1.0; the derived
- * table carries the same licence (see app/public/data/BARCODES-LICENSE.txt).
+ * table carries the same licence.
  */
 import { createReadStream, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -34,7 +38,9 @@ import { gzipSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isValidBarcode } from '@nutrilens/barcode';
-import { fromOffProduct, packProducts, BarcodeIndex, PACKED_FIELDS } from '@nutrilens/off-food';
+import {
+  fromOffProduct, packProducts, BarcodeIndex, PACKED_FIELDS, implausible, dropImpossibleFibre,
+} from '@nutrilens/off-food';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = process.env.OFF_CANDIDATES ?? join(root, 'tools/data/off-candidates.jsonl');
@@ -44,25 +50,13 @@ const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
   return i > 0 ? Number(process.argv[i + 1]) : fallback;
 };
-const LIMIT = arg('limit', 150_000);
+// Only a backstop: the size budget is meant to be the binding constraint.
+const LIMIT = arg('limit', 1_000_000);
 const BUDGET = arg('budget-mb', 4) * 1e6;
 const MIN_SCANS = arg('min-scans', 1);
 
 /** GTIN-13 key: UPC-A and EAN-8 left-padded with zeros, as GS1 normalizes them. */
 const gtin13 = (code) => code.padStart(13, '0');
-
-/** @returns {string|null} why a record should not ship */
-function implausible(n) {
-  if (![n.protein, n.carbs, n.fat].every(Number.isFinite)) return 'missing a macro';
-  const atwater = 4 * n.protein + 4 * n.carbs + 9 * n.fat;
-  // Fibre may or may not be inside "carbohydrates" depending on the label's
-  // country, so accept either reading.
-  const alt = atwater - 2 * (n.fiber ?? 0);
-  const off = Math.min(Math.abs(n.kcal - atwater), Math.abs(n.kcal - alt));
-  if (off > Math.max(20, 0.15 * n.kcal)) return 'kcal disagrees with macros';
-  if ((n.sugars ?? 0) > n.carbs + 1 || (n.satFat ?? 0) > n.fat + 1) return 'part exceeds its whole';
-  return null;
-}
 
 const best = new Map(); // gtin13 → { food, scans, popularity, countries }
 const rejected = {};
@@ -77,23 +71,15 @@ for await (const line of rl) {
   // Python's json writes Infinity/NaN for garbage cells; read them as missing.
   const p = JSON.parse(line.replace(/:(-?Infinity|NaN)(?=[,}])/g, ':null'));
   if (!isValidBarcode(p.code)) { rejected['bad check digit'] = (rejected['bad check digit'] ?? 0) + 1; continue; }
+  totalScans += p.scans;
+  for (const c of p.countries) scansByCountry[c] = (scansByCountry[c] ?? 0) + p.scans;
   const key = gtin13(p.code);
   const mapped = fromOffProduct(p, { barcode: key });
   if (!mapped.ok) { rejected[mapped.reason] = (rejected[mapped.reason] ?? 0) + 1; continue; }
-  // Fibre is the field most often mistyped (LU Prince: 52 g). If macros plus
-  // fibre overflow 100 g, the label must count fibre inside carbs, so sugars
-  // and fibre together have to fit inside carbs too. When they cannot, drop
-  // fibre rather than the product: the energy and macros still check out.
   const n = mapped.food.per100g;
-  if (n.fiber != null && n.protein + n.carbs + n.fat + n.fiber > 105
-      && (n.sugars ?? 0) + n.fiber > n.carbs + 1) {
-    delete n.fiber;
-    rejected['fibre dropped (kept product)'] = (rejected['fibre dropped (kept product)'] ?? 0) + 1;
-  }
+  if (dropImpossibleFibre(n)) rejected['fibre dropped (kept product)'] = (rejected['fibre dropped (kept product)'] ?? 0) + 1;
   const why = implausible(n);
   if (why) { rejected[why] = (rejected[why] ?? 0) + 1; continue; }
-  totalScans += p.scans;
-  for (const c of p.countries) scansByCountry[c] = (scansByCountry[c] ?? 0) + p.scans;
   const prev = best.get(key);
   if (!prev || p.scans > prev.scans) {
     // Names are free text; a 300-character "name" is an ingredients list pasted
@@ -151,7 +137,7 @@ console.log(`candidates read      ${lines}`);
 console.log(`valid products       ${best.size}`);
 console.log(`rejected             ${JSON.stringify(rejected)}`);
 console.log(`kept                 ${kept.length} (min scans ${kept.at(-1)?.scans ?? 0})`);
-console.log(`scan coverage        ${pct(keptScans, totalScans)} of all unique scans of valid products`);
+console.log(`scan coverage        ${pct(keptScans, totalScans)} of unique scans of all barcoded products with an energy value`);
 for (const c of ['india', 'germany', 'united-states', 'united-kingdom', 'france']) {
   console.log(`  ${c.padEnd(18)} ${pct(keptByCountry[c] ?? 0, scansByCountry[c])}`);
 }

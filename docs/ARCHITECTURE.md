@@ -201,7 +201,8 @@ The PWA is plain ES modules, one per screen, with no framework:
 | `nutrition-view.js` | calories / macros / nutrients, day or week |
 | `progress-view.js` | weight, calorie trend, measurements |
 | `exercise-view.js` | MET-based exercise logging |
-| `barcode-scan.js` | camera loop, native or own decoder, Open Food Facts lookup |
+| `barcode-scan.js` | camera loop, native or own decoder, device cache → bundled table |
+| `barcode-db.js` | opens the packed barcode table (built from Open Food Facts at release time) |
 | `plate-ui.js` | the plate editor: dish rows, serving stepper, "what is this?" sheet |
 | `servings.js` | weight → words ("3¾ idli"), free of DOM and of the database |
 

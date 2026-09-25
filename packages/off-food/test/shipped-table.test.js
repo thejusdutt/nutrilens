@@ -8,7 +8,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BarcodeIndex } from '../src/index.js';
+import { BarcodeIndex, atwaterGap, atwaterTolerance } from '../src/index.js';
 
 const data = join(dirname(fileURLToPath(import.meta.url)), '../../../app/public/data');
 const metaPath = join(data, 'barcodes.json');
@@ -27,7 +27,9 @@ describe.skipIf(!existsSync(metaPath))('shipped barcode table', () => {
   });
 
   it('is sorted with no duplicate codes, so binary search is exact', () => {
-    for (let i = 1; i < index.count; i++) expect(index.codes[i] > index.codes[i - 1]).toBe(true);
+    let unsorted = 0;
+    for (let i = 1; i < index.count; i++) if (!(index.codes[i] > index.codes[i - 1])) unsorted++;
+    expect(unsorted).toBe(0);
   });
 
   it('every product is physically plausible', () => {
@@ -36,10 +38,9 @@ describe.skipIf(!existsSync(metaPath))('shipped barcode table', () => {
       const code = String(index.codes[i]).padStart(13, '0');
       const f = index.lookup(code);
       const n = f.per100g;
-      const atwater = 4 * n.protein + 4 * n.carbs + 9 * n.fat;
-      const off = Math.min(Math.abs(n.kcal - atwater), Math.abs(n.kcal - (atwater - 2 * (n.fiber ?? 0))));
+      // +0.5 kcal: values are stored to fixed precision, the gate ran before that.
       if (!f.name || !(n.kcal >= 0) || n.kcal > 950
-        || off > Math.max(20, 0.15 * n.kcal) + 0.5
+        || atwaterGap(n) > atwaterTolerance(n.kcal) + 0.5
         || n.protein + n.carbs + n.fat > 105
         || (n.sugars ?? 0) > n.carbs + 1.01 || (n.satFat ?? 0) > n.fat + 1.01) bad.push(code);
       if (bad.length > 5) break;

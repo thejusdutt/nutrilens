@@ -42,7 +42,12 @@ async function pruneOld(current) {
  */
 export async function warmBarcodeDb() {
   const meta = await fetch('/data/barcodes.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  if (meta?.file) await loadModelBytes(`/data/${meta.file}`);
+  if (!meta?.file) return;
+  const url = `/data/${meta.file}`;
+  const cache = await caches.open(MODEL_CACHE).catch(() => null);
+  // A hit is the common case on every launch: check it without reading 4 MB.
+  if (!(cache && await cache.match(url))) await loadModelBytes(url);
+  pruneOld(url);
 }
 
 /**
@@ -54,7 +59,15 @@ export function openBarcodeDb(onProgress) {
     const meta = await fetch('/data/barcodes.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!meta?.file) return null;
     const url = `/data/${meta.file}`;
-    const index = new BarcodeIndex(await gunzip(await loadModelBytes(url, onProgress)));
+    let index;
+    try {
+      index = new BarcodeIndex(await gunzip(await loadModelBytes(url, onProgress)));
+    } catch (err) {
+      // SPA hosts answer a missing file with index.html and HTTP 200, which
+      // would otherwise sit in the cache and fail every open until a release.
+      await caches.open(MODEL_CACHE).then((c) => c.delete(url)).catch(() => {});
+      throw err;
+    }
     pruneOld(url);
     return index;
   })().catch((err) => { opening = null; throw err; });

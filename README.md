@@ -128,13 +128,15 @@ biryani vs. pulao); see the per-class table in the report.
   streaks, notes, and "complete this entry" with a five-week weight projection.
 - **Barcode scanning** — own EAN-13/EAN-8/UPC-A decoder (`packages/barcode`), with
   the native `BarcodeDetector` used when present. Products come from a bundled
-  table of the 137k most-scanned Open Food Facts products (3.9 MB gzipped,
-  64% of all real-world scans; India 82%, UK 74%, Germany 65%, US 50%). It is
-  column-packed typed arrays, not JSON: opening it takes ~40 ms and a lookup
-  under 1 µs. Every product passes the same mapper the app uses plus an
-  Atwater gate (stated kcal must match 4P+4C+9F within 15%), which drops ~160k
-  crowdsourced rows with a kJ figure in the kcal box or per-serving values in
-  per-100 g fields. A product outside the table is created once from its label
+  table of the 134k most-scanned Open Food Facts products (3.9 MB gzipped).
+  It answers 59.6% of all scans of barcoded products in the export (India 71%,
+  UK 69%, Germany 62%, US 40%); rejected products count as misses in that
+  figure. It is column-packed typed arrays, not JSON: opening it takes ~50 ms
+  and a lookup under 1 µs. Every product passes the same mapper the app uses
+  plus an Atwater gate (`packages/off-food/src/plausible.js`: stated kcal must
+  match 4P+4C+9F+7·alcohol within 15%, under either the US or EU way of
+  counting fibre), which drops ~147k crowdsourced rows with a kJ figure in the
+  kcal box or per-serving values in per-100 g fields. A product outside the table is created once from its label
   and found locally after that. Rebuild: `npm run build:barcodes` (see below).
 - **Your own food** — create foods from a nutrition label, save reusable meals,
   and build recipes that divide into servings.
@@ -216,8 +218,8 @@ curl -L -o tools/data/off-food.parquet   https://huggingface.co/datasets/openfoo
 npm run build:barcodes     # extract (pyarrow, ~30 min) + rank, gate, pack (~2 min)
 ```
 
-`--budget-mb` trades size for coverage: 2 MB covers 53% of scans, 4 MB 64%,
-8 MB 76%. The data is © Open Food Facts contributors under ODbL 1.0, and the
+`--budget-mb` trades size for coverage; the build prints the coverage it
+reached. 4 MB is the default. The data is © Open Food Facts contributors under ODbL 1.0, and the
 derived table carries the same licence.
 
 ## Repository layout
@@ -251,7 +253,7 @@ docs/                  research, architecture, models, datasets, testing, compat
 ## Tests & evaluation
 
 ```bash
-npm test                   # 331 unit tests across all packages (vitest), including:
+npm test                   # 337 unit tests across all packages (vitest), including:
                            #  · every per-100 g value traced back to the FNDDS CSVs
                            #  · every food × nutrient × 11 portion sizes recomputed
 npm run test:vision        # dish names + calories vs human ground truth on 20

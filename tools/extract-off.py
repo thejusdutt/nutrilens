@@ -33,7 +33,7 @@ COLUMNS = [
 # Keys read by packages/off-food FIELDS, plus the energy and salt fallbacks.
 NUTRIMENTS = {
     'energy-kcal', 'energy-kj', 'energy', 'salt', 'proteins', 'fat', 'carbohydrates',
-    'fiber', 'sugars', 'saturated-fat', 'sodium',
+    'fiber', 'sugars', 'saturated-fat', 'sodium', 'alcohol',
 }
 
 

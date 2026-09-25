@@ -53,6 +53,8 @@ const FIELDS = {
   folate: ['vitamin-b9', 1e6],
   vitB12: ['vitamin-b12', 1e6],
   choline: ['choline', 1000],
+  // Labels give alcohol as % vol; ×0.789 (ethanol density) is g per 100 ml ≈ 100 g.
+  alcohol: ['alcohol', 0.789],
 };
 
 const KJ_PER_KCAL = 4.184;
@@ -166,3 +168,4 @@ export function fromOffProduct(product, { barcode } = {}) {
 }
 
 export * from './pack.js';
+export * from './plausible.js';

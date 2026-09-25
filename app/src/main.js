@@ -98,6 +98,7 @@ function ensureWorker() {
       // fetch"; say what is missing and how to get it instead.
       const err = navigator.onLine ? cause : new Error(
         'Photo analysis needs its models on this device first. Connect once, then use Settings → Offline models → Download all models.',
+        { cause },
       );
       // Clear the memo so a network blip during the first download does not
       // leave the app permanently broken until a reload.

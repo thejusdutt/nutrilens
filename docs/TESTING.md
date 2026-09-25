@@ -30,7 +30,10 @@ that ships; only the dataset fetch in layer 6 needs the network.
   negative, no infinity.
 - **diary** (32), **exercise-db** (15), **barcode** (18), **off-food** (27),
   **charts** (24): serving maths and streaks, METs and ACSM energy, EAN/UPC
-  encode–decode round trips, Open Food Facts unit scaling, SVG chart strings.
+  encode–decode round trips, Open Food Facts unit scaling, the packed barcode
+  table (round trip, plus a gate over every shipped row: sorted, Atwater-
+  consistent, under 5 MB), SVG chart strings, and `app/test/no-network.test.js`
+  (no shipped file names an external origin).
 - **claude-nutrition** (14): the build-time estimate/cross-verify/adjudicate
   logic — Atwater and range validation, fat reconciliation, agreement scoring.
 - **app** (36): the tick-scale readout, the icon set, serving wording.
@@ -102,12 +105,13 @@ Two standards, deliberately:
 
 ## 4. Tracker flows — "does the diary actually work?"
 
-`npm run test:tracker` (`eval/tracker-e2e.mjs`): 35 checks over 13 flows —
+`npm run test:tracker` (`eval/tracker-e2e.mjs`): 53 checks over 13 flows —
 goals, search with serving sizes, editing an entry, quick add, custom foods,
 recipes, barcode, exercise, habits, completing a day, copying a meal to another
-day, the dashboard, progress. Fresh Chrome profile each run; the Open Food Facts
-response is stubbed through `page.setRequestInterception`, and the stub **must**
-send `Access-Control-Allow-Origin` or the app only sees "Failed to fetch".
+day, the dashboard, progress. Fresh Chrome profile each run. The barcode flow
+resolves from the bundled table, and `page.setRequestInterception` aborts and
+records every request that leaves localhost: the run fails unless that list is
+empty.
 
 ## 5. Browser end-to-end — "does the shipped PWA work?"
 

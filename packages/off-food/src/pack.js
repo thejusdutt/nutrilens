@@ -25,7 +25,7 @@ const SEP = '\u001f';
 /** Packed nutrients and their fixed-point scale. Grams keep round2 precision. */
 export const PACKED_FIELDS = [
   ['kcal', 10], ['protein', 100], ['carbs', 100], ['fat', 100],
-  ['fiber', 100], ['sugars', 100], ['satFat', 100], ['sodium', 1],
+  ['fiber', 100], ['sugars', 100], ['satFat', 100], ['sodium', 1], ['alcohol', 100],
 ];
 
 const align8 = (n) => (n + 7) & ~7;

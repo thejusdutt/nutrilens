@@ -157,7 +157,7 @@ unless the user pins an exact portion.
 |---|---|
 | **USDA FNDDS 2021-2023 (Survey)** | **chosen as primary** — ~7,000 *as-consumed* mixed dishes (pizza, biryani, curries, sushi…), 65 nutrients each, plus standard portion weights (critical for portion priors). Public domain. Single 3.3 MB zip. |
 | USDA Foundation/SR Legacy | supplement — raw ingredients (fruits, vegetables) with the deepest micronutrient coverage; merged for produce classes. |
-| Open Food Facts | rejected — branded/packaged goods, wrong domain for photographed meals, patchy micronutrients. |
+| Open Food Facts | rejected for photographed meals (branded goods, patchy micronutrients); used for barcodes as a bundled, Atwater-gated table of the most-scanned products. |
 | CIQUAL / IFCT | rejected as machine sources (licensing/format friction); IFCT values informed the density priors and Indian-dish mappings qualitatively. |
 
 Build pipeline (`tools/build-nutrition-db.mjs`) maps every vocabulary label
