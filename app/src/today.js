@@ -26,9 +26,10 @@ import {
   getProfile, dailyGoal, setProfile, suggestSlot, SLOT_LABEL, mealWord, mealGoals, shownCarbs, carbsLabel,
 } from './goals.js';
 import { openLogFood, openFoodDetail, openQuickAdd, openMealBuilder } from './logfood.js';
-import { openExerciseSheet } from './exercise-view.js';
+import { openExerciseSheet, openRoutinesSheet } from './exercise-view.js';
 import { openWeightSheet } from './progress-view.js';
 import { iconEl } from './icons.js';
+import { fastingCard } from './fasting.js';
 
 let current = dateKey();
 let navigate = () => {};
@@ -51,7 +52,7 @@ export async function renderToday() {
   ]);
   const entries = entriesRaw.map(normalizeEntry);
   const profile = getProfile();
-  const goal = dailyGoal(profile);
+  const goal = dailyGoal(profile, date);
   const totals = dayTotals(entries);
   const burned = exerciseKcal(exercise) + (day.exerciseKcal || 0);
   const credited = profile.creditExercise ? burned : 0;
@@ -67,6 +68,8 @@ export async function renderToday() {
     ...SLOTS.map((slot) => mealSection(slot, entries.filter((e) => (SLOTS.includes(e.slot) ? e.slot : 'snacks') === slot), date, perMeal?.[slot])),
     exerciseSection(exercise, day, burned, date),
     habitsCard(day, profile),
+    // The fast runs on its own clock, so it is only shown on today.
+    date === dateKey() ? fastingCard() : null,
     notesCard(day),
     completeCard({ date, day, goal, totals, credited, profile, entries }),
   );
@@ -193,6 +196,7 @@ function entryRow(entry, date) {
       `${fmt.servings(entry.servings)} × ${entry.servingLabel}`,
       entry.brand,
       `P ${Math.round(entry.nutrients?.protein ?? 0)} · C ${Math.round(entry.nutrients?.carbs ?? 0)} · F ${Math.round(entry.nutrients?.fat ?? 0)} g`,
+      entry.ts ? fmt.time(entry.ts) : null,
     ].filter(Boolean).join(' · '))),
     el('span.de-kcal', null, `${fmt.energy(entry.kcal)}`),
     el('button.de-del', {
@@ -214,6 +218,14 @@ function entryRow(entry, date) {
     }, iconEl('close', { size: 14 })));
 }
 
+/** A copied entry keeps the time it was eaten, on its new day. */
+const sameTimeOn = (date, ts) => {
+  const at = new Date(`${date}T00:00:00`);
+  const was = new Date(ts ?? Date.now());
+  at.setHours(was.getHours(), was.getMinutes(), was.getSeconds(), 0);
+  return at.getTime();
+};
+
 /** Per-meal tools: copy from another day, copy to another day, clear. */
 function openMealMenu(slot, entries, date) {
   const dateInput = el('input', { type: 'date', value: shiftDate(date, -1) });
@@ -228,7 +240,7 @@ function openMealMenu(slot, entries, date) {
         onclick: async () => {
           const source = (await listMealsByDate(dateInput.value)).map(normalizeEntry).filter((e) => e.slot === slot);
           if (!source.length) { toast('Nothing logged in that meal'); return; }
-          for (const e of source) await saveMeal({ ...e, id: undefined, date, ts: Date.now() });
+          for (const e of source) await saveMeal({ ...e, id: undefined, date, ts: sameTimeOn(date, e.ts) });
           emit('diary', { date });
           toast(`${source.length} items copied`);
           closeSheet();
@@ -238,7 +250,7 @@ function openMealMenu(slot, entries, date) {
       el('div.row3', null, targetInput, targetSlot, el('button', { id: 'copy-to-day',
         onclick: async () => {
           if (!entries.length) { toast('This meal is empty'); return; }
-          for (const e of entries) await saveMeal({ ...e, id: undefined, date: targetInput.value, slot: targetSlot.value, ts: Date.now() });
+          for (const e of entries) await saveMeal({ ...e, id: undefined, date: targetInput.value, slot: targetSlot.value, ts: sameTimeOn(targetInput.value, e.ts) });
           emit('diary', { date });
           toast(`Copied to ${fmt.date(targetInput.value)}`);
           closeSheet();
@@ -296,7 +308,9 @@ function exerciseSection(exercise, day, burned, date) {
           emit('diary', { date });
         },
       }, iconEl('close', { size: 14 })))),
-    el('button.meal-log', { onclick: () => openExerciseSheet({ date }) }, '＋ Log exercise'));
+    el('div.row2.exercise-actions', null,
+      el('button.meal-log', { onclick: () => openExerciseSheet({ date }) }, '＋ Log exercise'),
+      el('button.meal-log', { id: 'btn-routines', onclick: () => openRoutinesSheet({ date, exercise }) }, 'Routines')));
 }
 
 function habitsCard(day, profile) {
@@ -346,7 +360,8 @@ function habitsCard(day, profile) {
 async function bumpWater(day, delta, goal) {
   const water = Math.min(goal, Math.max(0, (day.water || 0) + delta));
   if (water === (day.water || 0)) return;
-  await patchDay(day.date, { water });
+  // Count first, save second. Updating after the await let three quick taps
+  // each read the same starting count, and only one glass was kept.
   day.water = water;
   $('water-count').textContent = `${water} / ${goal}`;
   $('water-minus').disabled = water <= 0;
@@ -354,6 +369,8 @@ async function bumpWater(day, delta, goal) {
   document.querySelectorAll('.water-track .drop').forEach((drop, index) => {
     drop.classList.toggle('full', index < water);
   });
+  // IndexedDB runs transactions in the order they start, so the last tap wins.
+  await patchDay(day.date, { water });
 }
 
 function notesCard(day) {

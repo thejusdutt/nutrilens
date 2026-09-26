@@ -578,6 +578,111 @@ try {
     await setValue('#n-goal-fiber', '');
   });
 
+  await run('goals by weekday', async () => {
+    const normal = (await diary()).goal;
+    await clickIn('#btn-settings');
+    await page.waitForSelector('#w-kcal-4');
+    await setValue('#w-kcal-4', 1800); // 1 Oct 2026 is a Thursday
+    await tab('diary');
+    check('a Thursday goal applies on Thursday', (await diary()).goal, 1800);
+    await ev(() => document.querySelector('[aria-label="Next day"]').click());
+    await sleep(400);
+    check('and not on Friday', (await diary()).goal, normal);
+    await ev(() => document.querySelector('[aria-label="Previous day"]').click());
+    await sleep(300);
+    await clickIn('#btn-settings');
+    await setValue('#w-kcal-4', '');
+    await tab('diary');
+    check('clearing it restores the everyday goal', (await diary()).goal, normal);
+  });
+
+  await run('timestamps and multi-day', async () => {
+    await openSheetFor('breakfast');
+    await search('Poha');
+    await openRow('Poha');
+    await page.waitForSelector('#detail-time');
+    await setValue('#detail-time', '08:30');
+    await setValue('#detail-repeat', 2);
+    await ev(() => document.querySelector('.sheet .sheet-save').click());
+    await sleep(900);
+    const poha = (await diary()).sections.breakfast.find((r) => r.name === 'Poha');
+    truthy(`the entry shows the time it was eaten (got "${poha?.detail}")`, poha?.detail?.includes('08:30'));
+    for (const n of [1, 2]) {
+      await ev(() => document.querySelector('[aria-label="Next day"]').click());
+      await sleep(400);
+      check(`multi-day logging put it on day +${n}`, (await diary()).sections.breakfast.some((r) => r.name === 'Poha'), true);
+    }
+    await ev(() => [...document.querySelectorAll('#today-root button.link')].find((b) => /today/i.test(b.textContent))?.click());
+    await sleep(400);
+  });
+
+  await run('fasting', async () => {
+    await page.waitForSelector('#btn-start-fast');
+    await setValue('#fast-plan', 16);
+    await clickIn('#btn-start-fast');
+    await sleep(300);
+    check('a new fast starts at zero', await text('#fast-elapsed'), '0h 00m');
+    // Start it 17 hours before the frozen clock and reload: the fast is
+    // wall-clock based. (Absolute, because the frozen clock restarts at NOW on
+    // every reload, so "17 h before whenever the test pressed Start" would be
+    // a few minutes short.)
+    await ev((now) => {
+      const s = JSON.parse(localStorage.getItem('fasting'));
+      s.current.start = now - 17 * 3600e3;
+      localStorage.setItem('fasting', JSON.stringify(s));
+    }, NOW);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#fast-elapsed');
+    check('it keeps counting across a reload', await text('#fast-elapsed'), '17h 00m');
+    truthy('a 16 h goal is reached after 17 h', (await ev(() => document.getElementById('fasting-card').textContent)).includes('Goal reached'));
+    await clickIn('#btn-end-fast');
+    await sleep(300);
+    truthy('ending records the fast', (await text('#fast-last'))?.includes('17h 00m of 16 h — goal reached'));
+  });
+
+  await run('workout routines', async () => {
+    await clickIn('#btn-routines');
+    await page.waitForSelector('#routine-name');
+    await setValue('#routine-name', 'Push day');
+    await clickIn('#save-routine');
+    await sleep(400);
+    truthy('the routine is listed', await ev(() => !!document.querySelector('.sheet [data-routine="Push day"]')));
+    await closeSheets();
+    const todayEx = (await diary()).exerciseRows;
+    await ev(() => document.querySelector('[aria-label="Next day"]').click());
+    await sleep(400);
+    await clickIn('#btn-routines');
+    await page.waitForSelector('.sheet [data-routine="Push day"]');
+    await ev(() => document.querySelector('.sheet [data-routine="Push day"] .routine-log').click());
+    await sleep(700);
+    const t = await diary();
+    check('logging the routine repeats every exercise', t.exerciseRows.map((r) => r.name), todayEx.map((r) => r.name));
+    check('with the same calories', t.exerciseRows.map((r) => r.kcal), todayEx.map((r) => r.kcal));
+    await ev(() => [...document.querySelectorAll('#today-root button.link')].find((b) => /today/i.test(b.textContent))?.click());
+    await sleep(400);
+  });
+
+  await run('food analysis and report', async () => {
+    const d = await diary();
+    // The oracle: group today's rows by name and pick the largest.
+    const byName = new Map();
+    for (const r of all(d)) byName.set(r.name, (byName.get(r.name) ?? 0) + r.kcal);
+    const topName = [...byName].sort((a, b) => b[1] - a[1])[0][0];
+    await tab('nutrition');
+    await ev(() => document.querySelector('.tab[data-tab="foods"]').click());
+    await sleep(400);
+    check('top foods by calories starts with the biggest', await ev(() => document.querySelector('#top-foods li b')?.textContent), topName);
+    await setValue('#rank-by', 'protein');
+    await sleep(300);
+    truthy('ranking by protein lists foods', await ev(() => document.querySelectorAll('#top-foods li').length > 0));
+    await ev(() => { window.print = () => { window.__printed = true; }; });
+    await clickIn('#btn-print-report');
+    await sleep(300);
+    check('print report calls print', await ev(() => window.__printed === true), true);
+    check('the report has one row per food logged today', await ev(() => document.querySelectorAll('#print-root tbody tr:not(.total)').length), all(d).length);
+    truthy('the report states the total against the goal', (await ev(() => document.querySelector('#print-root h2').textContent)).includes(d.food.toLocaleString()));
+  });
+
   await run('export CSV', async () => {
     await tab('diary');
     const d = await diary();

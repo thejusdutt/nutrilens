@@ -462,6 +462,140 @@
     "want": true
   },
   {
+    "section": "goals by weekday",
+    "label": "a Thursday goal applies on Thursday",
+    "ok": true,
+    "got": 1800,
+    "want": 1800
+  },
+  {
+    "section": "goals by weekday",
+    "label": "and not on Friday",
+    "ok": true,
+    "got": 1597,
+    "want": 1597
+  },
+  {
+    "section": "goals by weekday",
+    "label": "clearing it restores the everyday goal",
+    "ok": true,
+    "got": 1597,
+    "want": 1597
+  },
+  {
+    "section": "timestamps and multi-day",
+    "label": "the entry shows the time it was eaten (got \"1 × 1 cup, cooked · P 4 · C 44 · F 5 g · 08:30\")",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "timestamps and multi-day",
+    "label": "multi-day logging put it on day +1",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "timestamps and multi-day",
+    "label": "multi-day logging put it on day +2",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "fasting",
+    "label": "a new fast starts at zero",
+    "ok": true,
+    "got": "0h 00m",
+    "want": "0h 00m"
+  },
+  {
+    "section": "fasting",
+    "label": "it keeps counting across a reload",
+    "ok": true,
+    "got": "17h 00m",
+    "want": "17h 00m"
+  },
+  {
+    "section": "fasting",
+    "label": "a 16 h goal is reached after 17 h",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "fasting",
+    "label": "ending records the fast",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "workout routines",
+    "label": "the routine is listed",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "workout routines",
+    "label": "logging the routine repeats every exercise",
+    "ok": true,
+    "got": [
+      "Weight training, light"
+    ],
+    "want": [
+      "Weight training, light"
+    ]
+  },
+  {
+    "section": "workout routines",
+    "label": "with the same calories",
+    "ok": true,
+    "got": [
+      119
+    ],
+    "want": [
+      119
+    ]
+  },
+  {
+    "section": "food analysis and report",
+    "label": "top foods by calories starts with the biggest",
+    "ok": true,
+    "got": "Canteen thali (estimate)",
+    "want": "Canteen thali (estimate)"
+  },
+  {
+    "section": "food analysis and report",
+    "label": "ranking by protein lists foods",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "food analysis and report",
+    "label": "print report calls print",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "food analysis and report",
+    "label": "the report has one row per food logged today",
+    "ok": true,
+    "got": 7,
+    "want": 7
+  },
+  {
+    "section": "food analysis and report",
+    "label": "the report states the total against the goal",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
     "section": "export CSV",
     "label": "CSV export produced a file",
     "ok": true,
@@ -472,22 +606,22 @@
     "section": "export CSV",
     "label": "CSV has one row per food logged today",
     "ok": true,
-    "got": 6,
-    "want": 6
+    "got": 7,
+    "want": 7
   },
   {
     "section": "export CSV",
     "label": "CSV food rows sum to the diary total",
     "ok": true,
-    "got": 1130,
-    "want": "1130 ±6"
+    "got": 1376,
+    "want": "1376 ±7"
   },
   {
     "section": "export CSV",
     "label": "CSV TOTAL row equals the diary total",
     "ok": true,
-    "got": 1130,
-    "want": 1130
+    "got": 1376,
+    "want": 1376
   },
   {
     "section": "export CSV",
@@ -514,8 +648,8 @@
     "section": "backup round trip",
     "label": "restore brings back every diary entry",
     "ok": true,
-    "got": "{\"breakfast\":[{\"name\":\"Dosa (plain)\",\"detail\":\"1 × 1 small · P 1 · C 10 · F 1 g\",\"kcal\":57},{\"name\":\"Sambar\",\"detail\":\"1 × 1 cup · P 11 · C 29 · F 7 g\",\"kcal\":213}],\"lunch\":[{\"name\":\"Canteen thali (estimate)\",\"detail\":\"1 × quick add · P 20 · C 30 · F 12 g\",\"kcal\":320},{\"name\":\"Café Crème — ಕಾಫಿ\",\"detail\":\"1 × 1 cup · P 3 · C 12 · F 3 g\",\"kcal\":90}],\"dinner\":[{\"name\":\"Tiffin\",\"detail\":\"1 × 1 meal · Saved meal · P 12 · C 39 · F 8 g\",\"kcal\":270}],\"snacks\":[{\"name\":\"Idli\",\"detail\":\"1.5 × 100 g · P 7 · C 37 · F 0 g\",\"kcal\":180}]}",
-    "want": "{\"breakfast\":[{\"name\":\"Dosa (plain)\",\"detail\":\"1 × 1 small · P 1 · C 10 · F 1 g\",\"kcal\":57},{\"name\":\"Sambar\",\"detail\":\"1 × 1 cup · P 11 · C 29 · F 7 g\",\"kcal\":213}],\"lunch\":[{\"name\":\"Canteen thali (estimate)\",\"detail\":\"1 × quick add · P 20 · C 30 · F 12 g\",\"kcal\":320},{\"name\":\"Café Crème — ಕಾಫಿ\",\"detail\":\"1 × 1 cup · P 3 · C 12 · F 3 g\",\"kcal\":90}],\"dinner\":[{\"name\":\"Tiffin\",\"detail\":\"1 × 1 meal · Saved meal · P 12 · C 39 · F 8 g\",\"kcal\":270}],\"snacks\":[{\"name\":\"Idli\",\"detail\":\"1.5 × 100 g · P 7 · C 37 · F 0 g\",\"kcal\":180}]}"
+    "got": "{\"breakfast\":[{\"name\":\"Dosa (plain)\",\"detail\":\"1 × 1 small · P 1 · C 10 · F 1 g · 13:05\",\"kcal\":57},{\"name\":\"Sambar\",\"detail\":\"1 × 1 cup · P 11 · C 29 · F 7 g · 13:05\",\"kcal\":213},{\"name\":\"Poha\",\"detail\":\"1 × 1 cup, cooked · P 4 · C 44 · F 5 g · 08:30\",\"kcal\":246}],\"lunch\":[{\"name\":\"Canteen thali (estimate)\",\"detail\":\"1 × quick add · P 20 · C 30 · F 12 g · 13:05\",\"kcal\":320},{\"name\":\"Café Crème — ಕಾಫಿ\",\"detail\":\"1 × 1 cup · P 3 · C 12 · F 3 g · 13:05\",\"kcal\":90}],\"dinner\":[{\"name\":\"Tiffin\",\"detail\":\"1 × 1 meal · Saved meal · P 12 · C 39 · F 8 g · 13:05\",\"kcal\":270}],\"snacks\":[{\"name\":\"Idli\",\"detail\":\"1.5 × 100 g · P 7 · C 37 · F 0 g · 13:05\",\"kcal\":180}]}",
+    "want": "{\"breakfast\":[{\"name\":\"Dosa (plain)\",\"detail\":\"1 × 1 small · P 1 · C 10 · F 1 g · 13:05\",\"kcal\":57},{\"name\":\"Sambar\",\"detail\":\"1 × 1 cup · P 11 · C 29 · F 7 g · 13:05\",\"kcal\":213},{\"name\":\"Poha\",\"detail\":\"1 × 1 cup, cooked · P 4 · C 44 · F 5 g · 08:30\",\"kcal\":246}],\"lunch\":[{\"name\":\"Canteen thali (estimate)\",\"detail\":\"1 × quick add · P 20 · C 30 · F 12 g · 13:05\",\"kcal\":320},{\"name\":\"Café Crème — ಕಾಫಿ\",\"detail\":\"1 × 1 cup · P 3 · C 12 · F 3 g · 13:05\",\"kcal\":90}],\"dinner\":[{\"name\":\"Tiffin\",\"detail\":\"1 × 1 meal · Saved meal · P 12 · C 39 · F 8 g · 13:05\",\"kcal\":270}],\"snacks\":[{\"name\":\"Idli\",\"detail\":\"1.5 × 100 g · P 7 · C 37 · F 0 g · 13:05\",\"kcal\":180}]}"
   },
   {
     "section": "backup round trip",

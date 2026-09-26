@@ -10,7 +10,7 @@
  * reuses the serving you chose last time, so the second day of tracking is much
  * faster than the first.
  */
-import { makeEntry, rankRecent, rankFrequent, normalizeEntry, SLOTS } from '@nutrilens/diary';
+import { makeEntry, rankRecent, rankFrequent, normalizeEntry, shiftDate, SLOTS } from '@nutrilens/diary';
 import { SLOT_LABEL, mealWord } from './goals.js';
 import { $, el, fill, fmt, EU, fromEnergyUnit, toEnergyUnit, openSheet, closeSheet, toast, emit, MACRO_COLORS } from './ui.js';
 import { food as foodById, search as searchFoods, servingsFor, nutrients, kcalFor, listMyFoods, listMyMeals, listMyRecipes, upsertCustomFood, upsertSavedMeal, per100gFromLabel, nutrientMeta } from './foods.js';
@@ -195,12 +195,21 @@ export async function addEntry(entry) {
  * Also used to edit an existing entry (`entryId`), which is the same screen with
  * a different verb — as it should be.
  */
+/** Local timestamp for a calendar date and a "HH:MM" clock time. */
+const stampFor = (date, time) => {
+  const t = new Date(`${date}T${/^\d\d:\d\d$/.test(time ?? '') ? time : '12:00'}:00`).getTime();
+  return Number.isFinite(t) ? t : Date.now();
+};
+
 export function openFoodDetail({ foodId, date, slot, servingLabel, servingGrams, servings = 1, entryId, entry }) {
   const f = foodById(foodId) ?? (entry ? orphanFood(entry) : null);
   if (!f) { toast('That food is no longer available'); return; }
   const options = servingsFor(f);
+  const nowish = entry?.ts ?? Date.now();
   const state = {
     date, slot,
+    time: fmt.time(nowish),
+    repeatDays: 0,
     servings: Number(servings) || 1,
     choice: options.find((o) => o.label === servingLabel) ?? { label: servingLabel ?? options[0].label, grams: servingGrams ?? options[0].grams },
   };
@@ -241,7 +250,7 @@ export function openFoodDetail({ foodId, date, slot, servingLabel, servingGrams,
       foodId: f.id, foodName: f.name, brand: f.brand, date: state.date, slot: state.slot,
       servingLabel: state.choice.label, servingGrams: state.choice.grams, servings: state.servings,
       nutrients: r.nutrients, source: entry?.source ?? (f.kind === 'product' ? 'barcode' : 'search'),
-      thumb: entry?.thumb ?? null, ts: entry?.ts ?? Date.now(),
+      thumb: entry?.thumb ?? null, ts: stampFor(state.date, state.time),
     });
     if (entryId) {
       await updateMeal(entryId, built);
@@ -249,8 +258,15 @@ export function openFoodDetail({ foodId, date, slot, servingLabel, servingGrams,
       toast('Entry updated');
     } else {
       await addEntry(built);
+      // Multi-day logging: the same food, meal and time on each following day.
+      for (let i = 1; i <= state.repeatDays; i++) {
+        const day = shiftDate(state.date, i);
+        await addEntry({ ...built, id: undefined, date: day, ts: stampFor(day, state.time) });
+      }
       lastServing.set(f.id, { label: state.choice.label, grams: state.choice.grams, servings: state.servings });
-      toast(`${f.name} added to ${mealWord(state.slot)}`);
+      toast(state.repeatDays
+        ? `${f.name} added to ${mealWord(state.slot)} on ${state.repeatDays + 1} days`
+        : `${f.name} added to ${mealWord(state.slot)}`);
     }
     closeSheet({ all: true });
   };
@@ -271,6 +287,14 @@ export function openFoodDetail({ foodId, date, slot, servingLabel, servingGrams,
         }, SLOTS.map((s) => el('option', { value: s, selected: s === state.slot }, SLOT_LABEL[s])))),
         el('label', null, 'Date', el('input', {
           type: 'date', value: state.date, onchange: (e) => { state.date = e.target.value || state.date; },
+        }))),
+      el('div.row2', null,
+        el('label', null, 'Time', el('input', {
+          type: 'time', id: 'detail-time', value: state.time, onchange: (e) => { state.time = e.target.value || state.time; },
+        })),
+        !entryId && el('label', null, 'Also on the next … days', el('input', {
+          type: 'number', id: 'detail-repeat', min: '0', max: '30', step: '1', value: '0', inputmode: 'numeric',
+          oninput: (e) => { state.repeatDays = Math.max(0, Math.min(30, Math.round(Number(e.target.value) || 0))); },
         }))),
       summary,
       macros,

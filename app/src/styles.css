@@ -853,3 +853,22 @@ details.card > *:last-child { padding-bottom: 15px; }
   .nutrient-table tbody td.meter,
   .nutrient-table thead th:last-child { display: none; }
 }
+
+/* Fasting timer */
+.fasting .fast-elapsed { font: 600 1.8rem/1.1 var(--font-mono, monospace); margin: .2rem 0; }
+.fast-track { height: 8px; border-radius: 4px; background: var(--rule); overflow: hidden; margin: .3rem 0 .4rem; }
+.fast-track > span { display: block; height: 100%; background: var(--m-fiber); }
+.exercise-actions { gap: .5rem; }
+.sub-details { margin-top: .6rem; }
+.sub-details > summary { cursor: pointer; font-weight: 600; }
+
+/* Printable report: only the report prints, and only when asked for. */
+#print-root { display: none; }
+@media print {
+  body.printing > *:not(#print-root) { display: none !important; }
+  body.printing #print-root { display: block; color: #000; background: #fff; font: 11pt/1.35 system-ui, sans-serif; }
+  #print-root table { width: 100%; border-collapse: collapse; margin: 0 0 12pt; }
+  #print-root th, #print-root td { border-bottom: 1px solid #ccc; padding: 2pt 4pt; text-align: left; }
+  #print-root td.num, #print-root th.num { text-align: right; }
+  #print-root h2 { page-break-before: auto; margin: 10pt 0 4pt; }
+}

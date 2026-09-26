@@ -261,6 +261,8 @@ export const fmt = {
   servings: (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100)),
   date: (key) => new Date(`${key}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
   dayShort: (key) => new Date(`${key}T12:00:00`).toLocaleDateString(undefined, { weekday: 'narrow' }),
+  /** Clock time of a timestamp, 24-hour: "08:15". */
+  time: (ts) => { const d = new Date(ts); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; },
 };
 
 /** Colours shared by cards and charts, resolved from the stylesheet. */

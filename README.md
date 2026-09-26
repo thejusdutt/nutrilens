@@ -10,6 +10,14 @@ makes no network requests at all: `app/test/no-network.test.js` fails the build
 if shipped code names another origin, and the tracker e2e counts every request
 that leaves localhost (it must be zero).
 
+It covers MyFitnessPal's free and Premium features that can work offline —
+units (kg/lb, cm/in, kcal/kJ), gram macros, goals by weekday and by meal, meal
+names, net carbs, nutrient goals, quick-add macros, multi-day logging, food
+times, fasting, workout routines, food analysis, CSV export and a printable
+report — and states which it does not and why (sharing, partner sync, meal
+plans, reminders). The feature-by-feature table, with the test behind each
+row, is [docs/MFP_PARITY.md](docs/MFP_PARITY.md).
+
 ![pipeline](docs/img/pipeline.svg)
 
 ## Does the number match what a person sees?
@@ -289,11 +297,15 @@ docs/                  research, architecture, models, datasets, testing, compat
 ## Tests & evaluation
 
 ```bash
-npm test                   # 337 unit tests across all packages (vitest), including:
+npm test                   # 351 unit tests across all packages (vitest), including:
                            #  · every per-100 g value traced back to the FNDDS CSVs
                            #  · every food × nutrient × 11 portion sizes recomputed
-npm run test:vision        # dish names + calories vs human ground truth on 20
+npm run test:parity        # MyFitnessPal parity, feature by feature: 101 checks,
+                           #   fresh profile, network blocked, clock frozen
+                           #   (see docs/MFP_PARITY.md for the feature table)
+npm run test:vision        # dish names + calories vs human ground truth on 39
                            #   photographed plates (the "does it match" benchmark)
+npm run test:sides         # the side-dish passes in the browser, with timings
 npm run test:nutrition-ui  # rendered kcal/macros/micros/%DV vs an independent
                            #   oracle, across 12 foods, plate totals and the diary
 npm run test:tracker       # every tracker flow end to end: goals, serving-size

@@ -144,3 +144,73 @@ export function openExerciseSheet({ date, existing }) {
         el('p.muted.tiny', null, 'MET is how many times harder than sitting still: walking ≈ 3.5, running ≈ 10.'))),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Workout routines: a named set of exercises, saved from a day and logged on
+// another in one go. Kept in localStorage under 'routines' (backed up with the
+// other preferences) — a short list of templates, not diary history.
+const ROUTINES_KEY = 'routines';
+export const getRoutines = () => {
+  try { return JSON.parse(localStorage.getItem(ROUTINES_KEY) ?? '[]'); } catch { return []; }
+};
+const saveRoutines = (list) => localStorage.setItem(ROUTINES_KEY, JSON.stringify(list));
+
+/** The parts of a logged exercise worth repeating; calories are recomputed. */
+const asTemplate = (e) => ({
+  activityId: e.activityId ?? null, name: e.name, met: e.met, minutes: e.minutes,
+  sets: e.sets ?? null, reps: e.reps ?? null, weightLiftedKg: e.weightLiftedKg ?? null,
+  kcalOverride: e.kcalSource === 'manual' ? e.kcal : null,
+});
+
+/**
+ * @param {{date:string, exercise:object[]}} p  the day being viewed and its exercise
+ */
+export function openRoutinesSheet({ date, exercise }) {
+  const draw = () => {
+    const routines = getRoutines();
+    const name = el('input', { type: 'text', id: 'routine-name', maxlength: '40', placeholder: 'e.g. Leg day' });
+    openSheet({
+      title: 'Workout routines',
+      body: el('div.stack', null,
+        routines.length
+          ? routines.map((r, i) => el('div.food-row', { dataset: { routine: r.name } },
+            el('span.fr-main', null, el('b', null, r.name),
+              el('span.muted', null, `${r.items.length} ${r.items.length === 1 ? 'exercise' : 'exercises'} · ${r.items.reduce((s, it) => s + (it.minutes || 0), 0)} min`)),
+            el('button', {
+              class: 'routine-log',
+              onclick: async () => {
+                const profile = getProfile();
+                for (const it of r.items) {
+                  await saveExercise(makeExerciseEntry({
+                    ...it, kcalOverride: it.kcalOverride ?? undefined,
+                    date, weightKg: profile.weightKg, ts: Date.now(),
+                  }));
+                }
+                emit('diary', { date });
+                toast(`${r.name} logged`);
+                closeSheet({ all: true });
+              },
+            }, 'Log'),
+            el('button.icon-btn', {
+              'aria-label': `Delete ${r.name}`,
+              onclick: () => { saveRoutines(getRoutines().filter((_, j) => j !== i)); closeSheet({ historyMode: 'replace' }); draw(); },
+            }, '×')))
+          : el('p.muted', null, 'No routines yet.'),
+        el('h4', null, 'Save this day’s exercise as a routine'),
+        exercise.length
+          ? el('div.row2', null, name, el('button', {
+            id: 'save-routine',
+            onclick: () => {
+              const n = name.value.trim();
+              if (!n) { toast('Give the routine a name'); name.focus(); return; }
+              saveRoutines([...getRoutines().filter((r) => r.name !== n), { name: n, items: exercise.map(asTemplate) }]);
+              toast(`Routine “${n}” saved`);
+              closeSheet({ historyMode: 'replace' });
+              draw();
+            },
+          }, 'Save routine'))
+          : el('p.muted.tiny', null, 'Log some exercise first, then save it here.')),
+    });
+  };
+  draw();
+}

@@ -45,6 +45,7 @@ const DEFAULTS = {
   netCarbs: false,                                 // show carbs − fibre where carbs are shown
   mealNames: {},                                   // slot → the user's own name for it
   mealPct: {},                                     // slot → % of the day's calories (empty = no meal goals)
+  weekdayKcal: {},                                 // 0 (Sun) … 6 (Sat) → kcal goal for that weekday
 };
 
 export const MEAL_DEFAULT_NAMES = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
@@ -96,6 +97,7 @@ export function getProfile() {
       units: { ...DEFAULTS.units, ...(saved.units ?? {}) },
       mealNames: { ...(saved.mealNames ?? {}) },
       mealPct: { ...(saved.mealPct ?? {}) },
+      weekdayKcal: { ...(saved.weekdayKcal ?? {}) },
     };
   } catch { return structuredClone(DEFAULTS); }
 }
@@ -115,10 +117,13 @@ export function bmr({ sex, age, heightCm, weightKg }) {
  * @returns {{kcal:number, tdee:number, macros:{protein:number,carbs:number,fat:number},
  *   source:'computed'|'custom', floored:boolean, macroMode:string}}
  */
-export function dailyGoal(profile = getProfile()) {
+export function dailyGoal(profile = getProfile(), date = null) {
   const tdee = Math.round(bmr(profile) * profile.activity);
   const computed = Math.round(tdee + (profile.rateKgWeek * 7700) / 7);
-  const requested = profile.customKcal ?? computed;
+  // A goal for this weekday (a training day, a weekend) beats the everyday one.
+  const weekday = date ? new Date(`${date}T12:00:00`).getDay() : null;
+  const dayKcal = weekday != null ? Number(profile.weekdayKcal?.[weekday]) : NaN;
+  const requested = dayKcal > 0 ? dayKcal : (profile.customKcal ?? computed);
   // The floor is a safety rail on the *suggestion*. When someone types their own
   // number we report that we clamped it rather than silently showing a goal they
   // did not ask for.
@@ -137,7 +142,7 @@ export function dailyGoal(profile = getProfile()) {
   }
   return {
     kcal, tdee, macros,
-    source: profile.customKcal != null ? 'custom' : 'computed',
+    source: dayKcal > 0 ? 'weekday' : profile.customKcal != null ? 'custom' : 'computed',
     floored: kcal !== requested,
     macroMode: profile.macroMode,
   };

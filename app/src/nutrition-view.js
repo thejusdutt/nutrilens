@@ -11,21 +11,21 @@
  */
 import { dayTotals, macroEnergy, normalizeEntry, dateRange, shiftDate, SLOTS } from '@nutrilens/diary';
 import { donut, barRows, stackedColumns } from '@nutrilens/charts';
-import { $, el, fill, fmt, MACRO_COLORS, SLOT_COLORS, cssVar, on } from './ui.js';
+import { $, el, fill, fmt, EU, MACRO_COLORS, SLOT_COLORS, cssVar, on } from './ui.js';
 import { listMealsByDate, listMealsBetween, dateKey } from './db.js';
 import { getProfile, dailyGoal, nutrientGoal, SLOT_LABEL, shownCarbs, carbsLabel } from './goals.js';
 import { nutrientMeta } from './foods.js';
 import { nutrientGoalTable } from './nutrients-ui.js';
 import { diaryDate } from './today.js';
 
-const state = { tab: 'calories', span: 'day' };
+const state = { tab: 'calories', span: 'day', rank: 'kcal' };
 
-const TABS = [['calories', 'Calories'], ['macros', 'Macros'], ['nutrients', 'Nutrients']];
+const TABS = [['calories', 'Calories'], ['macros', 'Macros'], ['nutrients', 'Nutrients'], ['foods', 'Foods']];
 
 export async function renderNutrition() {
   const date = diaryDate();
   const profile = getProfile();
-  const goal = dailyGoal(profile);
+  const goal = dailyGoal(profile, date);
 
   const dayEntries = (await listMealsByDate(date)).map(normalizeEntry);
   const week = dateRange(date, 7);
@@ -41,11 +41,16 @@ export async function renderNutrition() {
       ['day', 'week'].map((s) => el('button', {
         class: s === state.span ? 'active' : null, dataset: { span: s },
         onclick: () => { state.span = s; renderNutrition(); },
-      }, s === 'day' ? 'Day' : 'Week'))));
+      }, s === 'day' ? 'Day' : 'Week'))),
+    el('button.link', {
+      id: 'btn-print-report',
+      onclick: () => printReport({ date, profile, entries: state.span === 'day' ? dayEntries : weekEntries, days: state.span === 'day' ? [date] : week }),
+    }, 'Print report'));
 
   const body = state.tab === 'calories' ? caloriesTab({ date, dayEntries, weekEntries, week, goal })
     : state.tab === 'macros' ? macrosTab({ dayEntries, weekEntries, week, goal })
-      : nutrientsTab({ dayEntries, weekEntries, profile });
+      : state.tab === 'nutrients' ? nutrientsTab({ dayEntries, weekEntries, profile })
+        : foodsTab({ entries: state.span === 'day' ? dayEntries : weekEntries });
 
   fill($('nutrition-root'),
     el('h2', null, state.span === 'day' ? `Nutrition · ${date === dateKey() ? 'Today' : fmt.date(date)}` : `Nutrition · 7 days to ${fmt.date(date)}`),
@@ -182,6 +187,82 @@ function nutrientsTab({ dayEntries, weekEntries, profile }) {
     el('p.muted.tiny', null,
       'Calories and macros use the goals you set in Settings, and so does any nutrient '
       + 'you gave your own goal there. The rest use the FDA Daily Value.'));
+}
+
+// ---------------------------------------------------------------------------
+/**
+ * Food analysis: which foods brought the most of one nutrient. Grouped by food
+ * name across the span, because the same food logged on three days is one
+ * habit, not three.
+ */
+const RANK_KEYS = [['kcal', 'Calories'], ['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat'],
+  ['satFat', 'Saturated fat'], ['sugars', 'Sugars'], ['fiber', 'Fibre'], ['sodium', 'Sodium']];
+function foodsTab({ entries }) {
+  const meta = nutrientMeta();
+  const key = state.rank;
+  const amount = (e) => (key === 'kcal' ? e.kcal ?? 0 : e.nutrients?.[key] ?? 0);
+  const byFood = new Map();
+  for (const e of entries) {
+    const cur = byFood.get(e.foodName) ?? { name: e.foodName, value: 0, times: 0 };
+    cur.value += amount(e);
+    cur.times += 1;
+    byFood.set(e.foodName, cur);
+  }
+  const total = [...byFood.values()].reduce((s, f) => s + f.value, 0);
+  const top = [...byFood.values()].filter((f) => f.value > 0).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, 8);
+  const unit = key === 'kcal' ? EU() : meta[key]?.unit ?? 'g';
+  const show = (v) => (key === 'kcal' ? fmt.kcal(v) : fmt.g(v));
+  return el('div.stack', null,
+    el('div.card', null,
+      el('div.card-head', null, el('h3', null, 'Top foods'),
+        el('select', {
+          id: 'rank-by', 'aria-label': 'Rank foods by',
+          onchange: (e) => { state.rank = e.target.value; renderNutrition(); },
+        }, RANK_KEYS.map(([k, label]) => el('option', { value: k, selected: k === key }, label)))),
+      top.length
+        ? el('ol.top-foods', { id: 'top-foods' }, top.map((f) => el('li', null,
+          el('b', null, f.name),
+          el('span.muted', null, `${show(f.value)} ${unit} · ${total ? Math.round(f.value / total * 100) : 0}%${f.times > 1 ? ` · ${f.times}×` : ''}`))))
+        : el('p.muted', null, 'Nothing logged in this span.')));
+}
+
+/**
+ * A printable report of the span on screen: every meal, the day's totals and
+ * the goal. Built into #print-root and printed with the rest of the page
+ * hidden, so it works offline and needs no PDF library.
+ */
+function printReport({ date, profile, entries, days }) {
+  let rootEl = document.getElementById('print-root');
+  if (!rootEl) { rootEl = el('div', { id: 'print-root' }); document.body.append(rootEl); }
+  const byDate = groupByDate(entries);
+  const cols = ['kcal', 'protein', 'carbs', 'fat'];
+  const head = ['Meal', 'Food', 'Amount', EU(), 'Protein (g)', 'Carbs (g)', 'Fat (g)'];
+  const cell = (e, k) => (k === 'kcal' ? fmt.kcal(e.kcal) : fmt.g(e.nutrients?.[k] ?? 0));
+  fill(rootEl,
+    el('h1', null, `NutriLens report · ${days.length === 1 ? fmt.date(days[0]) : `${fmt.date(days[0])} – ${fmt.date(days.at(-1))}`}`),
+    days.map((d) => {
+      const list = byDate.get(d) ?? [];
+      const t = dayTotals(list);
+      const goal = dailyGoal(profile, d);
+      return el('section', { dataset: { date: d } },
+        el('h2', null, `${fmt.date(d)} — ${fmt.energy(t.kcal)} of ${fmt.energy(goal.kcal)}`),
+        list.length
+          ? el('table', null,
+            el('thead', null, el('tr', null, head.map((h, i) => el('th', { class: i > 2 ? 'num' : null }, h)))),
+            el('tbody', null,
+              list.map((e) => el('tr', null,
+                el('td', null, SLOT_LABEL[e.slot]), el('td', null, e.foodName),
+                el('td', null, e.servingGrams ? `${fmt.servings(e.servings)} × ${e.servingLabel}` : e.servingLabel),
+                cols.map((k) => el('td.num', null, cell(e, k))))),
+              el('tr.total', null, el('td', null, 'Total'), el('td'), el('td'),
+                cols.map((k) => el('td.num', null, k === 'kcal' ? fmt.kcal(t.kcal) : fmt.g(t.nutrients[k] ?? 0))))))
+          : el('p', null, 'Nothing logged.'));
+    }),
+    el('p', null, `Printed ${fmt.date(date)} from NutriLens, offline.`));
+  document.body.classList.add('printing');
+  const done = () => { document.body.classList.remove('printing'); removeEventListener('afterprint', done); };
+  addEventListener('afterprint', done);
+  window.print();
 }
 
 // ---------------------------------------------------------------------------

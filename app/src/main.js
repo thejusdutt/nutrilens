@@ -971,6 +971,7 @@ function loadProfileForm() {
   }
   renderMealSummary();
   loadNutrientGoalFields();
+  loadWeekdayGoalFields();
   $('p-water').value = p.waterGoal;
   $('p-steps').value = p.stepGoal;
   $('p-credit').checked = p.creditExercise;
@@ -1079,6 +1080,25 @@ for (const slot of SLOT_IDS) {
   });
 }
 
+// Goals by weekday, Monday first, typed in the shown energy unit.
+const WEEKDAYS = [[1, 'Monday'], [2, 'Tuesday'], [3, 'Wednesday'], [4, 'Thursday'], [5, 'Friday'], [6, 'Saturday'], [0, 'Sunday']];
+function loadWeekdayGoalFields() {
+  const p = getProfile();
+  fill($('weekday-goal-fields'), WEEKDAYS.map(([dow, name]) => el('label', { for: `w-kcal-${dow}` }, `${name} (${EU()}) `,
+    el('input', {
+      id: `w-kcal-${dow}`, type: 'number', min: '0', step: EU() === 'kJ' ? '50' : '10', inputmode: 'numeric', placeholder: 'same',
+      value: p.weekdayKcal[dow] > 0 ? String(Math.round(toEnergyUnit(p.weekdayKcal[dow]))) : '',
+      onchange: (e) => {
+        const cur = getProfile();
+        const v = fromEnergyUnit(Number(e.target.value));
+        const weekdayKcal = { ...cur.weekdayKcal };
+        if (v > 0) weekdayKcal[dow] = Math.round(v); else delete weekdayKcal[dow];
+        setProfile({ weekdayKcal });
+        emit('profile');
+      },
+    }))));
+}
+
 // Nutrient goals: every tracked nutrient except the four set above.
 const NUTRIENT_GOAL_KEYS = ['fiber', 'sugars', 'satFat', 'sodium', 'cholesterol', 'potassium', 'calcium', 'iron', 'vitC', 'vitD'];
 function loadNutrientGoalFields() {
@@ -1136,7 +1156,7 @@ async function exportDiary() {
 $('btn-export').onclick = exportDiary;
 $('more-export').onclick = exportDiary;
 
-const BACKUP_PREFS = ['theme', 'plateCm', 'profile'];
+const BACKUP_PREFS = ['theme', 'plateCm', 'profile', 'fasting', 'routines'];
 $('btn-backup').onclick = async () => {
   try {
     const preferences = Object.fromEntries(BACKUP_PREFS.map((key) => [key, localStorage.getItem(key)]));
