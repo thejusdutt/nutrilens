@@ -8,19 +8,19 @@ what a careful human reader says is on each plate (eval/vision-truth.json).
 
 Bands, not point values: portion estimation from one uncalibrated photo is
 genuinely uncertain, and a benchmark demanding an exact number would reward
-overfitting to these 38 photos.
+overfitting to these 39 photos.
 
 | metric | value |
 |---|---|
-| images | 38 |
-| dish recall | 72.6% |
+| images | 39 |
+| dish recall | 74.6% |
 | spurious dishes | 6 (6 images affected) |
-| kcal mean abs error | 10.9% (in band 27/38, within 25% 31/38) |
-| carbs mean abs error | 15.2% (in band 26/38, within 25% 29/38) |
-| protein mean abs error | 12.4% (in band 28/38, within 25% 31/38) |
-| fat mean abs error | 11.6% (in band 27/38, within 25% 31/38) |
-| grams mean abs error | 11.7% (in band 25/38, within 25% 31/38) |
-| median time per photo | 3.8 s |
+| kcal mean abs error | 10.5% (in band 29/39, within 25% 32/39) |
+| carbs mean abs error | 14.8% (in band 27/39, within 25% 30/39) |
+| protein mean abs error | 12.1% (in band 29/39, within 25% 32/39) |
+| fat mean abs error | 10.5% (in band 29/39, within 25% 32/39) |
+| grams mean abs error | 11.3% (in band 27/39, within 25% 32/39) |
+| median time per photo | 4.1 s |
 
 Every row but the last is deterministic — the same photo gives the same
 dishes, the same grams and the same calories on every run. The time is only
@@ -41,7 +41,7 @@ laptop the median ranged from 11 s to 32 s a photo.
 | north-indian-thali | 184 kcal | 900–2000 | 0/2 | Poori 45 g |
 | pizza-detroit | 638 kcal | 330–1050 | 1/1 | Pizza 240 g |
 | paratha-pan | 239 kcal | 160–420 | 0/1 | Kheer 150 g |
-| samosa-chutney | 384 kcal | 400–800 | 2/2 | Samosa 100 g + Chutney (sweet) 30 g |
+| samosa-chutney | 402 kcal | 400–800 | 2/2 | Samosa 100 g + Chutney (sweet) 30 g + Green chutney 30 g |
 | biryani-pan | 272 kcal | 150–480 | 0/1 | Poha 180 g |
 | collage-pizza-salad-fries | 273 kcal | 700–1500 | 1/3 | Caesar salad 180 g |
 | caesar-plate | 273 kcal | 180–480 | 1/1 | Caesar salad 180 g |
@@ -51,7 +51,7 @@ laptop the median ranged from 11 s to 32 s a photo.
 | momos-chutney | 357 kcal | 230–620 | 1/1 | Dumplings 180 g |
 | tortilla-espanola | 344 kcal | 280–720 | 1/1 | Tortilla española 200 g |
 | kungpao-rice | 508 kcal | 400–800 | 1/2 | Kung pao chicken 250 g |
-| user-masala-dosa-two-chutneys | 324 kcal | 313–581 | 1/2 | Masala dosa 180 g |
+| user-masala-dosa-two-chutneys | 412 kcal | 313–581 | 2/2 | Masala dosa 180 g + Peanut chutney 35 g |
 | web-aloo-paratha-butter | 261 kcal | 502–932 | 1/1 | Paratha 80 g |
 | web-parathas-curd | 261 kcal | 693–1287 | 1/2 | Paratha 80 g |
 | web-biryani-tray | 550 kcal | 449–834 | 1/1 | Biryani 300 g |
@@ -69,6 +69,7 @@ laptop the median ranged from 11 s to 32 s a photo.
 | web-rajma-chawal | 540 kcal | 360–669 | 2/2 | Rajma 220 g + Steamed rice 200 g |
 | web-spaghetti-bolognese | 489 kcal | 321–596 | 1/1 | Spaghetti bolognese 320 g |
 | web-upma-peas | 293 kcal | 205–381 | 1/1 | Upma 200 g |
+| user-masala-dosa-original | 412 kcal | 325–604 | 2/2 | Masala dosa 180 g + Peanut chutney 35 g |
 
 <!-- /generated: everything below is written by hand -->
 

@@ -410,6 +410,10 @@
         {
           "id": "green-chutney",
           "grams": 60
+        },
+        {
+          "id": "chutney",
+          "grams": 30
         }
       ],
       "grams": [
@@ -1330,6 +1334,44 @@
       "fat": [
         8,
         14
+      ]
+    },
+    "user-masala-dosa-original": {
+      "file": "eval/data/user/masala-dosa-original.png",
+      "note": "The user's original photo (Swasthi's Recipes, 500x500): one masala dosa with potato filling, curry leaves and a thin red chutney spread inside; a bowl of orange chutney (tomato-onion, possibly peanut) and a bowl of white coconut chutney, both whole in frame.",
+      "dishes": [
+        {
+          "id": "masala-dosa",
+          "grams": 180
+        },
+        {
+          "id": "coconut-chutney",
+          "grams": 45
+        },
+        {
+          "id": "tomato-chutney",
+          "grams": 40
+        }
+      ],
+      "grams": [
+        186,
+        345
+      ],
+      "kcal": [
+        325,
+        604
+      ],
+      "carbs": [
+        39,
+        72
+      ],
+      "protein": [
+        6,
+        12
+      ],
+      "fat": [
+        16,
+        30
       ]
     }
   }

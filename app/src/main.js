@@ -312,9 +312,9 @@ async function startAnalysis(blob) {
 
 /**
  * Look for the main dish's usual sides (sambar with idli, fries with a burger)
- * in four quadrant crops, and turn the result into a plate if any are there.
- * Measured on the benchmark: kcal in band 20/38 → 29/38 with no dish invented
- * (see packages/plate-analyzer/src/companions.js).
+ * in the four quadrants of the photo, and turn the result into a plate if any
+ * are there. The numbers behind it are in
+ * packages/plate-analyzer/src/companions.js and eval/results/VISION_BENCH.md.
  */
 async function addSideDishes(run) {
   const mainId = state.selectedId;

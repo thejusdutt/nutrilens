@@ -471,6 +471,9 @@ try {
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   await clickIn('.tab-btn[data-view="diary"]');
   await page.waitForSelector('#water-plus');
+  // Measure after layout settles: right after the tab switch the date button
+  // was sometimes read mid-layout (1 run in 3 failed, with no code change).
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const targets = await page.evaluate(() => ({
     coarse: matchMedia('(pointer: coarse)').matches,
     tab: document.querySelector('.tab-btn[data-view="diary"]').getBoundingClientRect().height,

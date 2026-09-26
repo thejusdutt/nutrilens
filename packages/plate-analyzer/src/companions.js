@@ -9,32 +9,52 @@
  * anything.
  *
  * This asks a narrower question. For a main dish with known companions it
- * classifies four quadrant crops and keeps a companion only if one crop names
- * it with at least COMPANION_MIN_PROB. Only foods on the main dish's list can
- * be added, so a background glass cannot become "tonic water".
+ * classifies the four quadrants of the photo and keeps a companion only if a
+ * quadrant names it with at least COMPANION_MIN_PROB. Only foods on the main
+ * dish's list can be added, so a background glass cannot become "tonic water".
  *
- * The threshold is set on the 38 benchmark photos, which are also what it is
- * scored on. There, the highest-scoring companion that was NOT on the plate
- * reached 0.094 (a tomato chutney beside idli); real companions ranged from
- * 0.012 (half-cropped bowls) to 1.0. It was 0.12 at first, and the stability
- * gate showed why that was too close: a tomato chutney at 0.127 came and went
- * when the same photo was re-saved. At 0.2 the three real hits between 0.12
- * and 0.2 are given up, and what remains is well clear of both the noise and
- * the highest false score.
+ * Why quadrants and not smaller tiles. The eight outer tiles of a 3×3 grid
+ * find more (22 real sides of 31 against 14, on the 39 benchmark photos), but
+ * a small tile's score moves when the file is re-saved: six photos changed
+ * their sides between re-encodings, and on one (idli with a bowl of sambar)
+ * three of five re-encodings logged a tomato chutney that is not there — the
+ * sambar bowl alone in its tile scored 0.20–0.23 as chutney. No cut-off fixed
+ * that without also losing the extra finds, so the shipped layout is the one
+ * that holds still. Its known cost: a bowl cut in half by the centre lines can
+ * be missed (the user's coconut chutney, 0.047).
  *
- * A main dish with no list costs nothing: no crops are classified. One with a
- * list costs four extra classifications (~4 s on a laptop CPU), which the app
- * runs after the main dish is already on screen.
+ * The threshold is set on those same photos. The highest-scoring side that was
+ * NOT on the plate reached 0.094. A first cut-off of 0.12 was raised to 0.2
+ * after the stability gate showed a chutney at 0.127 coming and going when one
+ * photo was re-saved.
+ *
+ * A main dish with no list costs nothing. One with a list costs four
+ * classifications, which the app runs after the main dish is on screen.
  */
 import { crop } from '@nutrilens/image-preprocess';
 
+/**
+ * Chutneys by colour. Bowls of one colour look alike on a photo (tomato,
+ * onion and peanut are all orange), so a plate logs at most one chutney per
+ * colour, and one bowl cannot be logged as both white and orange.
+ */
+export const CHUTNEY_COLOUR = {
+  'coconut-chutney': 'white',
+  'tomato-chutney': 'orange',
+  'peanut-chutney': 'orange',
+  'onion-chutney': 'orange',
+  'green-chutney': 'green',
+  chutney: 'brown', // sweet tamarind / date
+};
+const CHUTNEYS = ['coconut-chutney', 'tomato-chutney', 'peanut-chutney', 'onion-chutney', 'green-chutney'];
+
 /** main dish id → foods that are commonly served beside it. */
 export const GOES_WITH = {
-  idli: ['sambar', 'coconut-chutney', 'tomato-chutney', 'green-chutney', 'vada'],
-  dosa: ['sambar', 'coconut-chutney', 'tomato-chutney', 'green-chutney', 'vada'],
-  'masala-dosa': ['sambar', 'coconut-chutney', 'tomato-chutney', 'green-chutney', 'vada'],
-  vada: ['sambar', 'coconut-chutney', 'tomato-chutney', 'idli'],
-  upma: ['coconut-chutney', 'sambar'],
+  idli: ['sambar', ...CHUTNEYS, 'vada'],
+  dosa: ['sambar', ...CHUTNEYS, 'vada'],
+  'masala-dosa': ['sambar', ...CHUTNEYS, 'vada'],
+  vada: ['sambar', ...CHUTNEYS, 'idli'],
+  upma: ['sambar', ...CHUTNEYS],
   hamburger: ['french-fries', 'onion-rings'],
   omelette: ['french-fries', 'green-salad'],
   rajma: ['plain-rice', 'chapati'],
@@ -51,11 +71,8 @@ export const GOES_WITH = {
   'sweet-and-sour-pork': ['plain-rice'],
 };
 
-/** Lowest crop probability at which a companion is logged. See the header. */
+/** Lowest quadrant probability at which a companion is logged. See the header. */
 export const COMPANION_MIN_PROB = 0.2;
-
-/** Foods a crop cannot tell apart count once: every chutney is "a chutney". */
-export const sameClass = (id) => (/chutney$/.test(id) ? 'chutney' : id);
 
 /** Four half-size windows, one per quadrant. */
 export function quadrants(width, height) {
@@ -77,26 +94,32 @@ export function quadrants(width, height) {
 export async function findCompanions({ image, mainId, classify, foodById, minProb = COMPANION_MIN_PROB }) {
   const wanted = (GOES_WITH[mainId] ?? []).filter((id) => id !== mainId && foodById(id));
   if (!wanted.length) return [];
-  const best = new Map();
+  const sides = wanted.filter((id) => !CHUTNEY_COLOUR[id]);
+  const chutneys = wanted.filter((id) => CHUTNEY_COLOUR[id]);
+  const best = new Map(); // side id → best quadrant probability
+  const byColour = new Map(); // colour → { id, prob } of the strongest quadrant vote
   for (const { x, y, w, h } of quadrants(image.width, image.height)) {
     const { top } = await classify(crop(image, x, y, w, h));
-    for (const id of wanted) {
-      const p = top.find((t) => t.id === id)?.prob ?? 0;
-      if (p > (best.get(id) ?? 0)) best.set(id, p);
+    const p = (id) => top.find((t) => t.id === id)?.prob ?? 0;
+    for (const id of sides) best.set(id, Math.max(best.get(id) ?? 0, p(id)));
+    // Each quadrant votes for its own strongest chutney only, so one bowl read
+    // as coconut 0.25 and peanut 0.22 in the same crop is one white bowl.
+    // Adding up the chutneys of one colour instead was tried and rejected: it
+    // kept an orange bowl whose score was split between orange names, but it
+    // also turned a white coconut bowl orange (idli-vada-thali logged tomato
+    // chutney instead of coconut), which is a wrong dish, not a missed one.
+    let vote = null;
+    for (const id of chutneys) if (p(id) > (vote?.prob ?? 0)) vote = { id, prob: p(id) };
+    if (vote && vote.prob >= minProb) {
+      const colour = CHUTNEY_COLOUR[vote.id];
+      if (vote.prob > (byColour.get(colour)?.prob ?? 0)) byColour.set(colour, vote);
     }
   }
-  const kept = [];
-  const classes = new Set();
-  for (const [id, prob] of [...best].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))) {
-    if (prob < minProb) break;
-    // One chutney per plate. Crops of a single bowl score as several chutneys
-    // (coconut 0.46 and green 0.18 for the same bowl on dosa-thali); of the
-    // three benchmark photos with more than one chutney hit, two had one bowl.
-    // Where there really are two, the second is small and can be added by hand.
-    const cls = sameClass(id);
-    if (classes.has(cls)) continue;
-    classes.add(cls);
-    kept.push({ id, prob, grams: foodById(id).prior?.servingG ?? 100 });
-  }
-  return kept;
+  const found = [
+    ...[...best].filter(([, prob]) => prob >= minProb).map(([id, prob]) => ({ id, prob })),
+    ...byColour.values(),
+  ];
+  return found
+    .sort((a, b) => b.prob - a.prob || a.id.localeCompare(b.id))
+    .map(({ id, prob }) => ({ id, prob, grams: foodById(id).prior?.servingG ?? 100 }));
 }

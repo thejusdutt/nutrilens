@@ -15,37 +15,48 @@ that leaves localhost (it must be zero).
 ## Does the number match what a person sees?
 
 That is the only question a food tracker is judged on, so it has its own
-benchmark: `npm run test:vision` runs the shipped pipeline end to end over 38
+benchmark: `npm run test:vision` runs the shipped pipeline end to end over 39
 photographed plates and scores the dish names and the calories against what a
 careful human reader says is on them (`eval/vision-truth.json`). 20 are the
-original set; 18 were added on 2026-09-25 (17 Wikimedia Commons photos, listed
-with their licences in `eval/web-sources.json` and re-fetched by
-`node eval/fetch-web-set.mjs`, plus one user photo). A full run rewrites
-[eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md), so the published
-numbers are always the ones the current code produces.
+original set; 19 were added in September 2026 (17 Wikimedia Commons photos,
+listed with their licences in `eval/web-sources.json` and re-fetched by
+`node eval/fetch-web-set.mjs`, plus two copies of one user photo). A full run
+rewrites [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md), so the
+published numbers are always the ones the current code produces.
 
 A photo is read as **one main dish**, named from the whole frame. Then, if that
 dish has usual sides (sambar and chutney with idli or dosa, fries with a burger,
-rice with rajma), four quadrant crops are checked for them, and only for them
-(`packages/plate-analyzer/src/companions.js`). The main dish is on screen in
-about a second; sides join it when found. Splitting the whole plate into
-separate items is still a button, not the default.
+rice with rajma), the four quadrants of the photo are checked for them, and
+only for them (`packages/plate-analyzer/src/companions.js`). Chutneys are
+counted by colour, so a plate with a white and an orange bowl logs two, and one
+bowl read two ways logs one. The main dish is on screen in about a second;
+sides join it when found. Splitting the whole plate into separate items is
+still a button, not the default.
 
-| 38 photos | main dish + sides (default) | main dish only |
+| 39 photos | main dish + sides (default) | main dish only |
 |---|---|---|
-| Calories inside the accepted band | **27 / 38** | 20 / 38 |
-| Mean calorie error | **10.9%** | 16.5% |
-| Dishes named correctly | **72.6%**¹ | 60.5% |
+| Calories inside the accepted band | **29 / 39** | 20 / 39 |
+| Mean calorie error | **10.5%** | 16.1% |
+| Dishes named correctly | **74.6%**¹ | 60.3% |
 | **Dishes invented that were not there** | **6** | 6 |
-| **Same answer when the file is re-saved** | **35 / 38** | |
-| Median seconds per photo (Node, laptop CPU) | 3.8 | 1.0 |
+| **Same answer when the file is re-saved** | **35 / 39** | |
+| Median seconds per photo (Node, laptop CPU) | 4.1 | 1.1 |
 
 The side-dish pass invents nothing: all 6 invented dishes are the main dish
-itself being misnamed, and they are the same 6 with the pass on or off. Its
-cut-off (0.2) is set on these same photos, so the margin is what they show and
-no more: no side dish that was absent scored above 0.094, and a first cut-off
-of 0.12 was dropped because a chutney at 0.127 came and went when one photo was
-re-saved.
+itself being misnamed, and they are the same 6 with the pass on or off. It is
+also slower — 4 extra classifications when the main dish has a side list — and
+the app hides that by showing the main dish first. In Chrome on a laptop
+(`npm run test:sides`): the main dish at 0.8–1.1 s, sides added by 3.8–5.3 s.
+
+Its cut-off (0.2) is set on these same photos, so the margin is what they show
+and no more. What was tried and dropped, each for a measured reason:
+
+- **Cut-off 0.12**: a chutney at 0.127 came and went when one photo was re-saved.
+- **Eight one-third tiles instead of quadrants**: found 22 of 31 real sides
+  against 14, but six photos changed their sides between re-encodings, and on
+  one, three of five copies logged a tomato chutney that is not there.
+- **Adding up a colour's chutney scores**: kept an orange bowl the model splits
+  between peanut and tomato, but turned a white coconut bowl orange elsewhere.
 
 The opt-in split path, measured on the original 20: 16/20 in band, 4.1% mean
 calorie error, 85.0% of dishes named, 16 invented dishes, 11.7 s a photo.
@@ -67,17 +78,21 @@ picture as PNG rather than JPEG — a change no eye can see — used to move the
 answer by up to 67%, because portions were scaled by a segmentation mask that
 swung 6.5× under that noise. Portions are now the food's own typical serving and
 nothing is segmented on the default path. `npm run test:stability` re-encodes
-every benchmark photo five ways and fails the build if a portion moves or if
-more dishes change than the known three.
+every benchmark photo five ways and fails the build if a portion moves, or if
+more photos change their main dish (known: 3) or their side dishes (known: 1)
+than today.
 
-35 of the 38 give an identical answer every time, side dishes included. The
-other three change *main dish name* — `biryani`/`poha`,
+35 of the 39 give an identical answer every time, side dishes included. Three
+change *main dish name* — `biryani`/`poha`,
 `kung-pao-chicken`/`general-tso-chicken`, and `caesar-salad`/`beef-carpaccio` on
-a collage — are near ties in the classifier, and noise picks the winner. That is a real
-remaining defect, pinned by the gate so it cannot grow. See
+a collage — near ties in the classifier, where noise picks the winner. One, the
+user's masala dosa, loses its orange chutney on one of five copies: the crop
+splits the bowl between peanut and tomato chutney, and the JPEG q75 copy puts
+peanut under the cut-off. These are real remaining defects, pinned by the gate
+so they cannot grow. See
 [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md).
 
-Time per photo is 9–32 s on a laptop CPU, depending on what else it is doing.
+Benchmark time per photo in Node moves a lot with machine load (the same code has measured 3.9 s and 11.8 s median); the in-browser numbers above are the ones a user sees.
 
 Before the accuracy rebuild, on the 19 plates that existed then: 10/19 inside
 the band, 13/19 within 25%, 31.7% mean calorie error, 54.7% of dishes named,

@@ -70,6 +70,8 @@ for (const [key, spec] of Object.entries(truth.images)) {
     runs.push({
       label,
       kcal,
+      // The dish the photo was named as; the rest of `items` are side dishes.
+      main: items[0]?.id ?? '(none)',
       dishes: items.map((i) => i.id).sort().join('+') || '(none)',
       // What the portion was computed from, so an unstable number can be
       // attributed: the plate is a threshold (used only above
@@ -85,7 +87,8 @@ for (const [key, spec] of Object.entries(truth.images)) {
   const lo = Math.min(...kcals); const hi = Math.max(...kcals);
   const names = new Set(runs.map((r) => r.dishes));
   const spread = hi === 0 ? 0 : (hi - lo) / hi;
-  rows.push({ key, lo, hi, spread, nameChanges: names.size - 1, runs });
+  const mainChanges = new Set(runs.map((r) => r.main)).size - 1;
+  rows.push({ key, lo, hi, spread, nameChanges: names.size - 1, mainChanges, runs });
 
   const flagged = names.size > 1 ? '  DISHES CHANGED' : (spread > 0.1 ? '  kcal unstable' : '');
   console.log(`${key.padEnd(27)}${String(lo).padStart(5)}–${String(hi).padEnd(6)} `
@@ -102,10 +105,14 @@ for (const [key, spec] of Object.entries(truth.images)) {
 // ---------------------------------------------------------------------------
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const changed = rows.filter((r) => r.nameChanges > 0);
+const mainChanged = rows.filter((r) => r.mainChanges > 0);
+// The main dish held, but the side dishes logged beside it did not.
+const sidesChanged = rows.filter((r) => r.mainChanges === 0 && r.nameChanges > 0);
 const wobbly = rows.filter((r) => r.spread > 0.1);
 console.log(`\n${'='.repeat(64)}`);
 console.log(`photos                      ${rows.length}`);
-console.log(`dish list changed           ${changed.length}${changed.length ? `  (${changed.map((r) => r.key).join(', ')})` : ''}`);
+console.log(`main dish changed           ${mainChanged.length}${mainChanged.length ? `  (${mainChanged.map((r) => r.key).join(', ')})` : ''}`);
+console.log(`side dishes changed         ${sidesChanged.length}${sidesChanged.length ? `  (${sidesChanged.map((r) => r.key).join(', ')})` : ''}`);
 console.log(`kcal spread over 10%        ${wobbly.length}${wobbly.length ? `  (${wobbly.map((r) => r.key).join(', ')})` : ''}`);
 console.log(`mean kcal spread            ${(mean(rows.map((r) => r.spread)) * 100).toFixed(1)}%`);
 console.log(`worst kcal spread           ${(Math.max(0, ...rows.map((r) => r.spread)) * 100).toFixed(1)}%`);
@@ -128,6 +135,15 @@ console.log('='.repeat(64));
 // is not counted as a pass. Averaging over augmented views would damp it but
 // cannot break a genuine tie, so it needs its own work.
 const KNOWN_UNSTABLE_NAMES = 3;
+// SIDE DISHES (packages/plate-analyzer/src/companions.js) are held to the
+// same rule on their own counter: a side that comes and goes when the file is
+// re-saved was a marginal call. Pinned at what the shipped layout gives, so a
+// change that makes sides less steady fails here rather than in the diary.
+// The one known today: user-masala-dosa-original, whose orange chutney bowl the
+// crop splits between peanut (0.28) and tomato (0.11), and the JPEG q75 copy
+// drops peanut under 0.2. Summing a colour's chutneys fixed it and broke a
+// coconut bowl elsewhere (see companions.js), so it is recorded, not a pass.
+const KNOWN_UNSTABLE_SIDES = 1;
 const stableNamed = rows.filter((r) => r.nameChanges === 0);
 const portionSpread = mean(stableNamed.map((r) => r.spread));
 
@@ -136,13 +152,17 @@ if (portionSpread > 0.02) {
   problems.push(`portions moved ${(portionSpread * 100).toFixed(1)}% on photos whose dish did not change`
     + ' — the portion should not depend on the file at all');
 }
-if (changed.length > KNOWN_UNSTABLE_NAMES) {
-  problems.push(`${changed.length} photos changed dish, over the known ${KNOWN_UNSTABLE_NAMES}`);
+if (mainChanged.length > KNOWN_UNSTABLE_NAMES) {
+  problems.push(`${mainChanged.length} photos changed main dish, over the known ${KNOWN_UNSTABLE_NAMES}`);
+}
+if (sidesChanged.length > KNOWN_UNSTABLE_SIDES) {
+  problems.push(`${sidesChanged.length} photos changed side dishes, over the known ${KNOWN_UNSTABLE_SIDES}`);
 }
 if (problems.length) {
   console.log(`\nSTABILITY FAIL\n  ${problems.join('\n  ')}`);
 } else {
   console.log(`\nSTABILITY PASS — portions steady across every re-encoding`
-    + `\n  ${changed.length} photos still change dish under noise (known: ${KNOWN_UNSTABLE_NAMES}); see VISION_BENCH.md`);
+    + `\n  ${mainChanged.length} photos still change main dish under noise (known: ${KNOWN_UNSTABLE_NAMES}), `
+    + `${sidesChanged.length} change side dishes (known: ${KNOWN_UNSTABLE_SIDES}); see VISION_BENCH.md`);
 }
 process.exitCode = problems.length ? 1 : 0;
