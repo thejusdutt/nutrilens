@@ -7,7 +7,7 @@ import { toRawImage, crop, ANALYSIS_SIDE } from '@nutrilens/image-preprocess';
 import { overlayMask, outlineMask } from '@nutrilens/food-segmentation';
 import { PortionEstimator, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
-import { buildPlate, regionCrop } from '@nutrilens/plate-analyzer';
+import { buildPlate, regionCrop, findCompanions, GOES_WITH } from '@nutrilens/plate-analyzer';
 import { renderPlate, openAddDish, portionControl, REGION_COLORS } from './plate-ui.js';
 import { makeEntry, normalizeEntry, toCSV } from '@nutrilens/diary';
 import { saveMeal, listMeals, dateKey, exportBackup, restoreBackup } from './db.js';
@@ -256,7 +256,11 @@ function discardAnalysis() {
   $('btn-resume-analysis').hidden = true;
 }
 
+/** Bumped per photo, so a slow side-dish check cannot land on the next one. */
+let analysisRun = 0;
+
 async function startAnalysis(blob) {
+  const run = ++analysisRun;
   const context = pendingPhotoContext ?? { date: diaryDate(), slot: suggestSlot() };
   pendingPhotoContext = null;
   await goTo('analyze', { history: view() === 'camera' ? 'replace' : 'push' });
@@ -297,10 +301,50 @@ async function startAnalysis(blob) {
       await selectFood(state.candidates[0].id);
     }
     setSpinner(null);
+    // The main dish is on screen now; side dishes join it when found.
+    await addSideDishes(run);
   } catch (err) {
     setSpinner(null);
     showError(`Analysis failed: ${err.message}`);
     console.error(err);
+  }
+}
+
+/**
+ * Look for the main dish's usual sides (sambar with idli, fries with a burger)
+ * in four quadrant crops, and turn the result into a plate if any are there.
+ * Measured on the benchmark: kcal in band 20/38 → 29/38 with no dish invented
+ * (see packages/plate-analyzer/src/companions.js).
+ */
+async function addSideDishes(run) {
+  const mainId = state.selectedId;
+  if (!GOES_WITH[mainId]) return;
+  const status = $('sides-status');
+  status.textContent = 'Checking for side dishes…';
+  status.hidden = false;
+  try {
+    const found = await findCompanions({
+      image: state.raw,
+      mainId,
+      classify: async (img) => (await rpcImage({ type: 'recognize', image: rawToMsg(img) })).result,
+      foodById: (id) => engine.food(id),
+    });
+    // The user may have moved on: a new photo, another dish, or a split plate.
+    if (run !== analysisRun || state.selectedId !== mainId || state.meal || !found.length) return;
+    const main = {
+      id: mainId, grams: currentGrams(), prob: state.candidates[0]?.prob ?? 1,
+      candidates: state.candidates.slice(0, 5), region: null,
+    };
+    const sides = found.map((c) => ({
+      id: c.id, grams: c.grams, prob: c.prob, region: null, companion: true,
+      candidates: [{ id: c.id, name: engine.food(c.id).name, prob: c.prob }],
+    }));
+    state.meal = { items: [main, ...sides] };
+    showMealCard();
+  } catch (err) {
+    console.warn('side-dish check failed; keeping the single dish', err);
+  } finally {
+    if (run === analysisRun) status.hidden = true;
   }
 }
 
@@ -658,20 +702,10 @@ async function analyzeWholePlate({ auto = false } = {}) {
       return;
     }
     state.meal = { items };
-    fill($('candidates'));
-    $('portion-card').hidden = true;
-    $('nonfood-warning').hidden = true;
-    // The plate is split; the offer to split it has nothing left to do. The
-    // rescan button inside the plate card takes over from here.
-    $('plate-offer').hidden = true;
-    // Every dish name is now its own "change this" button, so the free-text
-    // correction box below the list has nothing left to correct.
-    $('correction').hidden = true;
     // The rescan button now lives inside the plate card as a secondary action,
     // so it stays available: a bad scan is exactly when you want to retry.
     btn.disabled = false;
-    drawMealOverlay();
-    renderMeal();
+    showMealCard();
   } catch (err) {
     console.error(err);
     btn.disabled = false;
@@ -683,6 +717,21 @@ async function analyzeWholePlate({ auto = false } = {}) {
   } finally {
     setSpinner(null);
   }
+}
+
+/** Swap the single-dish view for the plate card showing state.meal. */
+function showMealCard() {
+  fill($('candidates'));
+  $('portion-card').hidden = true;
+  $('nonfood-warning').hidden = true;
+  // The plate is split; the offer to split it has nothing left to do. The
+  // rescan button inside the plate card takes over from here.
+  $('plate-offer').hidden = true;
+  // Every dish name is now its own "change this" button, so the free-text
+  // correction box below the list has nothing left to correct.
+  $('correction').hidden = true;
+  drawMealOverlay();
+  renderMeal();
 }
 
 function drawMealOverlay() {
@@ -772,6 +821,8 @@ function renderMealNutrition() {
 // Save the photo analysis into the diary
 // ---------------------------------------------------------------------------
 $('btn-save').onclick = async () => {
+  // A side-dish check still in flight must not swap the card after this.
+  analysisRun++;
   const thumb = await makeThumb(state.raw);
   const slot = $('save-slot').value;
   const date = state.saveDate ?? diaryDate();

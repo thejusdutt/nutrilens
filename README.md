@@ -15,29 +15,43 @@ that leaves localhost (it must be zero).
 ## Does the number match what a person sees?
 
 That is the only question a food tracker is judged on, so it has its own
-benchmark: `npm run test:vision` runs the shipped pipeline end to end over 20
+benchmark: `npm run test:vision` runs the shipped pipeline end to end over 38
 photographed plates and scores the dish names and the calories against what a
-careful human reader says is on them (`eval/vision-truth.json`). A full run
-rewrites [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md), so the
-published numbers are always the ones the current code produces.
+careful human reader says is on them (`eval/vision-truth.json`). 20 are the
+original set; 18 were added on 2026-09-25 (17 Wikimedia Commons photos, listed
+with their licences in `eval/web-sources.json` and re-fetched by
+`node eval/fetch-web-set.mjs`, plus one user photo). A full run rewrites
+[eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md), so the published
+numbers are always the ones the current code produces.
 
-A photo is read as **one dish**, named from the whole frame. Splitting a plate
-into separate items is a button, not the default — it finds more on a thali, and
-it also puts food in the diary that was never on the plate.
+A photo is read as **one main dish**, named from the whole frame. Then, if that
+dish has usual sides (sambar and chutney with idli or dosa, fries with a burger,
+rice with rajma), four quadrant crops are checked for them, and only for them
+(`packages/plate-analyzer/src/companions.js`). The main dish is on screen in
+about a second; sides join it when found. Splitting the whole plate into
+separate items is still a button, not the default.
 
-| | one dish (default) | split plate (opt-in) |
+| 38 photos | main dish + sides (default) | main dish only |
 |---|---|---|
-| Calories inside the accepted band | 14 / 20 | 16 / 20 |
-| Mean calorie error | 13.7% | 4.1% |
-| Dishes named correctly | 52.1%¹ | 85.0% |
-| **Dishes invented that were not there** | **6** | **16** |
-| **Same answer when the file is re-saved** | **17 / 20** | 7 / 20 |
-| Seconds per photo | **2.6** | 11.7 |
+| Calories inside the accepted band | **27 / 38** | 20 / 38 |
+| Mean calorie error | **10.9%** | 16.5% |
+| Dishes named correctly | **72.6%**¹ | 60.5% |
+| **Dishes invented that were not there** | **6** | 6 |
+| **Same answer when the file is re-saved** | **35 / 38** | |
+| Median seconds per photo (Node, laptop CPU) | 3.8 | 1.0 |
 
-¹ One dish named on a thali of five scores 1/5 by construction; this is the cost
-of the default, not a fault in it. Nine of the twenty photos are right on both
-dish and portion with nothing to touch, five want the portion nudged, six name
-the wrong dish and take one tap to correct.
+The side-dish pass invents nothing: all 6 invented dishes are the main dish
+itself being misnamed, and they are the same 6 with the pass on or off. Its
+cut-off (0.2) is set on these same photos, so the margin is what they show and
+no more: no side dish that was absent scored above 0.094, and a first cut-off
+of 0.12 was dropped because a chutney at 0.127 came and went when one photo was
+re-saved.
+
+The opt-in split path, measured on the original 20: 16/20 in band, 4.1% mean
+calorie error, 85.0% of dishes named, 16 invented dishes, 11.7 s a photo.
+
+¹ A thali of five where the main dish and two sides are found scores 3/5.
+Anything missed is one tap on "Add a dish".
 
 The split path is better on every measure and worse to use. Its extra dishes are
 scored 0.26–0.99 confident against 0.40–1.00 for real ones, so no threshold can
@@ -52,13 +66,14 @@ the framing handed to the models never depends on the camera.
 picture as PNG rather than JPEG — a change no eye can see — used to move the
 answer by up to 67%, because portions were scaled by a segmentation mask that
 swung 6.5× under that noise. Portions are now the food's own typical serving and
-nothing is segmented on the default path, which also took a photo from 11.7 s to
-2.6 s. `npm run test:stability` re-encodes every benchmark photo five ways and
-fails the build if a portion moves.
+nothing is segmented on the default path. `npm run test:stability` re-encodes
+every benchmark photo five ways and fails the build if a portion moves or if
+more dishes change than the known three.
 
-Seventeen of the twenty give an identical answer every time. The other three
-change *dish name* — `biryani`/`poha` and `kung-pao-chicken`/`general-tso-chicken`
-are near ties in the classifier, and noise picks the winner. That is a real
+35 of the 38 give an identical answer every time, side dishes included. The
+other three change *main dish name* — `biryani`/`poha`,
+`kung-pao-chicken`/`general-tso-chicken`, and `caesar-salad`/`beef-carpaccio` on
+a collage — are near ties in the classifier, and noise picks the winner. That is a real
 remaining defect, pinned by the gate so it cannot grow. See
 [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md).
 

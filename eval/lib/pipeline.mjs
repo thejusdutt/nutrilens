@@ -15,7 +15,7 @@ import {
   PortionEstimator, detectPlateEllipse,
 } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
-import { proposeRegions, buildPlate } from '@nutrilens/plate-analyzer';
+import { proposeRegions, buildPlate, findCompanions } from '@nutrilens/plate-analyzer';
 import { createRecognizer, root } from './node-runtime.mjs';
 
 /**
@@ -39,7 +39,7 @@ export async function createPipeline(recognizerOpts = {}, estimatorOpts = {}) {
    * @param {object} [options] plate-analyzer overrides
    * @param {{split?:boolean}} [mode] `split` scores the opt-in breakdown
    */
-  async function analyse(image, options = {}, { split = false } = {}) {
+  async function analyse(image, options = {}, { split = false, companions = true } = {}) {
     const whole = await recognizer.recognize(image, { whole: true });
     const imageTop = whole.top.filter((t) => engine.food(t.id));
 
@@ -72,6 +72,20 @@ export async function createPipeline(recognizerOpts = {}, estimatorOpts = {}) {
           id: imageTop[0].id, prob: imageTop[0].prob, grams: est.grams,
           portion: est, singleDish: true, region: null,
         });
+        // Side dishes on the main dish's list, found in quadrant crops.
+        if (companions) {
+          const found = await findCompanions({
+            image, mainId: imageTop[0].id,
+            classify: (img) => recognizer.recognize(img),
+            foodById: (id) => engine.food(id),
+          });
+          for (const c of found) {
+            const portion = estimator.estimate({
+              areaPx: 0, imageWidth: image.width, imageHeight: image.height, prior: engine.food(c.id).prior,
+            });
+            items.push({ ...c, grams: portion.grams, portion, companion: true, region: null });
+          }
+        }
       }
       return { whole, plate: null, regions: [], items, engine };
     }

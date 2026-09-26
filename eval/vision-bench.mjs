@@ -45,6 +45,8 @@ const noProbe = args.includes('--no-probe');
 const probeAlpha = flag('--probe-alpha');
 // Score the plate-splitting path instead of the shipped single-dish default.
 const splitPlate = args.includes('--split');
+// Turn off the side-dish pass (findCompanions) to measure what it adds.
+const noCompanions = args.includes('--no-companions');
 const overrides = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] !== '--set') continue;
@@ -56,7 +58,7 @@ for (let i = 0; i < args.length; i++) {
 // skipped in silence, so the run reported the defaults under the name of the
 // setting it was meant to be testing — two benchmark runs that looked like an
 // A/B and were the same configuration twice.
-const KNOWN = new Set(['--only', '--json', '--set', '--probe-alpha', '--no-probe', '--flat-oov', '--split']);
+const KNOWN = new Set(['--only', '--json', '--set', '--probe-alpha', '--no-probe', '--flat-oov', '--split', '--no-companions']);
 for (let i = 0; i < args.length; i++) {
   if (KNOWN.has(args[i])) { i++; continue; }
   console.error(`unknown argument: ${args[i]}`);
@@ -88,7 +90,7 @@ const { analyse } = await createPipeline({
  * @returns {{items:{id,name,grams,kcal}[], totals:object, plate:object|null}}
  */
 export async function analyzePhoto(image, options = {}) {
-  const { whole, plate, regions, items } = await analyse(image, options, { split: splitPlate });
+  const { whole, plate, regions, items } = await analyse(image, options, { split: splitPlate, companions: !noCompanions });
   return summarise(image, whole, plate, items, items, regions);
 }
 
@@ -280,7 +282,7 @@ if (jsonOut) {
 const tweaked = only || Object.keys(overrides).length || noProbe
   || probeAlpha != null || args.includes('--flat-oov')
   // --split measures the opt-in path, not the default one the report describes.
-  || splitPlate;
+  || splitPlate || noCompanions;
 const complete = !skipped.length && rows.length === Object.keys(truth.images).length;
 
 if (tweaked) {

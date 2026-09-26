@@ -24,50 +24,48 @@
     "singleDishProb": 0.45
   },
   "summary": {
-    "images": 20,
-    "dishRecall": 52.08333333333333,
+    "images": 38,
+    "dishRecall": 72.58771929824562,
     "spurious": 6,
     "spuriousImages": 6,
-    "medianMs": 2452,
+    "medianMs": 3843,
     "fields": {
       "kcal": {
-        "meanAbs": 13.869090876443819,
-        "inBand": 13,
-        "within25": 16
+        "meanAbs": 10.905757772064478,
+        "inBand": 27,
+        "within25": 31
       },
       "carbs": {
-        "meanAbs": 21.207016594516595,
-        "inBand": 11,
-        "within25": 13
+        "meanAbs": 15.220072947337876,
+        "inBand": 26,
+        "within25": 29
       },
       "protein": {
-        "meanAbs": 17.718253968253965,
-        "inBand": 12,
-        "within25": 15
+        "meanAbs": 12.416505278347383,
+        "inBand": 28,
+        "within25": 31
       },
       "fat": {
-        "meanAbs": 8.983333333333333,
-        "inBand": 15,
-        "within25": 16
+        "meanAbs": 11.58428544807459,
+        "inBand": 27,
+        "within25": 31
       },
       "grams": {
-        "meanAbs": 17.364285714285714,
-        "inBand": 11,
-        "within25": 15
+        "meanAbs": 11.742288726311282,
+        "inBand": 25,
+        "within25": 31
       }
     }
   },
   "rows": [
     {
       "key": "dosa-thali",
-      "ms": 1778,
-      "found": 0,
+      "ms": 5458,
+      "found": 2,
       "wanted": 3,
-      "dishRecall": 0,
+      "dishRecall": 0.6666666666666666,
       "missed": [
-        "dosa",
-        "any-chutney",
-        "sambar"
+        "dosa"
       ],
       "spurious": [
         "masala-dosa"
@@ -113,9 +111,9 @@
       "err": {
         "kcal": 0,
         "carbs": 0,
-        "protein": -0.125,
+        "protein": 0,
         "fat": 0,
-        "grams": -0.1
+        "grams": 0
       },
       "got": {
         "whole": [
@@ -138,26 +136,55 @@
             "protein": 6.84,
             "fat": 11.700000000000001,
             "fiber": 3.24
+          },
+          {
+            "id": "sambar",
+            "name": "Sambar",
+            "grams": 150,
+            "prob": 0.694,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 129,
+            "carbs": 17.655,
+            "protein": 6.495,
+            "fat": 4.0649999999999995,
+            "fiber": 6
+          },
+          {
+            "id": "coconut-chutney",
+            "name": "Coconut chutney",
+            "grams": 40,
+            "prob": 0.464,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 91,
+            "carbs": 4.628,
+            "protein": 1.4000000000000001,
+            "fat": 7.844,
+            "fiber": 2.34
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 324,
-          "carbs": 47,
-          "protein": 7,
-          "fat": 12,
-          "fiber": 3
+          "kcal": 544,
+          "carbs": 69,
+          "protein": 15,
+          "fat": 24,
+          "fiber": 12
         }
       }
     },
     {
       "key": "masala-dosa",
-      "ms": 2553,
-      "found": 1,
+      "ms": 4276,
+      "found": 2,
       "wanted": 3,
-      "dishRecall": 0.3333333333333333,
+      "dishRecall": 0.6666666666666666,
       "missed": [
-        "any-chutney",
         "sambar"
       ],
       "spurious": [],
@@ -200,11 +227,11 @@
         ]
       },
       "err": {
-        "kcal": -0.047058823529411764,
-        "carbs": -0.06,
+        "kcal": 0,
+        "carbs": -0.02,
         "protein": -0.125,
         "fat": 0,
-        "grams": -0.25
+        "grams": -0.10416666666666667
       },
       "got": {
         "whole": [
@@ -227,21 +254,36 @@
             "protein": 6.84,
             "fat": 11.700000000000001,
             "fiber": 3.24
+          },
+          {
+            "id": "tomato-chutney",
+            "name": "Tomato chutney",
+            "grams": 35,
+            "prob": 0.384,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 34,
+            "carbs": 2.625,
+            "protein": 0.5844999999999999,
+            "fat": 2.4675,
+            "fiber": 0.6895
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 324,
-          "carbs": 47,
+          "kcal": 358,
+          "carbs": 49,
           "protein": 7,
-          "fat": 12,
-          "fiber": 3
+          "fat": 14,
+          "fiber": 4
         }
       }
     },
     {
       "key": "masala-dosa-cropped-bowls",
-      "ms": 2423,
+      "ms": 4550,
       "found": 1,
       "wanted": 2,
       "dishRecall": 0.5,
@@ -330,13 +372,11 @@
     },
     {
       "key": "idli-vada-thali",
-      "ms": 2470,
-      "found": 1,
+      "ms": 4193,
+      "found": 3,
       "wanted": 4,
-      "dishRecall": 0.25,
+      "dishRecall": 0.75,
       "missed": [
-        "idli",
-        "sambar",
         "any-chutney"
       ],
       "spurious": [],
@@ -383,11 +423,11 @@
         ]
       },
       "err": {
-        "kcal": -0.6107142857142858,
-        "carbs": -0.6714285714285714,
-        "protein": -0.6,
-        "fat": -0.26666666666666666,
-        "grams": -0.7428571428571429
+        "kcal": -0.12321428571428572,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
       },
       "got": {
         "whole": [
@@ -410,21 +450,51 @@
             "protein": 8.415,
             "fat": 10.575000000000001,
             "fiber": 5.076
+          },
+          {
+            "id": "idli",
+            "name": "Idli",
+            "grams": 120,
+            "prob": 0.992,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 144,
+            "carbs": 29.52,
+            "protein": 5.28,
+            "fat": 0.384,
+            "fiber": 2.76
+          },
+          {
+            "id": "sambar",
+            "name": "Sambar",
+            "grams": 150,
+            "prob": 0.246,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 129,
+            "carbs": 17.655,
+            "protein": 6.495,
+            "fat": 4.0649999999999995,
+            "fiber": 6
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 218,
-          "carbs": 23,
-          "protein": 8,
-          "fat": 11,
-          "fiber": 5
+          "kcal": 491,
+          "carbs": 71,
+          "protein": 20,
+          "fat": 15,
+          "fiber": 14
         }
       }
     },
     {
       "key": "sliders-watermelon",
-      "ms": 2418,
+      "ms": 932,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -511,7 +581,7 @@
     },
     {
       "key": "fried-rice-bowl",
-      "ms": 2539,
+      "ms": 892,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -589,7 +659,7 @@
     },
     {
       "key": "dal-bowl",
-      "ms": 2392,
+      "ms": 4297,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -667,7 +737,7 @@
     },
     {
       "key": "north-indian-thali",
-      "ms": 2452,
+      "ms": 620,
       "found": 0,
       "wanted": 2,
       "dishRecall": 0,
@@ -770,7 +840,7 @@
     },
     {
       "key": "pizza-detroit",
-      "ms": 2460,
+      "ms": 826,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -849,7 +919,7 @@
     },
     {
       "key": "paratha-pan",
-      "ms": 2414,
+      "ms": 880,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -931,13 +1001,11 @@
     },
     {
       "key": "samosa-chutney",
-      "ms": 2477,
-      "found": 1,
+      "ms": 3905,
+      "found": 2,
       "wanted": 2,
-      "dishRecall": 0.5,
-      "missed": [
-        "any-chutney"
-      ],
+      "dishRecall": 1,
+      "missed": [],
       "spurious": [],
       "want": {
         "file": "eval/data/extended/samosa/106.jpg",
@@ -974,11 +1042,11 @@
         ]
       },
       "err": {
-        "kcal": -0.225,
-        "carbs": -0.26666666666666666,
+        "kcal": -0.04,
+        "carbs": 0,
         "protein": 0,
         "fat": -0.15,
-        "grams": -0.2857142857142857
+        "grams": -0.07142857142857142
       },
       "got": {
         "whole": [
@@ -1001,12 +1069,27 @@
             "protein": 5.14,
             "fat": 17.47,
             "fiber": 1.8
+          },
+          {
+            "id": "chutney",
+            "name": "Chutney (sweet)",
+            "grams": 30,
+            "prob": 0.916,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 74,
+            "carbs": 18.18,
+            "protein": 0.099,
+            "fat": 0.018,
+            "fiber": 0.3
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 310,
-          "carbs": 33,
+          "kcal": 384,
+          "carbs": 51,
           "protein": 5,
           "fat": 17,
           "fiber": 2
@@ -1015,7 +1098,7 @@
     },
     {
       "key": "biryani-pan",
-      "ms": 2425,
+      "ms": 4478,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -1098,7 +1181,7 @@
     },
     {
       "key": "collage-pizza-salad-fries",
-      "ms": 2615,
+      "ms": 837,
       "found": 1,
       "wanted": 3,
       "dishRecall": 0.3333333333333333,
@@ -1187,7 +1270,7 @@
     },
     {
       "key": "caesar-plate",
-      "ms": 2411,
+      "ms": 976,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1265,7 +1348,7 @@
     },
     {
       "key": "pancakes-berries",
-      "ms": 2413,
+      "ms": 4774,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1334,21 +1417,36 @@
             "protein": 11.115,
             "fat": 18.105,
             "fiber": 3.1500000000000004
+          },
+          {
+            "id": "blueberries",
+            "name": "Blueberries",
+            "grams": 100,
+            "prob": 0.236,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 64,
+            "carbs": 14.57,
+            "protein": 0.7,
+            "fat": 0.31,
+            "fiber": 2.4
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 423,
-          "carbs": 53,
-          "protein": 11,
+          "kcal": 487,
+          "carbs": 68,
+          "protein": 12,
           "fat": 18,
-          "fiber": 3
+          "fiber": 6
         }
       }
     },
     {
       "key": "enchiladas-queso",
-      "ms": 2219,
+      "ms": 684,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -1430,7 +1528,7 @@
     },
     {
       "key": "naan-closeup",
-      "ms": 2462,
+      "ms": 817,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1508,7 +1606,7 @@
     },
     {
       "key": "momos-chutney",
-      "ms": 2710,
+      "ms": 4541,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1591,7 +1689,7 @@
     },
     {
       "key": "tortilla-espanola",
-      "ms": 2310,
+      "ms": 869,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1669,7 +1767,7 @@
     },
     {
       "key": "kungpao-rice",
-      "ms": 2585,
+      "ms": 4515,
       "found": 1,
       "wanted": 2,
       "dishRecall": 0.5,
@@ -1748,6 +1846,1579 @@
           "protein": 46,
           "fat": 26,
           "fiber": 3
+        }
+      }
+    },
+    {
+      "key": "user-masala-dosa-two-chutneys",
+      "ms": 4338,
+      "found": 1,
+      "wanted": 2,
+      "dishRecall": 0.5,
+      "missed": [
+        "any-chutney"
+      ],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/user/masala-dosa-two-chutneys.jpg",
+        "note": "The user's photo (Swasthi's Recipes): one folded masala dosa with yellow potato filling and curry leaves, a bowl of coconut chutney and a bowl of orange tomato-onion chutney.",
+        "dishes": [
+          {
+            "id": "masala-dosa",
+            "grams": 170
+          },
+          {
+            "id": "coconut-chutney",
+            "grams": 45
+          },
+          {
+            "id": "tomato-chutney",
+            "grams": 40
+          }
+        ],
+        "grams": [
+          179,
+          332
+        ],
+        "kcal": [
+          313,
+          581
+        ],
+        "carbs": [
+          37,
+          68
+        ],
+        "protein": [
+          6,
+          11
+        ],
+        "fat": [
+          16,
+          30
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": -0.25,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "masala-dosa 57%",
+          "dosa 21%",
+          "omelette 21%"
+        ],
+        "items": [
+          {
+            "id": "masala-dosa",
+            "name": "Masala dosa",
+            "grams": 180,
+            "prob": 0.571,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 324,
+            "carbs": 46.800000000000004,
+            "protein": 6.84,
+            "fat": 11.700000000000001,
+            "fiber": 3.24
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 324,
+          "carbs": 47,
+          "protein": 7,
+          "fat": 12,
+          "fiber": 3
+        }
+      }
+    },
+    {
+      "key": "web-aloo-paratha-butter",
+      "ms": 4170,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/aloo-paratha/2.jpg",
+        "note": "Two stuffed parathas stacked on a floral plate with a pat of butter.",
+        "dishes": [
+          {
+            "id": "paratha",
+            "grams": 220
+          }
+        ],
+        "grams": [
+          154,
+          286
+        ],
+        "kcal": [
+          502,
+          932
+        ],
+        "carbs": [
+          70,
+          130
+        ],
+        "protein": [
+          10,
+          18
+        ],
+        "fat": [
+          20,
+          38
+        ]
+      },
+      "err": {
+        "kcal": -0.4800796812749004,
+        "carbs": -0.4857142857142857,
+        "protein": -0.5,
+        "fat": -0.45,
+        "grams": -0.4805194805194805
+      },
+      "got": {
+        "whole": [
+          "paratha 80%",
+          "pancakes 9%",
+          "chapati 7%"
+        ],
+        "items": [
+          {
+            "id": "paratha",
+            "name": "Paratha",
+            "grams": 80,
+            "prob": 0.801,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 261,
+            "carbs": 36.28,
+            "protein": 5.088000000000001,
+            "fat": 10.56,
+            "fiber": 7.68
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 261,
+          "carbs": 36,
+          "protein": 5,
+          "fat": 11,
+          "fiber": 8
+        }
+      }
+    },
+    {
+      "key": "web-parathas-curd",
+      "ms": 4980,
+      "found": 1,
+      "wanted": 2,
+      "dishRecall": 0.5,
+      "missed": [
+        "yogurt-plain"
+      ],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/aloo-paratha/3.jpg",
+        "note": "Four whole-wheat parathas with butter on a black plate, two small bowls of curd, onion and green chillies.",
+        "dishes": [
+          {
+            "id": "paratha",
+            "grams": 280
+          },
+          {
+            "id": "yogurt-plain",
+            "grams": 120
+          }
+        ],
+        "grams": [
+          280,
+          520
+        ],
+        "kcal": [
+          693,
+          1287
+        ],
+        "carbs": [
+          93,
+          173
+        ],
+        "protein": [
+          16,
+          29
+        ],
+        "fat": [
+          29,
+          53
+        ]
+      },
+      "err": {
+        "kcal": -0.6233766233766234,
+        "carbs": -0.6129032258064516,
+        "protein": -0.6875,
+        "fat": -0.6206896551724138,
+        "grams": -0.7142857142857143
+      },
+      "got": {
+        "whole": [
+          "paratha 63%",
+          "chapati 29%",
+          "dosa 3%"
+        ],
+        "items": [
+          {
+            "id": "paratha",
+            "name": "Paratha",
+            "grams": 80,
+            "prob": 0.629,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 261,
+            "carbs": 36.28,
+            "protein": 5.088000000000001,
+            "fat": 10.56,
+            "fiber": 7.68
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 261,
+          "carbs": 36,
+          "protein": 5,
+          "fat": 11,
+          "fiber": 8
+        }
+      }
+    },
+    {
+      "key": "web-biryani-tray",
+      "ms": 1118,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/biryani/3.jpg",
+        "note": "A plate of biryani on a canteen tray, with a cup of raita and a cola beside it.",
+        "dishes": [
+          {
+            "id": "biryani",
+            "grams": 350
+          }
+        ],
+        "grams": [
+          245,
+          455
+        ],
+        "kcal": [
+          449,
+          834
+        ],
+        "carbs": [
+          49,
+          90
+        ],
+        "protein": [
+          20,
+          36
+        ],
+        "fat": [
+          19,
+          35
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "biryani 38%",
+          "fried-rice 29%",
+          "pulao 20%"
+        ],
+        "items": [
+          {
+            "id": "biryani",
+            "name": "Biryani",
+            "grams": 300,
+            "prob": 0.376,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 550,
+            "carbs": 59.42999999999999,
+            "protein": 24,
+            "fat": 23.25,
+            "fiber": 2.37
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 550,
+          "carbs": 59,
+          "protein": 24,
+          "fat": 23,
+          "fiber": 2
+        }
+      }
+    },
+    {
+      "key": "web-biryani-egg-curry",
+      "ms": 915,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/biryani/1.jpg",
+        "note": "Biryani with boiled egg and dark kofta on a floral plate, a bowl of chicken curry, cucumber slices.",
+        "dishes": [
+          {
+            "id": "biryani",
+            "grams": 350
+          }
+        ],
+        "grams": [
+          245,
+          455
+        ],
+        "kcal": [
+          449,
+          834
+        ],
+        "carbs": [
+          49,
+          90
+        ],
+        "protein": [
+          20,
+          36
+        ],
+        "fat": [
+          19,
+          35
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "biryani 67%",
+          "pulao 20%",
+          "chicken-curry 8%"
+        ],
+        "items": [
+          {
+            "id": "biryani",
+            "name": "Biryani",
+            "grams": 300,
+            "prob": 0.673,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 550,
+            "carbs": 59.42999999999999,
+            "protein": 24,
+            "fat": 23.25,
+            "fiber": 2.37
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 550,
+          "carbs": 59,
+          "protein": 24,
+          "fat": 23,
+          "fiber": 2
+        }
+      }
+    },
+    {
+      "key": "web-burger-fries-slate",
+      "ms": 3843,
+      "found": 2,
+      "wanted": 2,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/burger-fries/3.jpg",
+        "note": "Cheeseburger with bacon and a pile of fries on a grey slate plate.",
+        "dishes": [
+          {
+            "id": "hamburger",
+            "grams": 250
+          },
+          {
+            "id": "french-fries",
+            "grams": 150
+          }
+        ],
+        "grams": [
+          280,
+          520
+        ],
+        "kcal": [
+          754,
+          1401
+        ],
+        "carbs": [
+          57,
+          106
+        ],
+        "protein": [
+          34,
+          63
+        ],
+        "fat": [
+          43,
+          80
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "hamburger 99%",
+          "pulled-pork-sandwich 0%",
+          "french-fries 0%"
+        ],
+        "items": [
+          {
+            "id": "hamburger",
+            "name": "Hamburger",
+            "grams": 230,
+            "prob": 0.993,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 681,
+            "carbs": 43.033,
+            "protein": 41.101,
+            "fat": 37.144999999999996,
+            "fiber": 1.38
+          },
+          {
+            "id": "french-fries",
+            "name": "French fries",
+            "grams": 130,
+            "prob": 0.999,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 293,
+            "carbs": 30.199,
+            "protein": 3.25,
+            "fat": 18.291,
+            "fiber": 2.3400000000000003
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 974,
+          "carbs": 73,
+          "protein": 44,
+          "fat": 55,
+          "fiber": 4
+        }
+      }
+    },
+    {
+      "key": "web-burger-fries-big",
+      "ms": 4029,
+      "found": 2,
+      "wanted": 2,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/burger-fries/1.jpg",
+        "note": "A large sesame-bun burger with thick-cut fries on a white plate.",
+        "dishes": [
+          {
+            "id": "hamburger",
+            "grams": 280
+          },
+          {
+            "id": "french-fries",
+            "grams": 200
+          }
+        ],
+        "grams": [
+          336,
+          624
+        ],
+        "kcal": [
+          895,
+          1662
+        ],
+        "carbs": [
+          69,
+          129
+        ],
+        "protein": [
+          39,
+          72
+        ],
+        "fat": [
+          51,
+          95
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "hamburger 98%",
+          "club-sandwich 1%",
+          "french-fries 1%"
+        ],
+        "items": [
+          {
+            "id": "hamburger",
+            "name": "Hamburger",
+            "grams": 230,
+            "prob": 0.983,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 681,
+            "carbs": 43.033,
+            "protein": 41.101,
+            "fat": 37.144999999999996,
+            "fiber": 1.38
+          },
+          {
+            "id": "french-fries",
+            "name": "French fries",
+            "grams": 130,
+            "prob": 0.988,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 293,
+            "carbs": 30.199,
+            "protein": 3.25,
+            "fat": 18.291,
+            "fiber": 2.3400000000000003
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 974,
+          "carbs": 73,
+          "protein": 44,
+          "fat": 55,
+          "fiber": 4
+        }
+      }
+    },
+    {
+      "key": "web-greek-salad",
+      "ms": 892,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/greek-salad/2.jpg",
+        "note": "Greek salad: tomato, cucumber, pepper, olives, feta, onion, oil.",
+        "dishes": [
+          {
+            "id": "greek-salad",
+            "grams": 300
+          }
+        ],
+        "grams": [
+          210,
+          390
+        ],
+        "kcal": [
+          213,
+          395
+        ],
+        "carbs": [
+          10,
+          19
+        ],
+        "protein": [
+          6,
+          11
+        ],
+        "fat": [
+          17,
+          32
+        ]
+      },
+      "err": {
+        "kcal": -0.14553990610328638,
+        "carbs": -0.1,
+        "protein": -0.16666666666666666,
+        "fat": -0.11764705882352941,
+        "grams": -0.14285714285714285
+      },
+      "got": {
+        "whole": [
+          "greek-salad 100%",
+          "caprese-salad 0%",
+          "beet-salad 0%"
+        ],
+        "items": [
+          {
+            "id": "greek-salad",
+            "name": "Greek salad",
+            "grams": 180,
+            "prob": 0.996,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 182,
+            "carbs": 8.55,
+            "protein": 5.094,
+            "fat": 14.778000000000002,
+            "fiber": 2.4120000000000004
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 182,
+          "carbs": 9,
+          "protein": 5,
+          "fat": 15,
+          "fiber": 2
+        }
+      }
+    },
+    {
+      "key": "web-idli-sambar",
+      "ms": 4125,
+      "found": 1,
+      "wanted": 2,
+      "dishRecall": 0.5,
+      "missed": [
+        "sambar"
+      ],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/idli-sambar/2.jpg",
+        "note": "Five idli on a black plate with a bowl of sambar.",
+        "dishes": [
+          {
+            "id": "idli",
+            "grams": 200
+          },
+          {
+            "id": "sambar",
+            "grams": 150
+          }
+        ],
+        "grams": [
+          245,
+          455
+        ],
+        "kcal": [
+          258,
+          480
+        ],
+        "carbs": [
+          47,
+          87
+        ],
+        "protein": [
+          11,
+          20
+        ],
+        "fat": [
+          3,
+          6
+        ]
+      },
+      "err": {
+        "kcal": -0.4418604651162791,
+        "carbs": -0.3617021276595745,
+        "protein": -0.5454545454545454,
+        "fat": -1,
+        "grams": -0.5102040816326531
+      },
+      "got": {
+        "whole": [
+          "idli 100%",
+          "poori 0%",
+          "coconut-chutney 0%"
+        ],
+        "items": [
+          {
+            "id": "idli",
+            "name": "Idli",
+            "grams": 120,
+            "prob": 0.995,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 144,
+            "carbs": 29.52,
+            "protein": 5.28,
+            "fat": 0.384,
+            "fiber": 2.76
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 144,
+          "carbs": 30,
+          "protein": 5,
+          "fat": 0,
+          "fiber": 3
+        }
+      }
+    },
+    {
+      "key": "web-dosa-thali-vada",
+      "ms": 3949,
+      "found": 2,
+      "wanted": 4,
+      "dishRecall": 0.5,
+      "missed": [
+        "sambar",
+        "any-chutney"
+      ],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/masala-dosa/1.jpg",
+        "note": "Steel tray: masala dosa with potato filling, a medu vada, and three bowls (sambar, red chutney, coconut chutney).",
+        "dishes": [
+          {
+            "id": "masala-dosa",
+            "grams": 200
+          },
+          {
+            "id": "vada",
+            "grams": 70
+          },
+          {
+            "id": "sambar",
+            "grams": 80
+          },
+          {
+            "id": "coconut-chutney",
+            "grams": 40
+          },
+          {
+            "id": "tomato-chutney",
+            "grams": 35,
+            "optional": true
+          }
+        ],
+        "grams": [
+          273,
+          507
+        ],
+        "kcal": [
+          482,
+          896
+        ],
+        "carbs": [
+          59,
+          110
+        ],
+        "protein": [
+          13,
+          25
+        ],
+        "fat": [
+          22,
+          41
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": -0.01098901098901099
+      },
+      "got": {
+        "whole": [
+          "masala-dosa 51%",
+          "dosa 13%",
+          "idli 8%"
+        ],
+        "items": [
+          {
+            "id": "masala-dosa",
+            "name": "Masala dosa",
+            "grams": 180,
+            "prob": 0.513,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 324,
+            "carbs": 46.800000000000004,
+            "protein": 6.84,
+            "fat": 11.700000000000001,
+            "fiber": 3.24
+          },
+          {
+            "id": "vada",
+            "name": "Vada",
+            "grams": 90,
+            "prob": 0.345,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 218,
+            "carbs": 23.481,
+            "protein": 8.415,
+            "fat": 10.575000000000001,
+            "fiber": 5.076
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 542,
+          "carbs": 70,
+          "protein": 15,
+          "fat": 22,
+          "fiber": 8
+        }
+      }
+    },
+    {
+      "key": "web-paper-dosa",
+      "ms": 3716,
+      "found": 2,
+      "wanted": 3,
+      "dishRecall": 0.6666666666666666,
+      "missed": [
+        "any-chutney"
+      ],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/masala-dosa/2.jpg",
+        "note": "A long plain paper dosa on a plate with small bowls of sambar and chutney.",
+        "dishes": [
+          {
+            "id": "dosa",
+            "grams": 120
+          },
+          {
+            "id": "sambar",
+            "grams": 100
+          },
+          {
+            "id": "coconut-chutney",
+            "grams": 30
+          }
+        ],
+        "grams": [
+          175,
+          325
+        ],
+        "kcal": [
+          245,
+          455
+        ],
+        "carbs": [
+          34,
+          63
+        ],
+        "protein": [
+          7,
+          13
+        ],
+        "fat": [
+          9,
+          17
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": -0.1111111111111111,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "dosa 62%",
+          "masala-dosa 23%",
+          "spring-rolls 11%"
+        ],
+        "items": [
+          {
+            "id": "dosa",
+            "name": "Dosa (plain)",
+            "grams": 110,
+            "prob": 0.622,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 179,
+            "carbs": 30.800000000000004,
+            "protein": 4.29,
+            "fat": 4.07,
+            "fiber": 0.8800000000000001
+          },
+          {
+            "id": "sambar",
+            "name": "Sambar",
+            "grams": 150,
+            "prob": 0.288,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 129,
+            "carbs": 17.655,
+            "protein": 6.495,
+            "fat": 4.0649999999999995,
+            "fiber": 6
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 308,
+          "carbs": 48,
+          "protein": 11,
+          "fat": 8,
+          "fiber": 7
+        }
+      }
+    },
+    {
+      "key": "web-omelette-salad",
+      "ms": 3900,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/omelette/2.jpg",
+        "note": "A flat masala omelette on a white plate; a bowl of chopped salad and a glass of orange juice beside it.",
+        "dishes": [
+          {
+            "id": "omelette",
+            "grams": 150
+          }
+        ],
+        "grams": [
+          105,
+          195
+        ],
+        "kcal": [
+          194,
+          361
+        ],
+        "carbs": [
+          1,
+          2
+        ],
+        "protein": [
+          12,
+          23
+        ],
+        "fat": [
+          16,
+          29
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "omelette 67%",
+          "spring-onion-pancake 14%",
+          "tortilla-espanola 5%"
+        ],
+        "items": [
+          {
+            "id": "omelette",
+            "name": "Omelette",
+            "grams": 140,
+            "prob": 0.666,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 259,
+            "carbs": 1.274,
+            "protein": 16.212,
+            "fat": 21,
+            "fiber": 0
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 259,
+          "carbs": 1,
+          "protein": 16,
+          "fat": 21,
+          "fiber": 0
+        }
+      }
+    },
+    {
+      "key": "web-omelette-fries",
+      "ms": 3793,
+      "found": 1,
+      "wanted": 2,
+      "dishRecall": 0.5,
+      "missed": [
+        "french-fries"
+      ],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/omelette/3.jpg",
+        "note": "Omelette with french fries and a side of lettuce and tomato on an oval plate.",
+        "dishes": [
+          {
+            "id": "omelette",
+            "grams": 150
+          },
+          {
+            "id": "french-fries",
+            "grams": 150
+          },
+          {
+            "id": "green-salad",
+            "grams": 80,
+            "optional": true
+          }
+        ],
+        "grams": [
+          210,
+          390
+        ],
+        "kcal": [
+          431,
+          800
+        ],
+        "carbs": [
+          25,
+          47
+        ],
+        "protein": [
+          15,
+          27
+        ],
+        "fat": [
+          31,
+          57
+        ]
+      },
+      "err": {
+        "kcal": -0.3990719257540603,
+        "carbs": -0.96,
+        "protein": 0,
+        "fat": -0.3225806451612903,
+        "grams": -0.3333333333333333
+      },
+      "got": {
+        "whole": [
+          "omelette 93%",
+          "fish-and-chips 3%",
+          "fried-egg 1%"
+        ],
+        "items": [
+          {
+            "id": "omelette",
+            "name": "Omelette",
+            "grams": 140,
+            "prob": 0.934,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 259,
+            "carbs": 1.274,
+            "protein": 16.212,
+            "fat": 21,
+            "fiber": 0
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 259,
+          "carbs": 1,
+          "protein": 16,
+          "fat": 21,
+          "fiber": 0
+        }
+      }
+    },
+    {
+      "key": "web-pancakes-syrup",
+      "ms": 3807,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/pancakes/2.jpg",
+        "note": "Two thin pancakes with syrup on a floral plate.",
+        "dishes": [
+          {
+            "id": "pancakes",
+            "grams": 200
+          }
+        ],
+        "grams": [
+          140,
+          260
+        ],
+        "kcal": [
+          395,
+          733
+        ],
+        "carbs": [
+          49,
+          92
+        ],
+        "protein": [
+          10,
+          19
+        ],
+        "fat": [
+          17,
+          31
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "pancakes 79%",
+          "french-toast 16%",
+          "crepes 5%"
+        ],
+        "items": [
+          {
+            "id": "pancakes",
+            "name": "Pancakes",
+            "grams": 150,
+            "prob": 0.793,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 423,
+            "carbs": 52.980000000000004,
+            "protein": 11.115,
+            "fat": 18.105,
+            "fiber": 3.1500000000000004
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 423,
+          "carbs": 53,
+          "protein": 11,
+          "fat": 18,
+          "fiber": 3
+        }
+      }
+    },
+    {
+      "key": "web-poha-jalebi",
+      "ms": 3783,
+      "found": 2,
+      "wanted": 2,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/poha/3.jpg",
+        "note": "Poha topped with sev and coriander, two jalebi, tomato and onion slices around the plate.",
+        "dishes": [
+          {
+            "id": "poha",
+            "grams": 200
+          },
+          {
+            "id": "jalebi",
+            "grams": 60
+          }
+        ],
+        "grams": [
+          182,
+          338
+        ],
+        "kcal": [
+          360,
+          668
+        ],
+        "carbs": [
+          56,
+          105
+        ],
+        "protein": [
+          7,
+          13
+        ],
+        "fat": [
+          11,
+          21
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "poha 60%",
+          "fried-rice 17%",
+          "biryani 13%"
+        ],
+        "items": [
+          {
+            "id": "poha",
+            "name": "Poha",
+            "grams": 180,
+            "prob": 0.599,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 272,
+            "carbs": 48.942,
+            "protein": 4.680000000000001,
+            "fat": 5.6160000000000005,
+            "fiber": 0.7200000000000001
+          },
+          {
+            "id": "jalebi",
+            "name": "Jalebi",
+            "grams": 70,
+            "prob": 0.711,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 247,
+            "carbs": 30.442999999999998,
+            "protein": 5.5089999999999995,
+            "fat": 11.599,
+            "fiber": 0.7
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 519,
+          "carbs": 79,
+          "protein": 10,
+          "fat": 17,
+          "fiber": 1
+        }
+      }
+    },
+    {
+      "key": "web-rajma-chawal",
+      "ms": 3492,
+      "found": 2,
+      "wanted": 2,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/rajma-chawal/2.jpg",
+        "note": "Steel plate split between steamed rice and rajma curry, coriander garnish.",
+        "dishes": [
+          {
+            "id": "plain-rice",
+            "grams": 200
+          },
+          {
+            "id": "rajma",
+            "grams": 200
+          }
+        ],
+        "grams": [
+          280,
+          520
+        ],
+        "kcal": [
+          360,
+          669
+        ],
+        "carbs": [
+          62,
+          115
+        ],
+        "protein": [
+          12,
+          22
+        ],
+        "fat": [
+          7,
+          13
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "rajma 73%",
+          "chicken-curry 26%",
+          "dal 1%"
+        ],
+        "items": [
+          {
+            "id": "rajma",
+            "name": "Rajma",
+            "grams": 220,
+            "prob": 0.73,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 282,
+            "carbs": 35.464000000000006,
+            "protein": 12.606000000000002,
+            "fat": 10.802000000000001,
+            "fiber": 10.780000000000001
+          },
+          {
+            "id": "plain-rice",
+            "name": "Steamed rice",
+            "grams": 200,
+            "prob": 0.488,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 258,
+            "carbs": 55.98,
+            "protein": 5.34,
+            "fat": 0.56,
+            "fiber": 0.8
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 540,
+          "carbs": 91,
+          "protein": 18,
+          "fat": 11,
+          "fiber": 12
+        }
+      }
+    },
+    {
+      "key": "web-spaghetti-bolognese",
+      "ms": 841,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/spaghetti/2.jpg",
+        "note": "Spaghetti with minced-meat sauce and peas on a white plate.",
+        "dishes": [
+          {
+            "id": "spaghetti-bolognese",
+            "grams": 300
+          }
+        ],
+        "grams": [
+          210,
+          390
+        ],
+        "kcal": [
+          321,
+          596
+        ],
+        "carbs": [
+          36,
+          67
+        ],
+        "protein": [
+          15,
+          29
+        ],
+        "fat": [
+          13,
+          24
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "spaghetti-bolognese 100%",
+          "chow-mein 0%",
+          "spaghetti-carbonara 0%"
+        ],
+        "items": [
+          {
+            "id": "spaghetti-bolognese",
+            "name": "Spaghetti bolognese",
+            "grams": 320,
+            "prob": 0.996,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 489,
+            "carbs": 54.624,
+            "protein": 23.616,
+            "fat": 19.52,
+            "fiber": 4.800000000000001
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 489,
+          "carbs": 55,
+          "protein": 24,
+          "fat": 20,
+          "fiber": 5
+        }
+      }
+    },
+    {
+      "key": "web-upma-peas",
+      "ms": 4111,
+      "found": 1,
+      "wanted": 1,
+      "dishRecall": 1,
+      "missed": [],
+      "spurious": [],
+      "want": {
+        "file": "eval/data/web/upma/1.jpg",
+        "note": "A moulded mound of rava upma with peas and corn on an orange-striped plate, tea beside it.",
+        "dishes": [
+          {
+            "id": "upma",
+            "grams": 200
+          }
+        ],
+        "grams": [
+          140,
+          260
+        ],
+        "kcal": [
+          205,
+          381
+        ],
+        "carbs": [
+          28,
+          53
+        ],
+        "protein": [
+          5,
+          10
+        ],
+        "fat": [
+          8,
+          14
+        ]
+      },
+      "err": {
+        "kcal": 0,
+        "carbs": 0,
+        "protein": 0,
+        "fat": 0,
+        "grams": 0
+      },
+      "got": {
+        "whole": [
+          "upma 64%",
+          "fried-rice 25%",
+          "crab-cakes 4%"
+        ],
+        "items": [
+          {
+            "id": "upma",
+            "name": "Upma",
+            "grams": 200,
+            "prob": 0.645,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": true,
+            "areaFrac": null,
+            "kcal": 293,
+            "carbs": 40.56,
+            "protein": 7.68,
+            "fat": 11.14,
+            "fiber": 3.6
+          }
+        ],
+        "plate": null,
+        "totals": {
+          "kcal": 293,
+          "carbs": 41,
+          "protein": 8,
+          "fat": 11,
+          "fiber": 4
         }
       }
     }

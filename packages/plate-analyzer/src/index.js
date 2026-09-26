@@ -691,3 +691,4 @@ export async function buildPlate({
     || b.prob - a.prob
     || a.id.localeCompare(b.id));
 }
+export * from './companions.js';

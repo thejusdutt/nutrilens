@@ -28,7 +28,6 @@
     "tomato-chutney": "any-chutney",
     "onion-chutney": "any-chutney",
     "peanut-chutney": "any-chutney",
-
     "lib:idli-plain": "idli",
     "lib:white-rice-cooked": "plain-rice",
     "lib:dal-makhani": "dal",
@@ -725,6 +724,612 @@
       "fat": [
         10,
         32
+      ]
+    },
+    "user-masala-dosa-two-chutneys": {
+      "file": "eval/data/user/masala-dosa-two-chutneys.jpg",
+      "note": "The user's photo (Swasthi's Recipes): one folded masala dosa with yellow potato filling and curry leaves, a bowl of coconut chutney and a bowl of orange tomato-onion chutney.",
+      "dishes": [
+        {
+          "id": "masala-dosa",
+          "grams": 170
+        },
+        {
+          "id": "coconut-chutney",
+          "grams": 45
+        },
+        {
+          "id": "tomato-chutney",
+          "grams": 40
+        }
+      ],
+      "grams": [
+        179,
+        332
+      ],
+      "kcal": [
+        313,
+        581
+      ],
+      "carbs": [
+        37,
+        68
+      ],
+      "protein": [
+        6,
+        11
+      ],
+      "fat": [
+        16,
+        30
+      ]
+    },
+    "web-aloo-paratha-butter": {
+      "file": "eval/data/web/aloo-paratha/2.jpg",
+      "note": "Two stuffed parathas stacked on a floral plate with a pat of butter.",
+      "dishes": [
+        {
+          "id": "paratha",
+          "grams": 220
+        }
+      ],
+      "grams": [
+        154,
+        286
+      ],
+      "kcal": [
+        502,
+        932
+      ],
+      "carbs": [
+        70,
+        130
+      ],
+      "protein": [
+        10,
+        18
+      ],
+      "fat": [
+        20,
+        38
+      ]
+    },
+    "web-parathas-curd": {
+      "file": "eval/data/web/aloo-paratha/3.jpg",
+      "note": "Four whole-wheat parathas with butter on a black plate, two small bowls of curd, onion and green chillies.",
+      "dishes": [
+        {
+          "id": "paratha",
+          "grams": 280
+        },
+        {
+          "id": "yogurt-plain",
+          "grams": 120
+        }
+      ],
+      "grams": [
+        280,
+        520
+      ],
+      "kcal": [
+        693,
+        1287
+      ],
+      "carbs": [
+        93,
+        173
+      ],
+      "protein": [
+        16,
+        29
+      ],
+      "fat": [
+        29,
+        53
+      ]
+    },
+    "web-biryani-tray": {
+      "file": "eval/data/web/biryani/3.jpg",
+      "note": "A plate of biryani on a canteen tray, with a cup of raita and a cola beside it.",
+      "dishes": [
+        {
+          "id": "biryani",
+          "grams": 350
+        }
+      ],
+      "grams": [
+        245,
+        455
+      ],
+      "kcal": [
+        449,
+        834
+      ],
+      "carbs": [
+        49,
+        90
+      ],
+      "protein": [
+        20,
+        36
+      ],
+      "fat": [
+        19,
+        35
+      ]
+    },
+    "web-biryani-egg-curry": {
+      "file": "eval/data/web/biryani/1.jpg",
+      "note": "Biryani with boiled egg and dark kofta on a floral plate, a bowl of chicken curry, cucumber slices.",
+      "dishes": [
+        {
+          "id": "biryani",
+          "grams": 350
+        }
+      ],
+      "grams": [
+        245,
+        455
+      ],
+      "kcal": [
+        449,
+        834
+      ],
+      "carbs": [
+        49,
+        90
+      ],
+      "protein": [
+        20,
+        36
+      ],
+      "fat": [
+        19,
+        35
+      ]
+    },
+    "web-burger-fries-slate": {
+      "file": "eval/data/web/burger-fries/3.jpg",
+      "note": "Cheeseburger with bacon and a pile of fries on a grey slate plate.",
+      "dishes": [
+        {
+          "id": "hamburger",
+          "grams": 250
+        },
+        {
+          "id": "french-fries",
+          "grams": 150
+        }
+      ],
+      "grams": [
+        280,
+        520
+      ],
+      "kcal": [
+        754,
+        1401
+      ],
+      "carbs": [
+        57,
+        106
+      ],
+      "protein": [
+        34,
+        63
+      ],
+      "fat": [
+        43,
+        80
+      ]
+    },
+    "web-burger-fries-big": {
+      "file": "eval/data/web/burger-fries/1.jpg",
+      "note": "A large sesame-bun burger with thick-cut fries on a white plate.",
+      "dishes": [
+        {
+          "id": "hamburger",
+          "grams": 280
+        },
+        {
+          "id": "french-fries",
+          "grams": 200
+        }
+      ],
+      "grams": [
+        336,
+        624
+      ],
+      "kcal": [
+        895,
+        1662
+      ],
+      "carbs": [
+        69,
+        129
+      ],
+      "protein": [
+        39,
+        72
+      ],
+      "fat": [
+        51,
+        95
+      ]
+    },
+    "web-greek-salad": {
+      "file": "eval/data/web/greek-salad/2.jpg",
+      "note": "Greek salad: tomato, cucumber, pepper, olives, feta, onion, oil.",
+      "dishes": [
+        {
+          "id": "greek-salad",
+          "grams": 300
+        }
+      ],
+      "grams": [
+        210,
+        390
+      ],
+      "kcal": [
+        213,
+        395
+      ],
+      "carbs": [
+        10,
+        19
+      ],
+      "protein": [
+        6,
+        11
+      ],
+      "fat": [
+        17,
+        32
+      ]
+    },
+    "web-idli-sambar": {
+      "file": "eval/data/web/idli-sambar/2.jpg",
+      "note": "Five idli on a black plate with a bowl of sambar.",
+      "dishes": [
+        {
+          "id": "idli",
+          "grams": 200
+        },
+        {
+          "id": "sambar",
+          "grams": 150
+        }
+      ],
+      "grams": [
+        245,
+        455
+      ],
+      "kcal": [
+        258,
+        480
+      ],
+      "carbs": [
+        47,
+        87
+      ],
+      "protein": [
+        11,
+        20
+      ],
+      "fat": [
+        3,
+        6
+      ]
+    },
+    "web-dosa-thali-vada": {
+      "file": "eval/data/web/masala-dosa/1.jpg",
+      "note": "Steel tray: masala dosa with potato filling, a medu vada, and three bowls (sambar, red chutney, coconut chutney).",
+      "dishes": [
+        {
+          "id": "masala-dosa",
+          "grams": 200
+        },
+        {
+          "id": "vada",
+          "grams": 70
+        },
+        {
+          "id": "sambar",
+          "grams": 80
+        },
+        {
+          "id": "coconut-chutney",
+          "grams": 40
+        },
+        {
+          "id": "tomato-chutney",
+          "grams": 35,
+          "optional": true
+        }
+      ],
+      "grams": [
+        273,
+        507
+      ],
+      "kcal": [
+        482,
+        896
+      ],
+      "carbs": [
+        59,
+        110
+      ],
+      "protein": [
+        13,
+        25
+      ],
+      "fat": [
+        22,
+        41
+      ]
+    },
+    "web-paper-dosa": {
+      "file": "eval/data/web/masala-dosa/2.jpg",
+      "note": "A long plain paper dosa on a plate with small bowls of sambar and chutney.",
+      "dishes": [
+        {
+          "id": "dosa",
+          "grams": 120
+        },
+        {
+          "id": "sambar",
+          "grams": 100
+        },
+        {
+          "id": "coconut-chutney",
+          "grams": 30
+        }
+      ],
+      "grams": [
+        175,
+        325
+      ],
+      "kcal": [
+        245,
+        455
+      ],
+      "carbs": [
+        34,
+        63
+      ],
+      "protein": [
+        7,
+        13
+      ],
+      "fat": [
+        9,
+        17
+      ]
+    },
+    "web-omelette-salad": {
+      "file": "eval/data/web/omelette/2.jpg",
+      "note": "A flat masala omelette on a white plate; a bowl of chopped salad and a glass of orange juice beside it.",
+      "dishes": [
+        {
+          "id": "omelette",
+          "grams": 150
+        }
+      ],
+      "grams": [
+        105,
+        195
+      ],
+      "kcal": [
+        194,
+        361
+      ],
+      "carbs": [
+        1,
+        2
+      ],
+      "protein": [
+        12,
+        23
+      ],
+      "fat": [
+        16,
+        29
+      ]
+    },
+    "web-omelette-fries": {
+      "file": "eval/data/web/omelette/3.jpg",
+      "note": "Omelette with french fries and a side of lettuce and tomato on an oval plate.",
+      "dishes": [
+        {
+          "id": "omelette",
+          "grams": 150
+        },
+        {
+          "id": "french-fries",
+          "grams": 150
+        },
+        {
+          "id": "green-salad",
+          "grams": 80,
+          "optional": true
+        }
+      ],
+      "grams": [
+        210,
+        390
+      ],
+      "kcal": [
+        431,
+        800
+      ],
+      "carbs": [
+        25,
+        47
+      ],
+      "protein": [
+        15,
+        27
+      ],
+      "fat": [
+        31,
+        57
+      ]
+    },
+    "web-pancakes-syrup": {
+      "file": "eval/data/web/pancakes/2.jpg",
+      "note": "Two thin pancakes with syrup on a floral plate.",
+      "dishes": [
+        {
+          "id": "pancakes",
+          "grams": 200
+        }
+      ],
+      "grams": [
+        140,
+        260
+      ],
+      "kcal": [
+        395,
+        733
+      ],
+      "carbs": [
+        49,
+        92
+      ],
+      "protein": [
+        10,
+        19
+      ],
+      "fat": [
+        17,
+        31
+      ]
+    },
+    "web-poha-jalebi": {
+      "file": "eval/data/web/poha/3.jpg",
+      "note": "Poha topped with sev and coriander, two jalebi, tomato and onion slices around the plate.",
+      "dishes": [
+        {
+          "id": "poha",
+          "grams": 200
+        },
+        {
+          "id": "jalebi",
+          "grams": 60
+        }
+      ],
+      "grams": [
+        182,
+        338
+      ],
+      "kcal": [
+        360,
+        668
+      ],
+      "carbs": [
+        56,
+        105
+      ],
+      "protein": [
+        7,
+        13
+      ],
+      "fat": [
+        11,
+        21
+      ]
+    },
+    "web-rajma-chawal": {
+      "file": "eval/data/web/rajma-chawal/2.jpg",
+      "note": "Steel plate split between steamed rice and rajma curry, coriander garnish.",
+      "dishes": [
+        {
+          "id": "plain-rice",
+          "grams": 200
+        },
+        {
+          "id": "rajma",
+          "grams": 200
+        }
+      ],
+      "grams": [
+        280,
+        520
+      ],
+      "kcal": [
+        360,
+        669
+      ],
+      "carbs": [
+        62,
+        115
+      ],
+      "protein": [
+        12,
+        22
+      ],
+      "fat": [
+        7,
+        13
+      ]
+    },
+    "web-spaghetti-bolognese": {
+      "file": "eval/data/web/spaghetti/2.jpg",
+      "note": "Spaghetti with minced-meat sauce and peas on a white plate.",
+      "dishes": [
+        {
+          "id": "spaghetti-bolognese",
+          "grams": 300
+        }
+      ],
+      "grams": [
+        210,
+        390
+      ],
+      "kcal": [
+        321,
+        596
+      ],
+      "carbs": [
+        36,
+        67
+      ],
+      "protein": [
+        15,
+        29
+      ],
+      "fat": [
+        13,
+        24
+      ]
+    },
+    "web-upma-peas": {
+      "file": "eval/data/web/upma/1.jpg",
+      "note": "A moulded mound of rava upma with peas and corn on an orange-striped plate, tea beside it.",
+      "dishes": [
+        {
+          "id": "upma",
+          "grams": 200
+        }
+      ],
+      "grams": [
+        140,
+        260
+      ],
+      "kcal": [
+        205,
+        381
+      ],
+      "carbs": [
+        28,
+        53
+      ],
+      "protein": [
+        5,
+        10
+      ],
+      "fat": [
+        8,
+        14
       ]
     }
   }
