@@ -25,42 +25,42 @@
   },
   "summary": {
     "images": 39,
-    "dishRecall": 74.57264957264957,
+    "dishRecall": 80.55555555555556,
     "spurious": 6,
     "spuriousImages": 6,
-    "medianMs": 4139,
+    "medianMs": 13064,
     "fields": {
       "kcal": {
-        "meanAbs": 10.523558854832055,
-        "inBand": 29,
-        "within25": 32
+        "meanAbs": 9.13774339419061,
+        "inBand": 32,
+        "within25": 33
       },
       "carbs": {
-        "meanAbs": 14.829814666636903,
-        "inBand": 27,
-        "within25": 30
+        "meanAbs": 10.953034039856277,
+        "inBand": 31,
+        "within25": 32
       },
       "protein": {
-        "meanAbs": 12.098133348133349,
-        "inBand": 29,
+        "meanAbs": 12.062520812520813,
+        "inBand": 30,
         "within25": 32
       },
       "fat": {
-        "meanAbs": 10.518021718636781,
-        "inBand": 29,
-        "within25": 32
+        "meanAbs": 9.690891859248858,
+        "inBand": 30,
+        "within25": 33
       },
       "grams": {
-        "meanAbs": 11.258054216845427,
-        "inBand": 27,
-        "within25": 32
+        "meanAbs": 9.833357119071405,
+        "inBand": 31,
+        "within25": 33
       }
     }
   },
   "rows": [
     {
       "key": "dosa-thali",
-      "ms": 7887,
+      "ms": 35457,
       "found": 2,
       "wanted": 3,
       "dishRecall": 0.6666666666666666,
@@ -180,13 +180,11 @@
     },
     {
       "key": "masala-dosa",
-      "ms": 6663,
-      "found": 2,
+      "ms": 38920,
+      "found": 3,
       "wanted": 3,
-      "dishRecall": 0.6666666666666666,
-      "missed": [
-        "sambar"
-      ],
+      "dishRecall": 1,
+      "missed": [],
       "spurious": [],
       "want": {
         "file": "eval/data/extended/dosa/130.jpg",
@@ -228,10 +226,10 @@
       },
       "err": {
         "kcal": 0,
-        "carbs": -0.02,
-        "protein": -0.125,
+        "carbs": 0,
+        "protein": 0,
         "fat": 0,
-        "grams": -0.10416666666666667
+        "grams": 0
       },
       "got": {
         "whole": [
@@ -269,27 +267,40 @@
             "protein": 0.5844999999999999,
             "fat": 2.4675,
             "fiber": 0.6895
+          },
+          {
+            "id": "sambar",
+            "name": "Sambar",
+            "grams": 150,
+            "prob": 0.364,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 129,
+            "carbs": 17.655,
+            "protein": 6.495,
+            "fat": 4.0649999999999995,
+            "fiber": 6
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 358,
-          "carbs": 49,
-          "protein": 7,
-          "fat": 14,
-          "fiber": 4
+          "kcal": 487,
+          "carbs": 67,
+          "protein": 14,
+          "fat": 18,
+          "fiber": 10
         }
       }
     },
     {
       "key": "masala-dosa-cropped-bowls",
-      "ms": 6189,
-      "found": 1,
+      "ms": 37340,
+      "found": 2,
       "wanted": 2,
-      "dishRecall": 0.5,
-      "missed": [
-        "any-chutney"
-      ],
+      "dishRecall": 1,
+      "missed": [],
       "spurious": [],
       "want": {
         "file": "eval/data/user/masala-dosa-two-chutneys.png",
@@ -331,8 +342,8 @@
         "source": "User-supplied photo, not fetched by eval:fetch. eval/data/ is gitignored, so this case is skipped on a fresh clone until the file is put back at that path."
       },
       "err": {
-        "kcal": -0.01818181818181818,
-        "carbs": -0.020833333333333332,
+        "kcal": 0,
+        "carbs": 0,
         "protein": 0,
         "fat": 0,
         "grams": 0
@@ -358,27 +369,40 @@
             "protein": 6.84,
             "fat": 11.700000000000001,
             "fiber": 3.24
+          },
+          {
+            "id": "peanut-chutney",
+            "name": "Peanut chutney",
+            "grams": 35,
+            "prob": 0.274,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 88,
+            "carbs": 2.5269999999999997,
+            "protein": 3.4615,
+            "fat": 7.8365,
+            "fiber": 1.204
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 324,
-          "carbs": 47,
-          "protein": 7,
-          "fat": 12,
-          "fiber": 3
+          "kcal": 412,
+          "carbs": 49,
+          "protein": 10,
+          "fat": 20,
+          "fiber": 4
         }
       }
     },
     {
       "key": "idli-vada-thali",
-      "ms": 5042,
-      "found": 3,
+      "ms": 36756,
+      "found": 4,
       "wanted": 4,
-      "dishRecall": 0.75,
-      "missed": [
-        "any-chutney"
-      ],
+      "dishRecall": 1,
+      "missed": [],
       "spurious": [],
       "want": {
         "file": "eval/data/extended/idli/10.jpg",
@@ -423,7 +447,7 @@
         ]
       },
       "err": {
-        "kcal": -0.12321428571428572,
+        "kcal": 0,
         "carbs": 0,
         "protein": 0,
         "fat": 0,
@@ -480,21 +504,36 @@
             "protein": 6.495,
             "fat": 4.0649999999999995,
             "fiber": 6
+          },
+          {
+            "id": "coconut-chutney",
+            "name": "Coconut chutney",
+            "grams": 40,
+            "prob": 0.456,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 91,
+            "carbs": 4.628,
+            "protein": 1.4000000000000001,
+            "fat": 7.844,
+            "fiber": 2.34
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 491,
-          "carbs": 71,
-          "protein": 20,
-          "fat": 15,
-          "fiber": 14
+          "kcal": 582,
+          "carbs": 75,
+          "protein": 22,
+          "fat": 23,
+          "fiber": 16
         }
       }
     },
     {
       "key": "sliders-watermelon",
-      "ms": 1024,
+      "ms": 1646,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -581,7 +620,7 @@
     },
     {
       "key": "fried-rice-bowl",
-      "ms": 1486,
+      "ms": 566,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -659,7 +698,7 @@
     },
     {
       "key": "dal-bowl",
-      "ms": 5401,
+      "ms": 10048,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -737,7 +776,7 @@
     },
     {
       "key": "north-indian-thali",
-      "ms": 962,
+      "ms": 710,
       "found": 0,
       "wanted": 2,
       "dishRecall": 0,
@@ -840,7 +879,7 @@
     },
     {
       "key": "pizza-detroit",
-      "ms": 766,
+      "ms": 737,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -919,7 +958,7 @@
     },
     {
       "key": "paratha-pan",
-      "ms": 880,
+      "ms": 755,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -1001,7 +1040,7 @@
     },
     {
       "key": "samosa-chutney",
-      "ms": 3933,
+      "ms": 4364,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -1117,7 +1156,7 @@
     },
     {
       "key": "biryani-pan",
-      "ms": 4840,
+      "ms": 30204,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -1200,7 +1239,7 @@
     },
     {
       "key": "collage-pizza-salad-fries",
-      "ms": 927,
+      "ms": 2363,
       "found": 1,
       "wanted": 3,
       "dishRecall": 0.3333333333333333,
@@ -1289,7 +1328,7 @@
     },
     {
       "key": "caesar-plate",
-      "ms": 810,
+      "ms": 2632,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1367,7 +1406,7 @@
     },
     {
       "key": "pancakes-berries",
-      "ms": 4618,
+      "ms": 13064,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1465,7 +1504,7 @@
     },
     {
       "key": "enchiladas-queso",
-      "ms": 846,
+      "ms": 2662,
       "found": 0,
       "wanted": 1,
       "dishRecall": 0,
@@ -1547,7 +1586,7 @@
     },
     {
       "key": "naan-closeup",
-      "ms": 1005,
+      "ms": 2705,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1625,7 +1664,7 @@
     },
     {
       "key": "momos-chutney",
-      "ms": 5002,
+      "ms": 34468,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1708,7 +1747,7 @@
     },
     {
       "key": "tortilla-espanola",
-      "ms": 999,
+      "ms": 2499,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -1786,13 +1825,11 @@
     },
     {
       "key": "kungpao-rice",
-      "ms": 4841,
-      "found": 1,
+      "ms": 34010,
+      "found": 2,
       "wanted": 2,
-      "dishRecall": 0.5,
-      "missed": [
-        "plain-rice"
-      ],
+      "dishRecall": 1,
+      "missed": [],
       "spurious": [],
       "want": {
         "file": "eval/data/cuisine/chinese/kung-pao-chicken/0.jpg",
@@ -1830,10 +1867,10 @@
       },
       "err": {
         "kcal": 0,
-        "carbs": -0.5111111111111111,
-        "protein": 0.022222222222222223,
+        "carbs": 0,
+        "protein": 0.13333333333333333,
         "fat": 0,
-        "grams": -0.10714285714285714
+        "grams": 0
       },
       "got": {
         "whole": [
@@ -1856,21 +1893,36 @@
             "protein": 45.775,
             "fat": 26.200000000000003,
             "fiber": 3.4499999999999997
+          },
+          {
+            "id": "plain-rice",
+            "name": "Steamed rice",
+            "grams": 200,
+            "prob": 0.868,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 258,
+            "carbs": 55.98,
+            "protein": 5.34,
+            "fat": 0.56,
+            "fiber": 0.8
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 508,
-          "carbs": 22,
-          "protein": 46,
-          "fat": 26,
-          "fiber": 3
+          "kcal": 766,
+          "carbs": 78,
+          "protein": 51,
+          "fat": 27,
+          "fiber": 4
         }
       }
     },
     {
       "key": "user-masala-dosa-two-chutneys",
-      "ms": 4605,
+      "ms": 36064,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -1971,7 +2023,7 @@
     },
     {
       "key": "web-aloo-paratha-butter",
-      "ms": 4192,
+      "ms": 33676,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -2049,7 +2101,7 @@
     },
     {
       "key": "web-parathas-curd",
-      "ms": 4046,
+      "ms": 26374,
       "found": 1,
       "wanted": 2,
       "dishRecall": 0.5,
@@ -2133,7 +2185,7 @@
     },
     {
       "key": "web-biryani-tray",
-      "ms": 841,
+      "ms": 996,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -2211,7 +2263,7 @@
     },
     {
       "key": "web-biryani-egg-curry",
-      "ms": 822,
+      "ms": 1055,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -2289,7 +2341,7 @@
     },
     {
       "key": "web-burger-fries-slate",
-      "ms": 4036,
+      "ms": 10360,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -2386,7 +2438,7 @@
     },
     {
       "key": "web-burger-fries-big",
-      "ms": 4117,
+      "ms": 10469,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -2483,7 +2535,7 @@
     },
     {
       "key": "web-greek-salad",
-      "ms": 866,
+      "ms": 764,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -2561,7 +2613,7 @@
     },
     {
       "key": "web-idli-sambar",
-      "ms": 4033,
+      "ms": 29774,
       "found": 1,
       "wanted": 2,
       "dishRecall": 0.5,
@@ -2645,13 +2697,12 @@
     },
     {
       "key": "web-dosa-thali-vada",
-      "ms": 4318,
-      "found": 2,
+      "ms": 35063,
+      "found": 3,
       "wanted": 4,
-      "dishRecall": 0.5,
+      "dishRecall": 0.75,
       "missed": [
-        "sambar",
-        "any-chutney"
+        "sambar"
       ],
       "spurious": [],
       "want": {
@@ -2706,7 +2757,7 @@
         "carbs": 0,
         "protein": 0,
         "fat": 0,
-        "grams": -0.01098901098901099
+        "grams": 0
       },
       "got": {
         "whole": [
@@ -2744,21 +2795,36 @@
             "protein": 8.415,
             "fat": 10.575000000000001,
             "fiber": 5.076
+          },
+          {
+            "id": "coconut-chutney",
+            "name": "Coconut chutney",
+            "grams": 40,
+            "prob": 0.267,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 91,
+            "carbs": 4.628,
+            "protein": 1.4000000000000001,
+            "fat": 7.844,
+            "fiber": 2.34
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 542,
-          "carbs": 70,
-          "protein": 15,
-          "fat": 22,
-          "fiber": 8
+          "kcal": 633,
+          "carbs": 75,
+          "protein": 17,
+          "fat": 30,
+          "fiber": 11
         }
       }
     },
     {
       "key": "web-paper-dosa",
-      "ms": 4333,
+      "ms": 33506,
       "found": 2,
       "wanted": 3,
       "dishRecall": 0.6666666666666666,
@@ -2861,7 +2927,7 @@
     },
     {
       "key": "web-omelette-salad",
-      "ms": 4844,
+      "ms": 33404,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -2939,13 +3005,11 @@
     },
     {
       "key": "web-omelette-fries",
-      "ms": 4148,
-      "found": 1,
+      "ms": 14251,
+      "found": 2,
       "wanted": 2,
-      "dishRecall": 0.5,
-      "missed": [
-        "french-fries"
-      ],
+      "dishRecall": 1,
+      "missed": [],
       "spurious": [],
       "want": {
         "file": "eval/data/web/omelette/3.jpg",
@@ -2987,11 +3051,11 @@
         ]
       },
       "err": {
-        "kcal": -0.3990719257540603,
-        "carbs": -0.96,
+        "kcal": 0,
+        "carbs": 0,
         "protein": 0,
-        "fat": -0.3225806451612903,
-        "grams": -0.3333333333333333
+        "fat": 0,
+        "grams": 0
       },
       "got": {
         "whole": [
@@ -3014,21 +3078,51 @@
             "protein": 16.212,
             "fat": 21,
             "fiber": 0
+          },
+          {
+            "id": "french-fries",
+            "name": "French fries",
+            "grams": 130,
+            "prob": 0.98,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 293,
+            "carbs": 30.199,
+            "protein": 3.25,
+            "fat": 18.291,
+            "fiber": 2.3400000000000003
+          },
+          {
+            "id": "green-salad",
+            "name": "Green salad",
+            "grams": 120,
+            "prob": 0.294,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 28,
+            "carbs": 4.9079999999999995,
+            "protein": 1.428,
+            "fat": 0.22799999999999998,
+            "fiber": 1.56
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 259,
-          "carbs": 1,
-          "protein": 16,
-          "fat": 21,
-          "fiber": 0
+          "kcal": 580,
+          "carbs": 36,
+          "protein": 21,
+          "fat": 40,
+          "fiber": 4
         }
       }
     },
     {
       "key": "web-pancakes-syrup",
-      "ms": 4364,
+      "ms": 22729,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -3106,7 +3200,7 @@
     },
     {
       "key": "web-poha-jalebi",
-      "ms": 4290,
+      "ms": 12920,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -3203,7 +3297,7 @@
     },
     {
       "key": "web-rajma-chawal",
-      "ms": 4142,
+      "ms": 32407,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -3300,7 +3394,7 @@
     },
     {
       "key": "web-spaghetti-bolognese",
-      "ms": 1007,
+      "ms": 2616,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -3378,7 +3472,7 @@
     },
     {
       "key": "web-upma-peas",
-      "ms": 4139,
+      "ms": 34337,
       "found": 1,
       "wanted": 1,
       "dishRecall": 1,
@@ -3456,7 +3550,7 @@
     },
     {
       "key": "user-masala-dosa-original",
-      "ms": 4398,
+      "ms": 33354,
       "found": 2,
       "wanted": 2,
       "dishRecall": 1,
@@ -3543,15 +3637,30 @@
             "protein": 3.4615,
             "fat": 7.8365,
             "fiber": 1.204
+          },
+          {
+            "id": "coconut-chutney",
+            "name": "Coconut chutney",
+            "grams": 40,
+            "prob": 0.281,
+            "method": "serving-prior",
+            "sizeFactor": 1,
+            "single": false,
+            "areaFrac": null,
+            "kcal": 91,
+            "carbs": 4.628,
+            "protein": 1.4000000000000001,
+            "fat": 7.844,
+            "fiber": 2.34
           }
         ],
         "plate": null,
         "totals": {
-          "kcal": 412,
-          "carbs": 49,
-          "protein": 10,
-          "fat": 20,
-          "fiber": 4
+          "kcal": 503,
+          "carbs": 54,
+          "protein": 12,
+          "fat": 27,
+          "fiber": 7
         }
       }
     }

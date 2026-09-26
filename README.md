@@ -26,8 +26,10 @@ published numbers are always the ones the current code produces.
 
 A photo is read as **one main dish**, named from the whole frame. Then, if that
 dish has usual sides (sambar and chutney with idli or dosa, fries with a burger,
-rice with rajma), the four quadrants of the photo are checked for them, and
-only for them (`packages/plate-analyzer/src/companions.js`). Chutneys are
+rice with rajma), the photo is checked for them, and only for them
+(`packages/plate-analyzer/src/companions.js`), in two passes shown as they
+finish: the four quadrants first, then the eight outer tiles of a 3×3 grid for
+bowls the quadrant lines cut in half, at a stricter cut-off. Chutneys are
 counted by colour, so a plate with a white and an orange bowl logs two, and one
 bowl read two ways logs one. The main dish is on screen in about a second;
 sides join it when found. Splitting the whole plate into separate items is
@@ -35,26 +37,30 @@ still a button, not the default.
 
 | 39 photos | main dish + sides (default) | main dish only |
 |---|---|---|
-| Calories inside the accepted band | **29 / 39** | 20 / 39 |
-| Mean calorie error | **10.5%** | 16.1% |
-| Dishes named correctly | **74.6%**¹ | 60.3% |
+| Calories inside the accepted band | **32 / 39** | 20 / 39 |
+| Mean calorie error | **9.1%** | 16.1% |
+| Dishes named correctly | **80.6%**¹ | 60.3% |
 | **Dishes invented that were not there** | **6** | 6 |
-| **Same answer when the file is re-saved** | **35 / 39** | |
-| Median seconds per photo (Node, laptop CPU) | 4.1 | 1.1 |
+| **Same answer when the file is re-saved** | **34 / 39** | |
 
-The side-dish pass invents nothing: all 6 invented dishes are the main dish
-itself being misnamed, and they are the same 6 with the pass on or off. It is
-also slower — 4 extra classifications when the main dish has a side list — and
-the app hides that by showing the main dish first. In Chrome on a laptop
-(`npm run test:sides`): the main dish at 0.8–1.1 s, sides added by 3.8–5.3 s.
+The side-dish passes invent nothing: all 6 invented dishes are the main dish
+itself being misnamed, and they are the same 6 with the passes on or off. They
+cost time — up to 12 extra classifications when the main dish has a side list —
+and the app hides that by showing the main dish first and each pass as it
+finishes. In Chrome on a laptop (`npm run test:sides`): the main dish at 0.7–0.8 s, quadrant sides at about 4–5 s (measured before the tile pass was added), and both passes done by about 10 s. Node
+benchmark times move too much with machine load to quote (the same code has
+measured 4 s and 13 s median).
 
-Its cut-off (0.2) is set on these same photos, so the margin is what they show
-and no more. What was tried and dropped, each for a measured reason:
+Both cut-offs (0.2 for quadrants, 0.25 for tiles) are set on these same
+photos, so the margin is what they show and no more. What was tried and
+dropped, each for a measured reason:
 
-- **Cut-off 0.12**: a chutney at 0.127 came and went when one photo was re-saved.
-- **Eight one-third tiles instead of quadrants**: found 22 of 31 real sides
-  against 14, but six photos changed their sides between re-encodings, and on
-  one, three of five copies logged a tomato chutney that is not there.
+- **Quadrant cut-off 0.12**: a chutney at 0.127 came and went when one photo
+  was re-saved.
+- **Tiles alone at 0.2**: six photos changed their sides between re-encodings,
+  and on one, three of five copies logged a tomato chutney that is not there
+  (the sambar bowl, 0.20–0.23). As a second pass at 0.25, replayed over all 39
+  photos × 5 re-encodings, they add 8 real sides and nothing that is not there.
 - **Adding up a colour's chutney scores**: kept an orange bowl the model splits
   between peanut and tomato, but turned a white coconut bowl orange elsewhere.
 
@@ -79,17 +85,17 @@ answer by up to 67%, because portions were scaled by a segmentation mask that
 swung 6.5× under that noise. Portions are now the food's own typical serving and
 nothing is segmented on the default path. `npm run test:stability` re-encodes
 every benchmark photo five ways and fails the build if a portion moves, or if
-more photos change their main dish (known: 3) or their side dishes (known: 1)
+more photos change their main dish (known: 3) or their side dishes (known: 2)
 than today.
 
-35 of the 39 give an identical answer every time, side dishes included. Three
+34 of the 39 give an identical answer every time, side dishes included. Three
 change *main dish name* — `biryani`/`poha`,
 `kung-pao-chicken`/`general-tso-chicken`, and `caesar-salad`/`beef-carpaccio` on
-a collage — near ties in the classifier, where noise picks the winner. One, the
-user's masala dosa, loses its orange chutney on one of five copies: the crop
-splits the bowl between peanut and tomato chutney, and the JPEG q75 copy puts
-peanut under the cut-off. These are real remaining defects, pinned by the gate
-so they cannot grow. See
+a collage — near ties in the classifier, where noise picks the winner. Two
+change a *side dish*, and in both the side is really on the plate: the user's
+masala dosa gets its coconut chutney on 2 of 5 copies, and a paper dosa gets its
+chutney on 1 of 5, both close to the tile pass's cut-off. These are real
+remaining defects, pinned by the gate so they cannot grow. See
 [eval/results/VISION_BENCH.md](eval/results/VISION_BENCH.md).
 
 Benchmark time per photo in Node moves a lot with machine load (the same code has measured 3.9 s and 11.8 s median); the in-browser numbers above are the ones a user sees.

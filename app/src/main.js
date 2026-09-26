@@ -7,7 +7,7 @@ import { toRawImage, crop, ANALYSIS_SIDE } from '@nutrilens/image-preprocess';
 import { overlayMask, outlineMask } from '@nutrilens/food-segmentation';
 import { PortionEstimator, maskAreaInsideEllipse, MIN_PLATE_CONFIDENCE } from '@nutrilens/portion-estimator';
 import { NutritionEngine } from '@nutrilens/nutrition-engine';
-import { buildPlate, regionCrop, findCompanions, GOES_WITH } from '@nutrilens/plate-analyzer';
+import { buildPlate, regionCrop, findCompanions, findMissedCompanions, GOES_WITH } from '@nutrilens/plate-analyzer';
 import { renderPlate, openAddDish, portionControl, REGION_COLORS } from './plate-ui.js';
 import { makeEntry, normalizeEntry, toCSV } from '@nutrilens/diary';
 import { saveMeal, listMeals, dateKey, exportBackup, restoreBackup } from './db.js';
@@ -312,8 +312,9 @@ async function startAnalysis(blob) {
 
 /**
  * Look for the main dish's usual sides (sambar with idli, fries with a burger)
- * in the four quadrants of the photo, and turn the result into a plate if any
- * are there. The numbers behind it are in
+ * and turn the result into a plate if any are there. Two passes, shown as
+ * they finish: the four quadrants first, then smaller edge tiles for bowls the
+ * quadrant lines cut in half. The numbers behind both are in
  * packages/plate-analyzer/src/companions.js and eval/results/VISION_BENCH.md.
  */
 async function addSideDishes(run) {
@@ -322,25 +323,44 @@ async function addSideDishes(run) {
   const status = $('sides-status');
   status.textContent = 'Checking for side dishes…';
   status.hidden = false;
-  try {
-    const found = await findCompanions({
-      image: state.raw,
-      mainId,
-      classify: async (img) => (await rpcImage({ type: 'recognize', image: rawToMsg(img) })).result,
-      foodById: (id) => engine.food(id),
-    });
-    // The user may have moved on: a new photo, another dish, or a split plate.
-    if (run !== analysisRun || state.selectedId !== mainId || state.meal || !found.length) return;
-    const main = {
-      id: mainId, grams: currentGrams(), prob: state.candidates[0]?.prob ?? 1,
-      candidates: state.candidates.slice(0, 5), region: null,
-    };
+  const args = {
+    image: state.raw,
+    mainId,
+    classify: async (img) => (await rpcImage({ type: 'recognize', image: rawToMsg(img) })).result,
+    foodById: (id) => engine.food(id),
+  };
+  // The user may have moved on: a new photo, another dish, or saved.
+  const stillHere = () => run === analysisRun && state.selectedId === mainId;
+  let meal = null; // the plate this function built, if any
+  const add = (found) => {
+    if (!found.length) return;
     const sides = found.map((c) => ({
       id: c.id, grams: c.grams, prob: c.prob, region: null, companion: true,
       candidates: [{ id: c.id, name: engine.food(c.id).name, prob: c.prob }],
     }));
-    state.meal = { items: [main, ...sides] };
+    if (!meal) {
+      if (state.meal) return; // the user split the plate themselves
+      meal = {
+        items: [{
+          id: mainId, grams: currentGrams(), prob: state.candidates[0]?.prob ?? 1,
+          candidates: state.candidates.slice(0, 5), region: null,
+        }, ...sides],
+      };
+      state.meal = meal;
+    } else {
+      if (state.meal !== meal) return; // cleared or replaced since the first pass
+      meal.items.push(...sides);
+    }
     showMealCard();
+  };
+  try {
+    const first = await findCompanions(args);
+    if (!stillHere()) return;
+    add(first);
+    status.textContent = 'Looking closer at the edges of the plate…';
+    const more = await findMissedCompanions({ ...args, found: first });
+    if (!stillHere()) return;
+    add(more);
   } catch (err) {
     console.warn('side-dish check failed; keeping the single dish', err);
   } finally {

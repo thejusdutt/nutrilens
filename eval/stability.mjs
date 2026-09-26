@@ -139,11 +139,14 @@ const KNOWN_UNSTABLE_NAMES = 3;
 // same rule on their own counter: a side that comes and goes when the file is
 // re-saved was a marginal call. Pinned at what the shipped layout gives, so a
 // change that makes sides less steady fails here rather than in the diary.
-// The one known today: user-masala-dosa-original, whose orange chutney bowl the
-// crop splits between peanut (0.28) and tomato (0.11), and the JPEG q75 copy
-// drops peanut under 0.2. Summing a colour's chutneys fixed it and broke a
-// coconut bowl elsewhere (see companions.js), so it is recorded, not a pass.
-const KNOWN_UNSTABLE_SIDES = 1;
+// The two known today are both real chutneys near the second (tile) pass's
+// 0.25 cut-off, found on some copies of the file and not others — never a
+// side that is not on the plate:
+//   user-masala-dosa-original  coconut chutney, found on 2 of 5 copies
+//   web-paper-dosa             a chutney, found on the JPEG q75 copy only
+// The tile pass that causes them adds 8 real sides over the set (see
+// companions.js); these are recorded, not counted as a pass.
+const KNOWN_UNSTABLE_SIDES = 2;
 const stableNamed = rows.filter((r) => r.nameChanges === 0);
 const portionSpread = mean(stableNamed.map((r) => r.spread));
 

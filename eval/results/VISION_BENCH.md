@@ -13,14 +13,14 @@ overfitting to these 39 photos.
 | metric | value |
 |---|---|
 | images | 39 |
-| dish recall | 74.6% |
+| dish recall | 80.6% |
 | spurious dishes | 6 (6 images affected) |
-| kcal mean abs error | 10.5% (in band 29/39, within 25% 32/39) |
-| carbs mean abs error | 14.8% (in band 27/39, within 25% 30/39) |
-| protein mean abs error | 12.1% (in band 29/39, within 25% 32/39) |
-| fat mean abs error | 10.5% (in band 29/39, within 25% 32/39) |
-| grams mean abs error | 11.3% (in band 27/39, within 25% 32/39) |
-| median time per photo | 4.1 s |
+| kcal mean abs error | 9.1% (in band 32/39, within 25% 33/39) |
+| carbs mean abs error | 11.0% (in band 31/39, within 25% 32/39) |
+| protein mean abs error | 12.1% (in band 30/39, within 25% 32/39) |
+| fat mean abs error | 9.7% (in band 30/39, within 25% 33/39) |
+| grams mean abs error | 9.8% (in band 31/39, within 25% 33/39) |
+| median time per photo | 13.1 s |
 
 Every row but the last is deterministic — the same photo gives the same
 dishes, the same grams and the same calories on every run. The time is only
@@ -32,9 +32,9 @@ laptop the median ranged from 11 s to 32 s a photo.
 | photo | reported | accepted band | dishes found | what it logged |
 |---|---|---|---|---|
 | dosa-thali | 544 kcal | 320–560 | 2/3 | Masala dosa 180 g + Sambar 150 g + Coconut chutney 40 g |
-| masala-dosa | 358 kcal | 340–660 | 2/3 | Masala dosa 180 g + Tomato chutney 35 g |
-| masala-dosa-cropped-bowls | 324 kcal | 330–520 | 1/2 | Masala dosa 180 g |
-| idli-vada-thali | 491 kcal | 560–980 | 3/4 | Vada 90 g + Idli 120 g + Sambar 150 g |
+| masala-dosa | 487 kcal | 340–660 | 3/3 | Masala dosa 180 g + Tomato chutney 35 g + Sambar 150 g |
+| masala-dosa-cropped-bowls | 412 kcal | 330–520 | 2/2 | Masala dosa 180 g + Peanut chutney 35 g |
+| idli-vada-thali | 582 kcal | 560–980 | 4/4 | Vada 90 g + Idli 120 g + Sambar 150 g + Coconut chutney 40 g |
 | sliders-watermelon | 277 kcal | 520–950 | 0/1 | Crab cakes 120 g |
 | fried-rice-bowl | 522 kcal | 350–780 | 1/1 | Fried rice 300 g |
 | dal-bowl | 290 kcal | 230–500 | 1/1 | Dal 200 g |
@@ -50,7 +50,7 @@ laptop the median ranged from 11 s to 32 s a photo.
 | naan-closeup | 311 kcal | 220–560 | 1/1 | Naan 100 g |
 | momos-chutney | 357 kcal | 230–620 | 1/1 | Dumplings 180 g |
 | tortilla-espanola | 344 kcal | 280–720 | 1/1 | Tortilla española 200 g |
-| kungpao-rice | 508 kcal | 400–800 | 1/2 | Kung pao chicken 250 g |
+| kungpao-rice | 766 kcal | 400–800 | 2/2 | Kung pao chicken 250 g + Steamed rice 200 g |
 | user-masala-dosa-two-chutneys | 412 kcal | 313–581 | 2/2 | Masala dosa 180 g + Peanut chutney 35 g |
 | web-aloo-paratha-butter | 261 kcal | 502–932 | 1/1 | Paratha 80 g |
 | web-parathas-curd | 261 kcal | 693–1287 | 1/2 | Paratha 80 g |
@@ -60,16 +60,16 @@ laptop the median ranged from 11 s to 32 s a photo.
 | web-burger-fries-big | 974 kcal | 895–1662 | 2/2 | Hamburger 230 g + French fries 130 g |
 | web-greek-salad | 182 kcal | 213–395 | 1/1 | Greek salad 180 g |
 | web-idli-sambar | 144 kcal | 258–480 | 1/2 | Idli 120 g |
-| web-dosa-thali-vada | 542 kcal | 482–896 | 2/4 | Masala dosa 180 g + Vada 90 g |
+| web-dosa-thali-vada | 633 kcal | 482–896 | 3/4 | Masala dosa 180 g + Vada 90 g + Coconut chutney 40 g |
 | web-paper-dosa | 308 kcal | 245–455 | 2/3 | Dosa (plain) 110 g + Sambar 150 g |
 | web-omelette-salad | 259 kcal | 194–361 | 1/1 | Omelette 140 g |
-| web-omelette-fries | 259 kcal | 431–800 | 1/2 | Omelette 140 g |
+| web-omelette-fries | 580 kcal | 431–800 | 2/2 | Omelette 140 g + French fries 130 g + Green salad 120 g |
 | web-pancakes-syrup | 423 kcal | 395–733 | 1/1 | Pancakes 150 g |
 | web-poha-jalebi | 519 kcal | 360–668 | 2/2 | Poha 180 g + Jalebi 70 g |
 | web-rajma-chawal | 540 kcal | 360–669 | 2/2 | Rajma 220 g + Steamed rice 200 g |
 | web-spaghetti-bolognese | 489 kcal | 321–596 | 1/1 | Spaghetti bolognese 320 g |
 | web-upma-peas | 293 kcal | 205–381 | 1/1 | Upma 200 g |
-| user-masala-dosa-original | 412 kcal | 325–604 | 2/2 | Masala dosa 180 g + Peanut chutney 35 g |
+| user-masala-dosa-original | 503 kcal | 325–604 | 2/2 | Masala dosa 180 g + Peanut chutney 35 g + Coconut chutney 40 g |
 
 <!-- /generated: everything below is written by hand -->
 

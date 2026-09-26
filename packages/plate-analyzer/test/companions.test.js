@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { findCompanions, quadrants, GOES_WITH, COMPANION_MIN_PROB, CHUTNEY_COLOUR } from '../src/index.js';
+import {
+  findCompanions, findMissedCompanions, quadrants, edgeTiles, GOES_WITH, COMPANION_MIN_PROB, TILE_MIN_PROB, CHUTNEY_COLOUR,
+} from '../src/index.js';
 
 const image = { data: new Uint8ClampedArray(40 * 30 * 4), width: 40, height: 30 };
 const foods = Object.fromEntries(['idli', 'sambar', 'vada', 'masala-dosa', ...Object.keys(CHUTNEY_COLOUR)]
@@ -79,6 +81,61 @@ describe('findCompanions', () => {
     expect(found.map((f) => f.id)).toEqual(['coconut-chutney']);
   });
 
+  it('never lists a dish as its own companion', () => {
+    for (const [main, sides] of Object.entries(GOES_WITH)) expect(sides).not.toContain(main);
+  });
+});
+
+describe('edgeTiles', () => {
+  it('covers the eight outer thirds and skips the centre', () => {
+    const t = edgeTiles(30, 30);
+    expect(t).toHaveLength(8);
+    expect(t.map((w) => [w.x, w.y])).toEqual([[0, 0], [10, 0], [20, 0], [0, 10], [20, 10], [0, 20], [10, 20], [20, 20]]);
+  });
+});
+
+describe('findMissedCompanions', () => {
+  it('adds a chutney colour the first pass missed, at the stricter cut-off', async () => {
+    // The user's dosa: peanut found by the quadrants, coconut only in a tile.
+    const found = await findMissedCompanions({
+      image, mainId: 'masala-dosa', foodById,
+      found: [{ id: 'peanut-chutney', prob: 0.28 }],
+      classify: scripted([[], [], [], [{ id: 'coconut-chutney', prob: 0.28 }, { id: 'tomato-chutney', prob: 0.26 }]]),
+    });
+    expect(found.map((f) => f.id)).toEqual(['coconut-chutney']);
+  });
+
+  it('never adds a second chutney of a colour already on the plate', async () => {
+    const found = await findMissedCompanions({
+      image, mainId: 'masala-dosa', foodById,
+      found: [{ id: 'peanut-chutney', prob: 0.28 }],
+      classify: scripted([[{ id: 'tomato-chutney', prob: 0.9 }]]),
+    });
+    expect(found).toEqual([]);
+  });
+
+  it('ignores tile scores below TILE_MIN_PROB even when above the quadrant cut-off', async () => {
+    expect(TILE_MIN_PROB).toBeGreaterThan(COMPANION_MIN_PROB);
+    const found = await findMissedCompanions({
+      image, mainId: 'idli', foodById, found: [],
+      classify: scripted([[{ id: 'tomato-chutney', prob: (COMPANION_MIN_PROB + TILE_MIN_PROB) / 2 }]]),
+    });
+    expect(found).toEqual([]);
+  });
+
+  it('skips the tiles entirely when every listed side is already found', async () => {
+    let calls = 0;
+    const found = await findMissedCompanions({
+      image, mainId: 'hamburger', foodById: (id) => ({ prior: { servingG: 100 } }),
+      found: [{ id: 'french-fries' }, { id: 'onion-rings' }],
+      classify: async () => { calls++; return { top: [] }; },
+    });
+    expect(found).toEqual([]);
+    expect(calls).toBe(0);
+  });
+});
+
+describe('GOES_WITH', () => {
   it('never lists a dish as its own companion', () => {
     for (const [main, sides] of Object.entries(GOES_WITH)) expect(sides).not.toContain(main);
   });

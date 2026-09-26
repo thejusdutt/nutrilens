@@ -23,7 +23,7 @@ const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
 const CASES = [
   ['eval/data/smoke_0_beignets.jpg', 'Beignets', []],
   ['eval/data/web/burger-fries/3.jpg', 'Hamburger', ['French fries']],
-  ['eval/data/user/masala-dosa-original.png', 'Masala dosa', ['Peanut chutney']],
+  ['eval/data/user/masala-dosa-original.png', 'Masala dosa', ['Peanut chutney', 'Coconut chutney']],
 ];
 
 let server = null;
