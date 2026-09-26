@@ -9,7 +9,7 @@
 import { dateRange, shiftDate, normalizeEntry, dayTotals } from '@nutrilens/diary';
 import { lineChart, barRows } from '@nutrilens/charts';
 import { $, el, fill, fmt, openSheet, closeSheet, toast, emit, on, cssVar } from './ui.js';
-import { listMeasurements, setMeasurement, getMeasurement, listMealsBetween, dateKey, getDay, setDay } from './db.js';
+import { listMeasurements, setMeasurement, getMeasurement, listMealsBetween, dateKey, patchDay } from './db.js';
 import { getProfile, setProfile, dailyGoal, weightProgress } from './goals.js';
 
 const RANGES = [[30, '30 days'], [90, '90 days'], [365, 'Year']];
@@ -111,8 +111,7 @@ export function openWeightSheet() {
     if (!(weightKg > 0)) { toast('Enter a weight'); return; }
     const date = dateInput.value || dateKey();
     await setMeasurement({ ...(await currentMeasure(date)), date, weightKg });
-    const day = await getDay(date);
-    await setDay({ ...day, weightKg });
+    await patchDay(date, { weightKg });
     // The profile weight drives BMR, so today's weigh-in updates the goal.
     if (date === dateKey()) setProfile({ weightKg, startWeightKg: profile.startWeightKg ?? weightKg });
     emit('day', { date });

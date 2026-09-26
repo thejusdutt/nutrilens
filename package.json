@@ -38,7 +38,8 @@
     "build:catalogue": "node tools/build-food-catalogue.mjs",
     "build:library": "node tools/compute-food-library.mjs",
     "test:stability": "node eval/stability.mjs",
-    "test:sides": "node eval/sides-e2e.mjs"
+    "test:sides": "node eval/sides-e2e.mjs",
+    "test:parity": "node eval/parity-e2e.mjs"
   },
   "devDependencies": {
     "@huggingface/transformers": "^3.5.0",

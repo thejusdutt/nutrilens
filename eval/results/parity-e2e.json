@@ -1,0 +1,457 @@
+[
+  {
+    "section": "offline + clock",
+    "label": "the app thinks it is 1 Oct 2026",
+    "ok": true,
+    "got": "2026-10-01",
+    "want": "2026-10-01"
+  },
+  {
+    "section": "offline + clock",
+    "label": "the diary opens on today",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "goals",
+    "label": "goal summary shows Mifflin-St Jeor maintenance",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "goals",
+    "label": "goal summary shows the goal",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "goals",
+    "label": "goal reaches the diary",
+    "ok": true,
+    "got": 1597,
+    "want": 1597
+  },
+  {
+    "section": "goals",
+    "label": "a custom calorie goal overrides the computed one",
+    "ok": true,
+    "got": 1650,
+    "want": 1650
+  },
+  {
+    "section": "goals",
+    "label": "clearing the custom goal restores the computed one",
+    "ok": true,
+    "got": 1597,
+    "want": 1597
+  },
+  {
+    "section": "macro goals",
+    "label": "percent macros: carbs target 160 g shown",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "macro goals",
+    "label": "percent macros: protein target 120 g shown",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "macro goals",
+    "label": "percent macros: fat target 53 g shown",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "macro goals",
+    "label": "gram macros: 150 g target shown",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "macro goals",
+    "label": "gram macros: 120 g target shown",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "macro goals",
+    "label": "gram macros: 55 g target shown",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "log, persist, recent",
+    "label": "logged food appears in its meal",
+    "ok": true,
+    "got": 137,
+    "want": 137
+  },
+  {
+    "section": "log, persist, recent",
+    "label": "it is still there after a reload (IndexedDB, not memory)",
+    "ok": true,
+    "got": 137,
+    "want": 137
+  },
+  {
+    "section": "log, persist, recent",
+    "label": "the log sheet lists it as recent before any search",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "serving edits",
+    "label": "changing size and count rescales, not duplicates",
+    "ok": true,
+    "got": 1,
+    "want": 1
+  },
+  {
+    "section": "serving edits",
+    "label": "150 g of idli",
+    "ok": true,
+    "got": 180,
+    "want": 180
+  },
+  {
+    "section": "serving edits",
+    "label": "food total moves by the difference",
+    "ok": true,
+    "got": 43,
+    "want": 43
+  },
+  {
+    "section": "move entry",
+    "label": "moved out of breakfast",
+    "ok": true,
+    "got": false,
+    "want": false
+  },
+  {
+    "section": "move entry",
+    "label": "moved into snacks",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "move entry",
+    "label": "moved off today",
+    "ok": true,
+    "got": false,
+    "want": false
+  },
+  {
+    "section": "move entry",
+    "label": "and onto yesterday",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "move entry",
+    "label": "the day before today is labelled Yesterday",
+    "ok": true,
+    "got": "Yesterday",
+    "want": "Yesterday"
+  },
+  {
+    "section": "move entry",
+    "label": "month boundary: two days before 1 Oct is 29 Sep (got \"Tue, Sep 29\")",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "copy meals",
+    "label": "copy from yesterday brings the item to today",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "copy meals",
+    "label": "copy to tomorrow lands in the chosen meal",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "copy meals",
+    "label": "the \"today\" link returns to today",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "quick add",
+    "label": "quick add logs the calories",
+    "ok": true,
+    "got": 320,
+    "want": 320
+  },
+  {
+    "section": "quick add",
+    "label": "quick add keeps protein, carbs and fat",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "custom food lifecycle",
+    "label": "a unicode-named custom food logs per its label",
+    "ok": true,
+    "got": 90,
+    "want": 90
+  },
+  {
+    "section": "custom food lifecycle",
+    "label": "My foods has a delete control on the custom food",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "custom food lifecycle",
+    "label": "deleting the food keeps what was already logged",
+    "ok": true,
+    "got": 90,
+    "want": 90
+  },
+  {
+    "section": "saved meal",
+    "label": "logging the saved meal matches the meal it was saved from",
+    "ok": true,
+    "got": 270,
+    "want": "270 ±1"
+  },
+  {
+    "section": "exercise",
+    "label": "a strength activity exists",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "exercise",
+    "label": "strength entry shows sets × reps",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "exercise",
+    "label": "exercise is credited to the day",
+    "ok": true,
+    "got": 119,
+    "want": 119
+  },
+  {
+    "section": "exercise",
+    "label": "remaining = goal − food + exercise",
+    "ok": true,
+    "got": 586,
+    "want": 586
+  },
+  {
+    "section": "habits and notes persist",
+    "label": "water survives a reload",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "habits and notes persist",
+    "label": "steps survive a reload",
+    "ok": true,
+    "got": "8421",
+    "want": "8421"
+  },
+  {
+    "section": "habits and notes persist",
+    "label": "the note survives a reload",
+    "ok": true,
+    "got": "Tired after the gym.",
+    "want": "Tired after the gym."
+  },
+  {
+    "section": "complete day",
+    "label": "completing shows a five-week projection",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "complete day",
+    "label": "streak counts today",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "weight and progress",
+    "label": "progress shows the logged weight",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "weight and progress",
+    "label": "progress shows a weight chart",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "nutrition dashboard",
+    "label": "nutrition shows today's food calories",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "nutrition dashboard",
+    "label": "nutrition breaks calories down by meal",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "nutrition dashboard",
+    "label": "nutrition has a week view",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "export CSV",
+    "label": "CSV export produced a file",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "export CSV",
+    "label": "CSV has one row per food logged today",
+    "ok": true,
+    "got": 6,
+    "want": 6
+  },
+  {
+    "section": "export CSV",
+    "label": "CSV food rows sum to the diary total",
+    "ok": true,
+    "got": 1130,
+    "want": "1130 ±6"
+  },
+  {
+    "section": "export CSV",
+    "label": "CSV TOTAL row equals the diary total",
+    "ok": true,
+    "got": 1130,
+    "want": 1130
+  },
+  {
+    "section": "export CSV",
+    "label": "CSV keeps a unicode food name intact",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "backup round trip",
+    "label": "full backup produced a file",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "backup round trip",
+    "label": "the wipe really emptied the diary",
+    "ok": true,
+    "got": 0,
+    "want": 0
+  },
+  {
+    "section": "backup round trip",
+    "label": "restore brings back every diary entry",
+    "ok": true,
+    "got": "{\"breakfast\":[{\"name\":\"Dosa (plain)\",\"detail\":\"1 × 1 small · P 1 · C 10 · F 1 g\",\"kcal\":57},{\"name\":\"Sambar\",\"detail\":\"1 × 1 cup · P 11 · C 29 · F 7 g\",\"kcal\":213}],\"lunch\":[{\"name\":\"Canteen thali (estimate)\",\"detail\":\"1 × quick add · P 20 · C 30 · F 12 g\",\"kcal\":320},{\"name\":\"Café Crème — ಕಾಫಿ\",\"detail\":\"1 × 1 cup · P 3 · C 12 · F 3 g\",\"kcal\":90}],\"dinner\":[{\"name\":\"Tiffin\",\"detail\":\"1 × 1 meal · Saved meal · P 12 · C 39 · F 8 g\",\"kcal\":270}],\"snacks\":[{\"name\":\"Idli\",\"detail\":\"1.5 × 100 g · P 7 · C 37 · F 0 g\",\"kcal\":180}]}",
+    "want": "{\"breakfast\":[{\"name\":\"Dosa (plain)\",\"detail\":\"1 × 1 small · P 1 · C 10 · F 1 g\",\"kcal\":57},{\"name\":\"Sambar\",\"detail\":\"1 × 1 cup · P 11 · C 29 · F 7 g\",\"kcal\":213}],\"lunch\":[{\"name\":\"Canteen thali (estimate)\",\"detail\":\"1 × quick add · P 20 · C 30 · F 12 g\",\"kcal\":320},{\"name\":\"Café Crème — ಕಾಫಿ\",\"detail\":\"1 × 1 cup · P 3 · C 12 · F 3 g\",\"kcal\":90}],\"dinner\":[{\"name\":\"Tiffin\",\"detail\":\"1 × 1 meal · Saved meal · P 12 · C 39 · F 8 g\",\"kcal\":270}],\"snacks\":[{\"name\":\"Idli\",\"detail\":\"1.5 × 100 g · P 7 · C 37 · F 0 g\",\"kcal\":180}]}"
+  },
+  {
+    "section": "backup round trip",
+    "label": "restore brings back the goal",
+    "ok": true,
+    "got": 1589,
+    "want": 1589
+  },
+  {
+    "section": "backup round trip",
+    "label": "restore brings back exercise",
+    "ok": true,
+    "got": 119,
+    "want": 119
+  },
+  {
+    "section": "bad input",
+    "label": "search finds a banana",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "bad input",
+    "label": "a negative serving count never gives negative calories",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "bad input",
+    "label": "zero servings is not logged as a real amount",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "photo to diary",
+    "label": "a photographed plate logs one entry per dish",
+    "ok": true,
+    "got": 2,
+    "want": 2
+  },
+  {
+    "section": "photo to diary",
+    "label": "and the entries add up to the plate",
+    "ok": true,
+    "got": 974,
+    "want": "973 ±1"
+  },
+  {
+    "section": "photo to diary",
+    "label": "no request left localhost",
+    "ok": true,
+    "got": [],
+    "want": []
+  },
+  {
+    "section": "photo to diary",
+    "label": "no page errors",
+    "ok": true,
+    "got": [],
+    "want": []
+  }
+]

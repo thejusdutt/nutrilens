@@ -18,7 +18,7 @@ import {
   MACRO_COLORS,
 } from './ui.js';
 import {
-  listMealsByDate, getDay, setDay, deleteMeal, deleteMeals, getMeal, dateKey, loggedDates,
+  listMealsByDate, getDay, patchDay, deleteMeal, deleteMeals, getMeal, dateKey, loggedDates,
   listExerciseByDate, saveMeal, listMealsBetween, deleteExercise, setMeasurement,
 } from './db.js';
 import { getProfile, dailyGoal, setProfile, suggestSlot } from './goals.js';
@@ -313,7 +313,7 @@ function habitsCard(day, profile) {
       el('input.habit-input', {
         id: 'steps-input', type: 'number', min: '0', step: '100', value: String(day.steps || 0),
         'aria-label': 'Steps today',
-        onchange: async (e) => { await setDay({ ...day, steps: Math.max(0, Number(e.target.value) || 0) }); emit('day', { date: day.date }); },
+        onchange: async (e) => { await patchDay(day.date, { steps: Math.max(0, Number(e.target.value) || 0) }); emit('day', { date: day.date }); },
       }),
       el('span.muted', null, `/ ${profile.stepGoal.toLocaleString()}`)),
     el('div.habit-row', null,
@@ -323,7 +323,7 @@ function habitsCard(day, profile) {
         value: day.weightKg ?? '', placeholder: '—', 'aria-label': 'Weight today (kg)',
         onchange: async (e) => {
           const weightKg = e.target.value ? Number(e.target.value) : null;
-          await setDay({ ...day, weightKg });
+          await patchDay(day.date, { weightKg });
           if (weightKg) await setMeasurement({ date: day.date, weightKg });
           // Today's weigh-in is also the number every goal is computed from.
           if (weightKg && day.date === dateKey()) setProfile({ weightKg });
@@ -337,7 +337,7 @@ function habitsCard(day, profile) {
 async function bumpWater(day, delta, goal) {
   const water = Math.min(goal, Math.max(0, (day.water || 0) + delta));
   if (water === (day.water || 0)) return;
-  await setDay({ ...day, water });
+  await patchDay(day.date, { water });
   day.water = water;
   $('water-count').textContent = `${water} / ${goal}`;
   $('water-minus').disabled = water <= 0;
@@ -352,7 +352,7 @@ function notesCard(day) {
     el('summary', null, 'Notes'),
     el('textarea', {
       id: 'day-note', rows: '3', placeholder: 'How did today go?', value: day.note ?? '',
-      onchange: async (e) => { await setDay({ ...day, note: e.target.value }); toast('Note saved'); },
+      onchange: async (e) => { await patchDay(day.date, { note: e.target.value }); toast('Note saved'); },
     }));
 }
 
@@ -371,12 +371,12 @@ function completeCard({ date, day, goal, totals, credited, profile, entries }) {
       ? el('div.stack', null,
         el('p.done', null, iconEl('check'), ` Diary completed for ${date === dateKey() ? 'today' : fmt.date(date)}`),
         el('p.projection', { id: 'projection' }, projectionText(projection)),
-        el('button.wide', { onclick: async () => { await setDay({ ...day, completed: false }); emit('day', { date }); } }, 'Reopen day'))
+        el('button.wide', { onclick: async () => { await patchDay(date, { completed: false }); emit('day', { date }); } }, 'Reopen day'))
       : el('div.stack', null,
         el('button.primary.wide', {
           id: 'btn-complete', disabled: !canComplete,
           onclick: async () => {
-            await setDay({ ...day, completed: true });
+            await patchDay(date, { completed: true });
             emit('day', { date });
             toast('Nice work — day complete');
           },

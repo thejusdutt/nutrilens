@@ -169,6 +169,34 @@ export async function getDay(date) {
   return { date, ...EMPTY_DAY, ...(rec ?? {}) };
 }
 export const setDay = (rec) => tx('day', 'readwrite', (s) => s.put(rec));
+
+/**
+ * Change some fields of one day, keeping the rest as they are in the store.
+ *
+ * The diary cards each held the day object from when the screen was drawn and
+ * wrote the whole of it back, so a note saved just after the step count was
+ * changed put the old step count (0) back. Read and write happen in one
+ * transaction here, so two cards can never undo each other.
+ * @param {string} date
+ * @param {object} patch
+ * @returns {Promise<object>} the stored day
+ */
+export async function patchDay(date, patch) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction('day', 'readwrite');
+    const store = t.objectStore('day');
+    let next;
+    const req = store.get(date);
+    req.onsuccess = () => {
+      next = { date, ...EMPTY_DAY, ...(req.result ?? {}), ...patch, date };
+      store.put(next);
+    };
+    t.oncomplete = () => resolve(next);
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error);
+  });
+}
 export const listDaysBetween = (from, to) => all('day', IDBKeyRange.bound(from, to));
 
 // ---------------------------------------------------------------------------
