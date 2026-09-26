@@ -336,6 +336,132 @@
     "want": true
   },
   {
+    "section": "units",
+    "label": "settings shows body weight in pounds",
+    "ok": true,
+    "got": 148.6,
+    "want": "148.6 ±0.1"
+  },
+  {
+    "section": "units",
+    "label": "the weight label names pounds",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "units",
+    "label": "typing 150 lb stores 68.04 kg",
+    "ok": true,
+    "got": 68.04,
+    "want": "68.04 ±0.01"
+  },
+  {
+    "section": "units",
+    "label": "progress speaks pounds",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "units",
+    "label": "the diary weight field is in pounds",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "units",
+    "label": "the goal is shown in kJ",
+    "ok": true,
+    "got": 6686,
+    "want": "6686 ±1"
+  },
+  {
+    "section": "units",
+    "label": "the readout names kJ",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "units",
+    "label": "entries show kJ",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "units",
+    "label": "1000 kJ typed shows as 1000 kJ",
+    "ok": true,
+    "got": 1000,
+    "want": 1000
+  },
+  {
+    "section": "units",
+    "label": "and it is 239 kcal underneath",
+    "ok": true,
+    "got": 239,
+    "want": "239 ±1"
+  },
+  {
+    "section": "meal names and goals",
+    "label": "a renamed meal shows its new name",
+    "ok": true,
+    "got": "Midday",
+    "want": "Midday"
+  },
+  {
+    "section": "meal names and goals",
+    "label": "its log button follows",
+    "ok": true,
+    "got": "＋ Log midday",
+    "want": "＋ Log midday"
+  },
+  {
+    "section": "meal names and goals",
+    "label": "breakfast shows its 25% goal of 399 (got \"270 / 399 kcal\")",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "meal names and goals",
+    "label": "the meal picker in the log sheet uses the new name",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "meal names and goals",
+    "label": "clearing the name restores the default",
+    "ok": true,
+    "got": "Lunch",
+    "want": "Lunch"
+  },
+  {
+    "section": "net carbs and nutrient goals",
+    "label": "the macro card says net carbs",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
+    "section": "net carbs and nutrient goals",
+    "label": "the fibre goal placeholder is the Daily Value",
+    "ok": true,
+    "got": "28",
+    "want": "28"
+  },
+  {
+    "section": "net carbs and nutrient goals",
+    "label": "the nutrients table uses the fibre goal of 35 g (row: \"Fiber24 g35 g68%\")",
+    "ok": true,
+    "got": true,
+    "want": true
+  },
+  {
     "section": "export CSV",
     "label": "CSV export produced a file",
     "ok": true,
@@ -395,8 +521,8 @@
     "section": "backup round trip",
     "label": "restore brings back the goal",
     "ok": true,
-    "got": 1589,
-    "want": 1589
+    "got": 1597,
+    "want": 1597
   },
   {
     "section": "backup round trip",

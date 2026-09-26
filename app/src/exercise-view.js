@@ -8,7 +8,7 @@
  * checked.
  */
 import { ACTIVITIES, searchActivities, activity, makeExerciseEntry, kcalBurnedNet } from '@nutrilens/exercise-db';
-import { el, fill, fmt, openSheet, closeSheet, toast, emit } from './ui.js';
+import { el, fill, fmt, EU, fromEnergyUnit, toEnergyUnit, openSheet, closeSheet, toast, emit } from './ui.js';
 import { saveExercise, deleteExercise } from './db.js';
 import { getProfile } from './goals.js';
 import { iconEl } from './icons.js';
@@ -40,8 +40,8 @@ export function openExerciseSheet({ date, existing }) {
   });
   const kcalInput = el('input', {
     type: 'number', min: '0', step: '5', placeholder: 'auto', id: 'ex-kcal',
-    value: state.kcalOverride != null ? String(state.kcalOverride) : '',
-    oninput: (e) => { const v = Number(e.target.value); state.kcalOverride = v > 0 ? v : null; update(); },
+    value: state.kcalOverride != null ? String(Math.round(toEnergyUnit(state.kcalOverride))) : '',
+    oninput: (e) => { const v = fromEnergyUnit(Number(e.target.value)); state.kcalOverride = v > 0 ? v : null; update(); },
   });
   const strength = el('div.row3.strength-fields', null,
     el('label', null, 'Sets', el('input', {
@@ -74,9 +74,9 @@ export function openExerciseSheet({ date, existing }) {
       : el('p.muted.tiny', null, 'Pick an activity below, or add a custom one.'));
     const kcal = a ? (state.kcalOverride ?? kcalBurnedNet({ met: a.met, minutes: state.minutes, weightKg: profile.weightKg })) : 0;
     fill(estimate,
-      el('div.ds-kcal', null, el('b', { id: 'ex-estimate' }, fmt.kcal(kcal)), ' kcal'),
+      el('div.ds-kcal', null, el('b', { id: 'ex-estimate' }, fmt.kcal(kcal)), ` ${EU()}`),
       el('div.muted', null, a
-        ? `${state.minutes} min · ${profile.weightKg} kg · ${state.kcalOverride != null ? 'your figure' : 'MET estimate, net of rest'}`
+        ? `${state.minutes} min · ${fmt.weight(profile.weightKg)} · ${state.kcalOverride != null ? 'your figure' : 'MET estimate, net of rest'}`
         : 'no activity chosen'));
   }
 
@@ -86,7 +86,7 @@ export function openExerciseSheet({ date, existing }) {
       onclick: () => { state.activityId = a.id; state.custom = false; searchBox.value = ''; renderResults(popular()); update(); },
     },
     el('span.fr-main', null, el('b', null, a.name), el('span.muted', null, `${a.met} MET · ${a.type}`)),
-    el('span.fr-kcal', null, `${fmt.kcal(kcalBurnedNet({ met: a.met, minutes: state.minutes, weightKg: profile.weightKg }))} kcal`))));
+    el('span.fr-kcal', null, `${fmt.energy(kcalBurnedNet({ met: a.met, minutes: state.minutes, weightKg: profile.weightKg }))}`))));
   }
   const popular = () => ACTIVITIES.filter((a) => ['walk', 'run-10', 'cycle-moderate', 'weights-moderate', 'hiit', 'yoga', 'swim-laps', 'football'].includes(a.id));
   searchBox.oninput = () => {
@@ -117,7 +117,7 @@ export function openExerciseSheet({ date, existing }) {
       picked,
       el('div.row2', null,
         el('label', { for: 'ex-minutes' }, 'Minutes', minutes),
-        el('label', { for: 'ex-kcal' }, 'Calories (optional)', kcalInput)),
+        el('label', { for: 'ex-kcal' }, `Calories (${EU()}, optional)`, kcalInput)),
       strength,
       estimate,
       el('button.primary.wide', { onclick: save }, existing ? 'Save changes' : 'Add to diary'),

@@ -235,6 +235,47 @@
       </details>
 
       <details class="card">
+        <summary><h3>Units &amp; display</h3></summary>
+        <div class="form-grid">
+          <label for="u-weight">Body weight
+            <select id="u-weight"><option value="kg">Kilograms (kg)</option><option value="lb">Pounds (lb)</option></select>
+          </label>
+          <label for="u-height">Height &amp; measurements
+            <select id="u-height"><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select>
+          </label>
+          <label for="u-energy">Energy
+            <select id="u-energy"><option value="kcal">Calories (kcal)</option><option value="kJ">Kilojoules (kJ)</option></select>
+          </label>
+        </div>
+        <label class="check" for="p-netcarbs">
+          <input id="p-netcarbs" type="checkbox" /> Show net carbs (carbohydrate minus fibre)
+        </label>
+        <p class="muted tiny">Everything is stored in metric and kcal, so switching units never changes a logged number.</p>
+      </details>
+
+      <details class="card">
+        <summary><h3>Meals</h3></summary>
+        <p class="muted tiny">Rename a meal, and optionally give each meal a share of the day's calories. Leave the shares empty for no meal goals.</p>
+        <div class="form-grid meal-settings">
+          <label for="m-name-breakfast">Meal 1 name <input id="m-name-breakfast" type="text" maxlength="24" placeholder="Breakfast" /></label>
+          <label for="m-pct-breakfast">Share (%) <input id="m-pct-breakfast" type="number" min="0" max="100" step="5" placeholder="—" /></label>
+          <label for="m-name-lunch">Meal 2 name <input id="m-name-lunch" type="text" maxlength="24" placeholder="Lunch" /></label>
+          <label for="m-pct-lunch">Share (%) <input id="m-pct-lunch" type="number" min="0" max="100" step="5" placeholder="—" /></label>
+          <label for="m-name-dinner">Meal 3 name <input id="m-name-dinner" type="text" maxlength="24" placeholder="Dinner" /></label>
+          <label for="m-pct-dinner">Share (%) <input id="m-pct-dinner" type="number" min="0" max="100" step="5" placeholder="—" /></label>
+          <label for="m-name-snacks">Meal 4 name <input id="m-name-snacks" type="text" maxlength="24" placeholder="Snacks" /></label>
+          <label for="m-pct-snacks">Share (%) <input id="m-pct-snacks" type="number" min="0" max="100" step="5" placeholder="—" /></label>
+        </div>
+        <p id="meal-summary" class="muted tiny" role="status" aria-live="polite"></p>
+      </details>
+
+      <details class="card">
+        <summary><h3>Nutrient goals</h3></summary>
+        <p class="muted tiny">Your own daily target for a nutrient. Empty uses the FDA Daily Value shown as the placeholder.</p>
+        <div class="form-grid" id="nutrient-goal-fields"></div>
+      </details>
+
+      <details class="card">
         <summary><h3>Appearance</h3></summary>
         <label for="setting-theme">Theme
           <select id="setting-theme">

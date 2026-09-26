@@ -55,10 +55,10 @@ function dishRow(it, i, plate, hooks) {
   const name = foodRecord?.name ?? it.id;
   const unsure = confidenceNeedsReview(it.prob);
 
-  const kcalEl = el('span.dish-kcal', null, `${fmt.kcal(kcalOf(it.id, it.grams))} kcal`);
+  const kcalEl = el('span.dish-kcal', null, `${fmt.energy(kcalOf(it.id, it.grams))}`);
   let row;
   const refresh = () => {
-    kcalEl.textContent = `${fmt.kcal(kcalOf(it.id, it.grams))} kcal`;
+    kcalEl.textContent = `${fmt.energy(kcalOf(it.id, it.grams))}`;
     // Mirror the weight onto the row so the DOM never disagrees with the
     // state behind it — the plate is the one screen where a stale number is
     // the whole failure mode.
@@ -172,7 +172,7 @@ export function openFixSheet(it, { onPick, title = 'What is this?', intro }) {
 
   const row = (id, label, sub) => el('button.fix-row', { onclick: () => pick(id) },
     el('div.fix-text', null, el('b', null, label), sub && el('span.muted', null, sub)),
-    el('span.fix-kcal', null, `${fmt.kcal(kcalOf(id, it.grams))} kcal`));
+    el('span.fix-kcal', null, `${fmt.energy(kcalOf(id, it.grams))}`));
 
   const alternatives = [];
   const seen = new Set();

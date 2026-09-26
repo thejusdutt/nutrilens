@@ -10,8 +10,9 @@
  * reuses the serving you chose last time, so the second day of tracking is much
  * faster than the first.
  */
-import { makeEntry, rankRecent, rankFrequent, normalizeEntry, SLOTS, SLOT_LABEL } from '@nutrilens/diary';
-import { $, el, fill, fmt, openSheet, closeSheet, toast, emit, MACRO_COLORS } from './ui.js';
+import { makeEntry, rankRecent, rankFrequent, normalizeEntry, SLOTS } from '@nutrilens/diary';
+import { SLOT_LABEL, mealWord } from './goals.js';
+import { $, el, fill, fmt, EU, fromEnergyUnit, toEnergyUnit, openSheet, closeSheet, toast, emit, MACRO_COLORS } from './ui.js';
 import { food as foodById, search as searchFoods, servingsFor, nutrients, kcalFor, listMyFoods, listMyMeals, listMyRecipes, upsertCustomFood, upsertSavedMeal, per100gFromLabel, nutrientMeta } from './foods.js';
 import { saveMeal, listMeals, dateKey, updateMeal } from './db.js';
 import { macroRow, macroSummary } from './nutrients-ui.js';
@@ -113,7 +114,7 @@ export async function openLogFood({ date, slot, onPhoto }) {
       el('button.fr-main', { onclick: () => log(hit.id, { slot: s.slot }) },
         el('b', null, f.name),
         el('span.muted', null, [f.brand, `${fmt.servings(choice.servings ?? 1)} × ${choice.label}`].filter(Boolean).join(' · '))),
-      el('span.fr-kcal', null, `${fmt.kcal(kcal)} kcal`),
+      el('span.fr-kcal', null, `${fmt.energy(kcal)}`),
       el('button.fr-add', {
         title: 'Log this serving', 'aria-label': `Quick log ${f.name}`,
         onclick: () => quickLog(hit.id, choice, s),
@@ -131,7 +132,7 @@ export async function openLogFood({ date, slot, onPhoto }) {
       },
       el('b', null, entry.foodName),
       el('span.muted', null, [note, `${fmt.servings(entry.servings)} × ${entry.servingLabel}`].filter(Boolean).join(' · '))),
-      el('span.fr-kcal', null, `${fmt.kcal(entry.kcal)} kcal`),
+      el('span.fr-kcal', null, `${fmt.energy(entry.kcal)}`),
       el('button.fr-add', {
         title: 'Log again', 'aria-label': `Log ${entry.foodName} again`,
         onclick: () => repeatEntry(entry, s),
@@ -148,18 +149,18 @@ export async function openLogFood({ date, slot, onPhoto }) {
       nutrients: r.nutrients, source: f.kind === 'product' ? 'barcode' : 'search', ts: Date.now(),
     }));
     lastServing.set(id, choice);
-    toast(`${f.name} added to ${s.slot}`);
+    toast(`${f.name} added to ${mealWord(s.slot)}`);
   }
 
   const repeatEntry = async (entry, s) => {
     await addEntry({ ...entry, id: undefined, date: s.date, slot: s.slot, ts: Date.now() });
-    toast(`${entry.foodName} added to ${s.slot}`);
+    toast(`${entry.foodName} added to ${mealWord(s.slot)}`);
   };
   const repeatOrphan = (entry, s) => openSheet({
     title: entry.foodName,
     body: el('div.stack', null,
       el('p.muted', null, 'This entry was logged from a food that is no longer stored. You can log it again exactly as it was.'),
-      el('p', null, `${fmt.servings(entry.servings)} × ${entry.servingLabel} · ${fmt.kcal(entry.kcal)} kcal`),
+      el('p', null, `${fmt.servings(entry.servings)} × ${entry.servingLabel} · ${fmt.energy(entry.kcal)}`),
       el('button.primary.wide', { onclick: () => { repeatEntry(entry, s); closeSheet(); } }, 'Log again')),
   });
 
@@ -227,7 +228,7 @@ export function openFoodDetail({ foodId, date, slot, servingLabel, servingGrams,
     const grams = state.choice.grams * state.servings;
     const r = nutrients(f, grams);
     fill(summary,
-      el('div.ds-kcal', null, el('b', null, fmt.kcal(r.nutrients.kcal?.value ?? 0)), ' kcal'),
+      el('div.ds-kcal', null, el('b', null, fmt.kcal(r.nutrients.kcal?.value ?? 0)), ` ${EU()}`),
       el('div.muted', null, `${fmt.amount(grams)} g · ${macroSummary(r.nutrients)}`));
     fill(macros, ['protein', 'carbs', 'fat'].filter((k) => r.nutrients[k]).map((k) => macroRow(r.nutrients[k], MACRO_COLORS[k])));
   }
@@ -249,7 +250,7 @@ export function openFoodDetail({ foodId, date, slot, servingLabel, servingGrams,
     } else {
       await addEntry(built);
       lastServing.set(f.id, { label: state.choice.label, grams: state.choice.grams, servings: state.servings });
-      toast(`${f.name} added to ${state.slot}`);
+      toast(`${f.name} added to ${mealWord(state.slot)}`);
     }
     closeSheet({ all: true });
   };
@@ -291,7 +292,7 @@ export function openFoodDetail({ foodId, date, slot, servingLabel, servingGrams,
           closeSheet({ all: true });
         },
       }, 'Add items separately'),
-      el('button.primary.wide', { onclick: save }, entryId ? 'Save changes' : `Add to ${state.slot}`)),
+      el('button.primary.wide', { onclick: save }, entryId ? 'Save changes' : `Add to ${mealWord(state.slot)}`)),
   });
 }
 
@@ -318,7 +319,8 @@ export function openQuickAdd({ date, slot }) {
   const slotSel = el('select', null, SLOTS.map((s) => el('option', { value: s, selected: s === slot }, SLOT_LABEL[s])));
 
   const save = async () => {
-    const kcal = Number(fields.kcal.value) || 0;
+    // Typed in the shown unit (kcal or kJ); stored as kcal.
+    const kcal = fromEnergyUnit(Number(fields.kcal.value) || 0);
     if (kcal <= 0) { toast('Enter some calories first'); fields.kcal.focus(); return; }
     const nutrientAmounts = { kcal };
     for (const k of ['protein', 'carbs', 'fat']) {
@@ -330,14 +332,14 @@ export function openQuickAdd({ date, slot }) {
       servingLabel: 'quick add', servingGrams: 0, servings: 1,
       nutrients: nutrientAmounts, source: 'quick', ts: Date.now(),
     }));
-    toast(`${fmt.kcal(kcal)} kcal added`);
+    toast(`${fmt.energy(kcal)} added`);
     closeSheet({ all: true });
   };
 
   openSheet({
     title: 'Quick add',
     body: el('div.stack', null,
-      el('label', { for: 'qa-kcal' }, 'Calories'), fields.kcal,
+      el('label', { for: 'qa-kcal' }, `Calories (${EU()})`), fields.kcal,
       el('div.row3', null,
         el('label', null, 'Protein (g)', fields.protein),
         el('label', null, 'Carbs (g)', fields.carbs),
@@ -371,7 +373,8 @@ export function openCreateFood({ onSaved, existing, prefill } = {}) {
   for (const [key] of NUTRIENT_FIELDS) {
     inputs[key] = el('input', {
       type: 'number', min: '0', step: '0.1', inputmode: 'decimal',
-      value: perServing[key] != null ? String(perServing[key]) : (key === 'kcal' && prefill?.kcal ? String(prefill.kcal) : ''),
+      value: perServing[key] != null ? String(key === 'kcal' ? Math.round(toEnergyUnit(perServing[key])) : perServing[key])
+        : (key === 'kcal' && prefill?.kcal ? String(Math.round(toEnergyUnit(prefill.kcal))) : ''),
       placeholder: '0',
     });
   }
@@ -383,7 +386,8 @@ export function openCreateFood({ onSaved, existing, prefill } = {}) {
     const amounts = {};
     for (const [key] of NUTRIENT_FIELDS) {
       const v = Number(inputs[key].value);
-      if (Number.isFinite(v) && v > 0) amounts[key] = v;
+      // Energy is typed in the shown unit, like the packet; everything else as labelled.
+      if (Number.isFinite(v) && v > 0) amounts[key] = key === 'kcal' ? fromEnergyUnit(v) : v;
     }
     if (!(amounts.kcal > 0)) { toast('Calories per serving are required'); inputs.kcal.focus(); return; }
     const id = await upsertCustomFood({
@@ -409,7 +413,7 @@ export function openCreateFood({ onSaved, existing, prefill } = {}) {
         el('label', { for: 'cf-serving' }, 'Serving', servingLabel),
         el('label', { for: 'cf-grams' }, 'Weight (g)', servingGrams)),
       el('p.muted.tiny', null, 'Enter the numbers per serving, straight off the label.'),
-      el('div.label-grid', null, NUTRIENT_FIELDS.map(([key, label, unit]) => el('label', null, `${label} (${unit})`, inputs[key]))),
+      el('div.label-grid', null, NUTRIENT_FIELDS.map(([key, label, unit]) => el('label', null, `${label} (${key === 'kcal' ? EU() : unit})`, inputs[key]))),
       el('button.primary.wide', { onclick: save }, existing ? 'Save food' : 'Create food')),
   });
 }
@@ -450,7 +454,7 @@ export function openMealBuilder({ kind = 'meal', existing, seedItems = [], onSav
           state.items.push({ id: f.id, name: f.name, grams: choice.grams, nutrients: flatten(r.nutrients) });
           searchBox.value = ''; fill(searchOut); renderItems();
         },
-      }, el('span.fr-main', null, el('b', null, f.name), el('span.muted', null, `${choice.label} · ${kcalFor(f, choice.grams)} kcal`)),
+      }, el('span.fr-main', null, el('b', null, f.name), el('span.muted', null, `${choice.label} · ${fmt.energy(kcalFor(f, choice.grams))}`)),
       el('span.fr-add', null, '＋'));
     }));
   };
@@ -484,8 +488,8 @@ export function openMealBuilder({ kind = 'meal', existing, seedItems = [], onSav
       for (const [k, v] of Object.entries(it.nutrients ?? {})) sum[k] = (sum[k] ?? 0) + v;
     }
     fill(totals,
-      el('div.ds-kcal', null, el('b', null, fmt.kcal((sum.kcal ?? 0) / n)), ' kcal per serving'),
-      el('div.muted', null, `${fmt.amount(grams / n)} g per serving · ${fmt.kcal(sum.kcal ?? 0)} kcal total`));
+      el('div.ds-kcal', null, el('b', null, fmt.kcal((sum.kcal ?? 0) / n)), ` ${EU()} per serving`),
+      el('div.muted', null, `${fmt.amount(grams / n)} g per serving · ${fmt.energy(sum.kcal ?? 0)} total`));
   }
   renderItems();
 

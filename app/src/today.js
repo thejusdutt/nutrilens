@@ -8,7 +8,7 @@
  */
 import {
   dayTotals, remaining, macroEnergy, streak, shiftDate, weightProjection,
-  normalizeEntry, SLOTS, SLOT_LABEL,
+  normalizeEntry, SLOTS,
 } from '@nutrilens/diary';
 import { exerciseKcal, exerciseMinutes } from '@nutrilens/exercise-db';
 import { donut, barRows } from '@nutrilens/charts';
@@ -16,12 +16,15 @@ import { stackedScale } from './readout.js';
 import {
   $, el, fill, fmt, toast, openSheet, closeSheet, emit, on, enterKey,
   MACRO_COLORS,
+  EU, WU, toWeightUnit, fromWeightUnit,
 } from './ui.js';
 import {
   listMealsByDate, getDay, patchDay, deleteMeal, deleteMeals, getMeal, dateKey, loggedDates,
   listExerciseByDate, saveMeal, listMealsBetween, deleteExercise, setMeasurement,
 } from './db.js';
-import { getProfile, dailyGoal, setProfile, suggestSlot } from './goals.js';
+import {
+  getProfile, dailyGoal, setProfile, suggestSlot, SLOT_LABEL, mealWord, mealGoals, shownCarbs, carbsLabel,
+} from './goals.js';
 import { openLogFood, openFoodDetail, openQuickAdd, openMealBuilder } from './logfood.js';
 import { openExerciseSheet } from './exercise-view.js';
 import { openWeightSheet } from './progress-view.js';
@@ -54,13 +57,14 @@ export async function renderToday() {
   const credited = profile.creditExercise ? burned : 0;
   const rem = remaining({ goalKcal: goal.kcal, foodKcal: totals.kcal, exerciseKcal: credited });
   const st = streak(logged, dateKey());
+  const perMeal = mealGoals(goal.kcal, profile);
 
   fill($('today-root'),
     dateNav(date),
     streakChip(st),
     caloriesCard(rem, totals, goal),
     macrosCard(totals, goal),
-    ...SLOTS.map((slot) => mealSection(slot, entries.filter((e) => (SLOTS.includes(e.slot) ? e.slot : 'snacks') === slot), date)),
+    ...SLOTS.map((slot) => mealSection(slot, entries.filter((e) => (SLOTS.includes(e.slot) ? e.slot : 'snacks') === slot), date, perMeal?.[slot])),
     exerciseSection(exercise, day, burned, date),
     habitsCard(day, profile),
     notesCard(day),
@@ -106,15 +110,15 @@ function caloriesCard(rem, totals, goal) {
   ];
   return el('div.card.cal-card', {
     id: 'calories-card', role: 'button', tabindex: '0',
-    'aria-label': `${Math.round(rem.left)} kcal ${over ? 'over' : 'remaining'}. Open the nutrition dashboard.`,
+    'aria-label': `${fmt.energy(rem.left)} ${over ? 'over' : 'remaining'}. Open the nutrition dashboard.`,
     onclick: () => navigate('nutrition'),
     onkeydown: enterKey(() => navigate('nutrition')),
   },
   el('div.readout', null,
     el('div.readout-line', null,
-      el('span', { class: over ? 'readout-figure over' : 'readout-figure', id: 'rem-left' }, rem.left.toLocaleString()),
-      el('span.readout-unit', null, over ? 'kcal over' : 'kcal left'),
-      el('span.readout-band', null, `of ${goal.kcal.toLocaleString()}`)),
+      el('span', { class: over ? 'readout-figure over' : 'readout-figure', id: 'rem-left' }, fmt.kcal(rem.left)),
+      el('span.readout-unit', null, `${EU()} ${over ? 'over' : 'left'}`),
+      el('span.readout-band', null, `of ${fmt.kcal(goal.kcal)}`)),
     el('div', { html: stackedScale(parts, goal.kcal, 12) }),
     el('div.cal-math', null,
       mathCell('rem-goal', goal.kcal, 'Goal'),
@@ -124,16 +128,17 @@ function caloriesCard(rem, totals, goal) {
       mathCell('rem-exercise', rem.exerciseKcal, 'Exercise'))));
 }
 
-const mathCell = (id, value, label) => el('div', null, el('b', { id }, Math.round(value).toLocaleString()), el('span', null, label));
+const mathCell = (id, value, label) => el('div', null, el('b', { id }, fmt.kcal(value)), el('span', null, label));
 
 function macrosCard(totals, goal) {
   const energy = macroEnergy(totals.nutrients);
+  const shown = (k) => (k === 'carbs' ? shownCarbs(totals.nutrients) : totals.nutrients[k] ?? 0);
   const bars = ['carbs', 'protein', 'fat'].map((k) => ({
-    label: k[0].toUpperCase() + k.slice(1),
-    value: totals.nutrients[k] ?? 0,
+    label: k === 'carbs' ? carbsLabel() : k[0].toUpperCase() + k.slice(1),
+    value: shown(k),
     goal: goal.macros[k],
     color: MACRO_COLORS[k],
-    text: `${Math.round(totals.nutrients[k] ?? 0)} / ${goal.macros[k]} g`,
+    text: `${Math.round(shown(k))} / ${goal.macros[k]} g`,
   }));
   return el('div.card.macro-card', { id: 'macros-card', role: 'button', tabindex: '0',
     onclick: () => navigate('nutrition'), onkeydown: enterKey(() => navigate('nutrition')) },
@@ -154,21 +159,25 @@ function macrosCard(totals, goal) {
 }
 
 // ---------------------------------------------------------------------------
-function mealSection(slot, entries, date) {
+function mealSection(slot, entries, date, mealGoalKcal = null) {
   const kcal = entries.reduce((s, e) => s + (e.kcal ?? 0), 0);
+  // With meal goals set, every meal shows its share even while empty.
+  const headKcal = mealGoalKcal
+    ? `${fmt.kcal(kcal)} / ${fmt.energy(mealGoalKcal)}`
+    : (kcal ? fmt.energy(kcal) : '');
   return el('div.card.meal-section', { dataset: { slot } },
     el('div.meal-section-head', null,
       el('h3', null, SLOT_LABEL[slot]),
-      el('span.kcal', null, kcal ? `${fmt.kcal(kcal)} kcal` : ''),
+      el('span.kcal', { class: mealGoalKcal && kcal > mealGoalKcal ? 'kcal over' : 'kcal' }, headKcal),
       el('button.icon-btn.small', {
-        'aria-label': `More options for ${slot}`, title: 'Meal options',
+        'aria-label': `More options for ${mealWord(slot)}`, title: 'Meal options',
         onclick: () => openMealMenu(slot, entries, date),
       }, '⋯')),
     entries.map((e) => entryRow(e, date)),
     el('button.meal-log', {
       dataset: { slot },
       onclick: () => openLogFood({ date, slot, onPhoto: () => startPhoto({ date, slot }) }),
-    }, `＋ Log ${slot}`));
+    }, `＋ Log ${mealWord(slot)}`));
 }
 
 function entryRow(entry, date) {
@@ -185,7 +194,7 @@ function entryRow(entry, date) {
       entry.brand,
       `P ${Math.round(entry.nutrients?.protein ?? 0)} · C ${Math.round(entry.nutrients?.carbs ?? 0)} · F ${Math.round(entry.nutrients?.fat ?? 0)} g`,
     ].filter(Boolean).join(' · '))),
-    el('span.de-kcal', null, `${fmt.kcal(entry.kcal)} kcal`),
+    el('span.de-kcal', null, `${fmt.energy(entry.kcal)}`),
     el('button.de-del', {
       title: 'Remove', 'aria-label': `Remove ${entry.foodName}`,
       onclick: async () => {
@@ -245,10 +254,10 @@ function openMealMenu(slot, entries, date) {
             seedItems: entries.map((e) => ({ id: e.foodId, name: e.foodName, grams: e.grams, nutrients: e.nutrients })),
           });
         },
-      }, `Save ${slot} as a reusable meal`),
+      }, `Save ${mealWord(slot)} as a reusable meal`),
       entries.length > 0 && el('button.wide.danger', {
         onclick: () => openClearMealConfirm(slot, entries, date),
-      }, `Clear ${slot} (${entries.length} items)`)),
+      }, `Clear ${mealWord(slot)} (${entries.length} items)`)),
   });
 }
 
@@ -275,12 +284,12 @@ function exerciseSection(exercise, day, burned, date) {
   return el('div.card.meal-section', { id: 'exercise-section' },
     el('div.meal-section-head', null,
       el('h3', null, 'Exercise'),
-      el('span.kcal', null, burned ? `${fmt.kcal(burned)} kcal · ${exerciseMinutes(exercise)} min` : '')),
+      el('span.kcal', null, burned ? `${fmt.energy(burned)} · ${exerciseMinutes(exercise)} min` : '')),
     exercise.map((e) => el('div.diary-entry', null,
       el('button.de-name', { onclick: () => openExerciseSheet({ date, existing: e }) },
         el('b', null, e.name),
         el('span', null, [`${e.minutes} min`, e.sets ? `${e.sets}×${e.reps}` : null, e.kcalSource === 'manual' ? 'manual' : `${e.met} MET`].filter(Boolean).join(' · '))),
-      el('span.de-kcal', null, `${fmt.kcal(e.kcal)} kcal`),
+      el('span.de-kcal', null, `${fmt.energy(e.kcal)}`),
       el('button.de-del', {
         title: 'Remove', onclick: async () => {
           await deleteExercise(e.id);
@@ -319,10 +328,10 @@ function habitsCard(day, profile) {
     el('div.habit-row', null,
       el('span.habit-label', null, iconEl('scale'), ' Weight'),
       el('input.habit-input', {
-        id: 'weight-kg', type: 'number', min: '20', max: '400', step: '0.1',
-        value: day.weightKg ?? '', placeholder: '—', 'aria-label': 'Weight today (kg)',
+        id: 'weight-kg', type: 'number', min: '20', max: '900', step: '0.1',
+        value: day.weightKg != null ? String(Math.round(toWeightUnit(day.weightKg) * 10) / 10) : '', placeholder: '—', 'aria-label': `Weight today (${WU()})`,
         onchange: async (e) => {
-          const weightKg = e.target.value ? Number(e.target.value) : null;
+          const weightKg = e.target.value ? Math.round(fromWeightUnit(Number(e.target.value)) * 100) / 100 : null;
           await patchDay(day.date, { weightKg });
           if (weightKg) await setMeasurement({ date: day.date, weightKg });
           // Today's weigh-in is also the number every goal is computed from.
@@ -331,7 +340,7 @@ function habitsCard(day, profile) {
           emit('profile');
         },
       }),
-      el('span.muted', null, 'kg')));
+      el('span.muted', null, WU())));
 }
 
 async function bumpWater(day, delta, goal) {

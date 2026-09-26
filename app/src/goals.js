@@ -41,7 +41,46 @@ const DEFAULTS = {
   stepGoal: 10000,
   creditExercise: true,                            // add exercise calories back
   nutrientGoals: {},                               // key → target, overrides %DV
+  units: { weight: 'kg', height: 'cm', energy: 'kcal' }, // display only; storage stays metric
+  netCarbs: false,                                 // show carbs − fibre where carbs are shown
+  mealNames: {},                                   // slot → the user's own name for it
+  mealPct: {},                                     // slot → % of the day's calories (empty = no meal goals)
 };
+
+export const MEAL_DEFAULT_NAMES = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
+
+/**
+ * Meal names, keyed by slot id, as the user named them. A live view: reading
+ * SLOT_LABEL.lunch always gives the current name, so screens that were written
+ * against the package's fixed labels pick up renames without other changes.
+ */
+export const SLOT_LABEL = new Proxy({}, { get: (_, slot) => mealName(String(slot)) });
+/** The meal name in running text: "added to lunch". */
+export const mealWord = (slot) => mealName(slot).toLowerCase();
+
+/** The name shown for a meal slot: the user's own, else the default. */
+export function mealName(slot, profile = getProfile()) {
+  const own = profile.mealNames?.[slot];
+  return (typeof own === 'string' && own.trim()) ? own.trim() : (MEAL_DEFAULT_NAMES[slot] ?? slot);
+}
+
+/**
+ * Per-meal calorie goals, when the user has split the day across meals.
+ * @returns {Record<string, number>|null} slot → kcal, or null when not set
+ */
+export function mealGoals(goalKcal, profile = getProfile()) {
+  const pct = profile.mealPct ?? {};
+  const slots = Object.keys(MEAL_DEFAULT_NAMES).filter((s) => Number(pct[s]) > 0);
+  if (!slots.length) return null;
+  return Object.fromEntries(slots.map((s) => [s, Math.round(goalKcal * Number(pct[s]) / 100)]));
+}
+
+/** Carbs as shown: total carbohydrate, or net of fibre when the user asked for that. */
+export const shownCarbs = (nutrients, profile = getProfile()) => {
+  const carbs = nutrients?.carbs ?? 0;
+  return profile.netCarbs ? Math.max(0, carbs - (nutrients?.fiber ?? 0)) : carbs;
+};
+export const carbsLabel = (profile = getProfile()) => (profile.netCarbs ? 'Net carbs' : 'Carbs');
 
 /** Lowest calorie goal we will suggest; below this, get a professional involved. */
 export const MIN_KCAL = 1200;
@@ -54,6 +93,9 @@ export function getProfile() {
       macroPct: { ...DEFAULTS.macroPct, ...(saved.macroPct ?? {}) },
       macroG: { ...DEFAULTS.macroG, ...(saved.macroG ?? {}) },
       nutrientGoals: { ...(saved.nutrientGoals ?? {}) },
+      units: { ...DEFAULTS.units, ...(saved.units ?? {}) },
+      mealNames: { ...(saved.mealNames ?? {}) },
+      mealPct: { ...(saved.mealPct ?? {}) },
     };
   } catch { return structuredClone(DEFAULTS); }
 }

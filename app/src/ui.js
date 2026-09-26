@@ -223,8 +223,39 @@ export function toast(text, { ms = 2200, action, onAction } = {}) {
 }
 
 /** Formatters used across every screen. */
+/**
+ * Display units. Everything is stored metric and in kcal; these only change
+ * what is shown and how typed numbers are read back. Read from the saved
+ * profile each call so a change in Settings applies on the next render.
+ */
+const units = () => {
+  try { return { weight: 'kg', height: 'cm', energy: 'kcal', ...(JSON.parse(localStorage.getItem('profile') ?? '{}').units ?? {}) }; } catch { return { weight: 'kg', height: 'cm', energy: 'kcal' }; }
+};
+export const KJ_PER_KCAL = 4.184;
+export const LB_PER_KG = 2.2046226218;
+export const CM_PER_IN = 2.54;
+/** The energy unit's label: 'kcal' or 'kJ'. */
+export const EU = () => (units().energy === 'kJ' ? 'kJ' : 'kcal');
+/** The weight unit's label: 'kg' or 'lb'. */
+export const WU = () => (units().weight === 'lb' ? 'lb' : 'kg');
+/** The height unit's label: 'cm' or 'in'. */
+export const HU = () => (units().height === 'in' ? 'in' : 'cm');
+/** kcal → the number shown (kcal or kJ). */
+export const toEnergyUnit = (kcal) => (EU() === 'kJ' ? kcal * KJ_PER_KCAL : kcal);
+/** A typed energy (in the shown unit) → kcal. */
+export const fromEnergyUnit = (v) => (EU() === 'kJ' ? v / KJ_PER_KCAL : v);
+export const toWeightUnit = (kg) => (WU() === 'lb' ? kg * LB_PER_KG : kg);
+export const fromWeightUnit = (v) => (WU() === 'lb' ? v / LB_PER_KG : v);
+export const toHeightUnit = (cm) => (HU() === 'in' ? cm / CM_PER_IN : cm);
+export const fromHeightUnit = (v) => (HU() === 'in' ? v * CM_PER_IN : v);
+
 export const fmt = {
-  kcal: (v) => Math.round(v || 0).toLocaleString(),
+  /** Energy as the shown number (kcal or kJ), from kcal. */
+  kcal: (v) => Math.round(toEnergyUnit(v || 0)).toLocaleString(),
+  /** Energy with its unit, from kcal: "412 kcal" or "1,724 kJ". */
+  energy: (v) => `${Math.round(toEnergyUnit(v || 0)).toLocaleString()} ${EU()}`,
+  /** Body weight with its unit, from kg: "67.4 kg" or "148.6 lb". */
+  weight: (kg) => `${Math.round(toWeightUnit(kg) * 10) / 10} ${WU()}`,
   g: (v) => (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10),
   amount: (v) => (v >= 10 ? Math.round(v) : Math.round(v * 100) / 100),
   servings: (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100)),

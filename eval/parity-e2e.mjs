@@ -488,6 +488,96 @@ try {
     truthy('nutrition has a week view', /week/i.test(pageText));
   });
 
+  await run('units', async () => {
+    const setSel = (id, v) => setValue(`#${id}`, v);
+    await clickIn('#btn-settings');
+    await page.waitForSelector('#u-weight');
+    // Pounds: the stored kilograms must not change, only what is shown.
+    const kgBefore = await ev(() => JSON.parse(localStorage.getItem('profile')).weightKg);
+    await setSel('u-weight', 'lb');
+    await sleep(300);
+    near('settings shows body weight in pounds', Number(await ev(() => document.getElementById('p-weight').value)), Math.round(kgBefore * 2.2046226218 * 10) / 10, 0.1);
+    truthy('the weight label names pounds', (await ev(() => document.querySelector('label[for="p-weight"]').textContent)).includes('(lb)'));
+    await setValue('#p-weight', 150);
+    await sleep(300);
+    near('typing 150 lb stores 68.04 kg', await ev(() => JSON.parse(localStorage.getItem('profile')).weightKg), 68.04, 0.01);
+    await tab('progress');
+    truthy('progress speaks pounds', (await text('#weight-summary'))?.includes('lb'));
+    await tab('diary');
+    truthy('the diary weight field is in pounds', (await ev(() => document.getElementById('weight-kg').getAttribute('aria-label'))).includes('lb'));
+    // Kilojoules: every energy figure ×4.184, nothing stored changes.
+    const kcalGoal = (await diary()).goal;
+    await clickIn('#btn-settings');
+    await setSel('u-energy', 'kJ');
+    await tab('diary');
+    const d = await diary();
+    near('the goal is shown in kJ', d.goal, Math.round(kcalGoal * 4.184), 1);
+    truthy('the readout names kJ', (await ev(() => document.querySelector('.readout-unit').textContent)).includes('kJ'));
+    truthy('entries show kJ', await ev(() => [...document.querySelectorAll('.de-kcal')].every((n) => n.textContent.includes('kJ'))));
+    // A quick add typed in kJ is stored as kcal.
+    await clickIn('#btn-add'); await page.waitForSelector('#add-quick'); await clickIn('#add-quick');
+    await page.waitForSelector('#qa-kcal');
+    await setValue('#qa-kcal', 1000);
+    await setByLabel('Description', 'kJ test');
+    await clickText('Add to diary', '.sheet');
+    await sleep(700);
+    const kjRow = all(await diary()).find((r) => r.name === 'kJ test');
+    check('1000 kJ typed shows as 1000 kJ', kjRow?.kcal, 1000);
+    // Back to kcal and kg for the sections that follow.
+    await clickIn('#btn-settings');
+    await setSel('u-energy', 'kcal');
+    await setSel('u-weight', 'kg');
+    await sleep(300);
+    await tab('diary');
+    near('and it is 239 kcal underneath', all(await diary()).find((r) => r.name === 'kJ test')?.kcal, 239, 1);
+    await ev(() => [...document.querySelectorAll('.diary-entry')].find((r) => r.querySelector('b').textContent.trim() === 'kJ test').querySelector('.de-del').click());
+    await sleep(500);
+    await clickIn('#btn-settings');
+    await setValue('#p-weight', PROFILE.weightKg);
+    await tab('diary');
+  });
+
+  await run('meal names and goals', async () => {
+    await clickIn('#btn-settings');
+    await page.waitForSelector('#m-name-lunch');
+    await setValue('#m-name-lunch', 'Midday');
+    for (const [s, v] of [['breakfast', 25], ['lunch', 35], ['dinner', 30], ['snacks', 10]]) await setValue(`#m-pct-${s}`, v);
+    await sleep(300);
+    await tab('diary');
+    const d = await diary();
+    check('a renamed meal shows its new name', await ev(() => document.querySelector('.meal-section[data-slot="lunch"] h3').textContent.trim()), 'Midday');
+    check('its log button follows', await ev(() => document.querySelector('.meal-section[data-slot="lunch"] .meal-log').textContent.trim()), '＋ Log midday');
+    const head = await ev(() => document.querySelector('.meal-section[data-slot="breakfast"] .kcal').textContent);
+    truthy(`breakfast shows its 25% goal of ${Math.round(d.goal * 0.25)} (got "${head}")`, head.includes(`/ ${Math.round(d.goal * 0.25).toLocaleString()}`));
+    await openSheetFor('lunch');
+    truthy('the meal picker in the log sheet uses the new name', await ev(() => [...document.querySelectorAll('.sheet select option')].some((o) => o.textContent === 'Midday')));
+    await closeSheets();
+    await clickIn('#btn-settings');
+    await setValue('#m-name-lunch', '');
+    for (const s of ['breakfast', 'lunch', 'dinner', 'snacks']) await setValue(`#m-pct-${s}`, '');
+    await tab('diary');
+    check('clearing the name restores the default', await ev(() => document.querySelector('.meal-section[data-slot="lunch"] h3').textContent.trim()), 'Lunch');
+  });
+
+  await run('net carbs and nutrient goals', async () => {
+    await clickIn('#btn-settings');
+    await ev(() => { const c = document.getElementById('p-netcarbs'); c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); });
+    await tab('diary');
+    truthy('the macro card says net carbs', (await ev(() => document.getElementById('day-macros').textContent)).includes('Net carbs'));
+    await clickIn('#btn-settings');
+    await ev(() => { const c = document.getElementById('p-netcarbs'); c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.waitForSelector('#n-goal-fiber', { timeout: 8000 });
+    check('the fibre goal placeholder is the Daily Value', await ev(() => document.getElementById('n-goal-fiber').placeholder), '28');
+    await setValue('#n-goal-fiber', 35);
+    await tab('nutrition');
+    await ev(() => document.querySelector('.tab[data-tab="nutrients"]').click());
+    await sleep(400);
+    const fibreRow = await ev(() => [...document.querySelectorAll('#nutrition-root tr')].find((r) => /fib/i.test(r.textContent))?.textContent);
+    truthy(`the nutrients table uses the fibre goal of 35 g (row: "${fibreRow}")`, fibreRow?.includes('35'));
+    await clickIn('#btn-settings');
+    await setValue('#n-goal-fiber', '');
+  });
+
   await run('export CSV', async () => {
     await tab('diary');
     const d = await diary();

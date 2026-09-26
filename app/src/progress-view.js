@@ -8,7 +8,10 @@
  */
 import { dateRange, shiftDate, normalizeEntry, dayTotals } from '@nutrilens/diary';
 import { lineChart, barRows } from '@nutrilens/charts';
-import { $, el, fill, fmt, openSheet, closeSheet, toast, emit, on, cssVar } from './ui.js';
+import {
+  $, el, fill, fmt, openSheet, closeSheet, toast, emit, on, cssVar,
+  WU, HU, toWeightUnit, fromWeightUnit, toHeightUnit, fromHeightUnit,
+} from './ui.js';
 import { listMeasurements, setMeasurement, getMeasurement, listMealsBetween, dateKey, patchDay } from './db.js';
 import { getProfile, setProfile, dailyGoal, weightProgress } from './goals.js';
 
@@ -36,7 +39,8 @@ export async function renderProgress() {
   for (const e of entries) kcalByDate.set(e.date, (kcalByDate.get(e.date) ?? 0) + (e.kcal ?? 0));
 
   const progress = weightProgress(profile);
-  const weightPoints = range.map((d) => ({ label: shortLabel(d), value: byDate.get(d)?.weightKg ?? null }));
+  const w = (kg) => Math.round(toWeightUnit(kg) * 10) / 10;
+  const weightPoints = range.map((d) => ({ label: shortLabel(d), value: byDate.get(d)?.weightKg != null ? w(byDate.get(d).weightKg) : null }));
   const kcalPoints = range.map((d) => ({ label: shortLabel(d), value: kcalByDate.has(d) ? kcalByDate.get(d) : null }));
   const latest = [...measurements].filter((m) => m.weightKg > 0).sort((a, b) => a.date.localeCompare(b.date)).at(-1);
 
@@ -53,17 +57,17 @@ export async function renderProgress() {
         el('button.link', { id: 'log-weight', onclick: () => openWeightSheet() }, 'Log weight')),
       el('div.chart-wrap', { id: 'weight-chart', html: lineChart({
         points: weightPoints, width: 340, height: 170, color: cssVar('--m-sugars'),
-        goal: profile.goalWeightKg ?? undefined, title: 'Weight trend',
+        goal: profile.goalWeightKg != null ? w(profile.goalWeightKg) : undefined, title: 'Weight trend',
       }) }),
       progress
         ? el('div.stack', null,
           el('div', { html: barRows({
-            bars: [{ label: 'To goal', value: progress.doneKg, goal: progress.totalKg, color: cssVar('--m-fiber'), text: `${progress.doneKg} / ${progress.totalKg} kg` }],
+            bars: [{ label: 'To goal', value: progress.doneKg, goal: progress.totalKg, color: cssVar('--m-fiber'), text: `${w(progress.doneKg)} / ${fmt.weight(progress.totalKg)}` }],
             width: 320, title: 'Progress to goal weight',
           }) }),
           el('p.muted', { id: 'weight-summary' },
-            `Started ${progress.startWeightKg} kg · now ${progress.weightKg} kg · goal ${progress.goalWeightKg} kg`
-            + (progress.remainingKg > 0 ? ` · ${progress.remainingKg} kg to go` : ' · goal reached')))
+            `Started ${fmt.weight(progress.startWeightKg)} · now ${fmt.weight(progress.weightKg)} · goal ${fmt.weight(progress.goalWeightKg)}`
+            + (progress.remainingKg > 0 ? ` · ${fmt.weight(progress.remainingKg)} to go` : ' · goal reached')))
         : el('p.muted', null, 'Set a starting and goal weight in Settings to track progress toward it.'),
       latest && el('p.muted.tiny', null, `Last weigh-in ${fmt.date(latest.date)}`)),
 
@@ -92,22 +96,22 @@ function measurementTable(measurements) {
   return el('div.table-scroll', null,
     el('table.nutrient-table.measure-table', null,
       el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Date'),
-        cols.map(([, label, unit]) => el('th', { scope: 'col' }, `${label} (${unit})`)))),
+        cols.map(([, label, unit]) => el('th', { scope: 'col' }, `${label} (${shownUnit(unit)})`)))),
       el('tbody', null, recent.map((m) => el('tr', null,
         el('th', { scope: 'row' }, fmt.date(m.date)),
-        cols.map(([key]) => el('td', null, m[key] != null ? String(m[key]) : '—')))))));
+        cols.map(([key, , unit]) => el('td', null, m[key] != null ? String(toShown(m[key], unit)) : '—')))))));
 }
 
 /** Log today's weight — the one measurement people take often. */
 export function openWeightSheet() {
   const profile = getProfile();
   const input = el('input', {
-    type: 'number', min: '20', max: '400', step: '0.1', id: 'weight-input',
-    value: String(profile.weightKg ?? ''), inputmode: 'decimal',
+    type: 'number', min: '20', max: '900', step: '0.1', id: 'weight-input',
+    value: profile.weightKg != null ? String(Math.round(toWeightUnit(profile.weightKg) * 10) / 10) : '', inputmode: 'decimal',
   });
   const dateInput = el('input', { type: 'date', value: dateKey(), id: 'weight-date' });
   const save = async () => {
-    const weightKg = Number(input.value);
+    const weightKg = Math.round(fromWeightUnit(Number(input.value)) * 100) / 100;
     if (!(weightKg > 0)) { toast('Enter a weight'); return; }
     const date = dateInput.value || dateKey();
     await setMeasurement({ ...(await currentMeasure(date)), date, weightKg });
@@ -123,7 +127,7 @@ export function openWeightSheet() {
   openSheet({
     title: 'Log weight',
     body: el('div.stack', null,
-      el('label', { for: 'weight-input' }, 'Weight (kg)'), input,
+      el('label', { for: 'weight-input' }, `Weight (${WU()})`), input,
       el('label', { for: 'weight-date' }, 'Date'), dateInput,
       el('button.primary.wide', { onclick: save }, 'Save')),
   });
@@ -133,7 +137,7 @@ export function openWeightSheet() {
 export function openMeasureSheet() {
   const dateInput = el('input', { type: 'date', value: dateKey() });
   const inputs = Object.fromEntries(MEASURES.map(([key, , unit]) => [key, el('input', {
-    type: 'number', min: '0', step: '0.1', inputmode: 'decimal', placeholder: unit,
+    type: 'number', min: '0', step: '0.1', inputmode: 'decimal', placeholder: shownUnit(unit),
   })]));
   const save = async () => {
     const date = dateInput.value || dateKey();
@@ -141,7 +145,7 @@ export function openMeasureSheet() {
     let any = false;
     for (const [key] of MEASURES) {
       const v = Number(inputs[key].value);
-      if (v > 0) { rec[key] = v; any = true; }
+      if (v > 0) { rec[key] = fromShown(v, MEASURES.find(([k]) => k === key)[2]); any = true; }
     }
     if (!any) { toast('Enter at least one measurement'); return; }
     await setMeasurement(rec);
@@ -155,12 +159,17 @@ export function openMeasureSheet() {
     title: 'Add measurements',
     body: el('div.stack', null,
       el('label', null, 'Date', dateInput),
-      el('div.label-grid', null, MEASURES.map(([key, label, unit]) => el('label', null, `${label} (${unit})`, inputs[key]))),
+      el('div.label-grid', null, MEASURES.map(([key, label, unit]) => el('label', null, `${label} (${shownUnit(unit)})`, inputs[key]))),
       el('button.primary.wide', { onclick: save }, 'Save')),
   });
 }
 
 const currentMeasure = async (date) => (await getMeasurement(date)) ?? {};
+
+/** Stored measures are kg and cm; show and read them in the user's units. */
+const shownUnit = (unit) => (unit === 'kg' ? WU() : unit === 'cm' ? HU() : unit);
+const toShown = (v, unit) => Math.round((unit === 'kg' ? toWeightUnit(v) : unit === 'cm' ? toHeightUnit(v) : v) * 10) / 10;
+const fromShown = (v, unit) => Math.round((unit === 'kg' ? fromWeightUnit(v) : unit === 'cm' ? fromHeightUnit(v) : v) * 100) / 100;
 
 on('profile', () => { if (!$('view-progress').hidden) renderProgress(); });
 on('day', () => { if (!$('view-progress').hidden) renderProgress(); });

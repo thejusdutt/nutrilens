@@ -14,7 +14,7 @@
  * "create this food" with the barcode attached, instead of a dead end.
  */
 import { decodeImage, isValidBarcode, toEan13 } from '@nutrilens/barcode';
-import { $, el, fill, openSheet, closeSheet, toast, emit } from './ui.js';
+import { $, el, fill, fmt, EU, openSheet, closeSheet, toast, emit } from './ui.js';
 import { rememberProduct, cachedProduct } from './foods.js';
 import { bundledProduct } from './barcode-db.js';
 
@@ -149,7 +149,7 @@ function openProduct(foodRecord, barcode, ctx, provenance) {
           foodRecord.brand && el('span.muted', null, foodRecord.brand),
           el('span.muted.tiny', null, `${barcode} · ${provenance}`)),
         el('div.detail-summary', null,
-          el('div.ds-kcal', null, el('b', null, Math.round(per.kcal ?? 0)), ' kcal / 100 g'),
+          el('div.ds-kcal', null, el('b', null, fmt.kcal(per.kcal ?? 0)), ` ${EU()} / 100 g`),
           el('div.muted', null, `P ${Math.round(per.protein ?? 0)} · C ${Math.round(per.carbs ?? 0)} · F ${Math.round(per.fat ?? 0)} g`)),
         foodRecord.quality && foodRecord.quality.nutrientCount < 6
           && el('p.warning', null, 'This product record is sparse. Check the numbers against the packet.'),

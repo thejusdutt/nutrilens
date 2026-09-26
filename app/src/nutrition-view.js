@@ -9,11 +9,11 @@
  * where you want it. Averages are over days that have entries — dividing a
  * week's sodium by seven when you logged three days would flatter you.
  */
-import { dayTotals, macroEnergy, normalizeEntry, dateRange, shiftDate, SLOTS, SLOT_LABEL } from '@nutrilens/diary';
+import { dayTotals, macroEnergy, normalizeEntry, dateRange, shiftDate, SLOTS } from '@nutrilens/diary';
 import { donut, barRows, stackedColumns } from '@nutrilens/charts';
 import { $, el, fill, fmt, MACRO_COLORS, SLOT_COLORS, cssVar, on } from './ui.js';
 import { listMealsByDate, listMealsBetween, dateKey } from './db.js';
-import { getProfile, dailyGoal, nutrientGoal } from './goals.js';
+import { getProfile, dailyGoal, nutrientGoal, SLOT_LABEL, shownCarbs, carbsLabel } from './goals.js';
 import { nutrientMeta } from './foods.js';
 import { nutrientGoalTable } from './nutrients-ui.js';
 import { diaryDate } from './today.js';
@@ -66,12 +66,12 @@ function caloriesTab({ dayEntries, weekEntries, week, goal }) {
       el('div.card', null,
         el('div.chart-wrap', { id: 'cal-pie', html: donut({
           slices, size: 190, thickness: 30, title: 'Calories by meal',
-          center: fmt.kcal(logged), sub: `of ${fmt.kcal(goal.kcal)} kcal`,
+          center: fmt.kcal(logged), sub: `of ${fmt.energy(goal.kcal)}`,
         }) }),
         el('div.legend', null, slices.map((s) => el('div.legend-row', null,
           el('span.swatch', { style: `background:${s.color}` }),
           el('span', null, s.label),
-          el('span.muted', null, `${fmt.kcal(s.value)} kcal · ${logged ? Math.round(s.value / logged * 100) : 0}%`))))),
+          el('span.muted', null, `${fmt.energy(s.value)} · ${logged ? Math.round(s.value / logged * 100) : 0}%`))))),
       el('div.card', null,
         el('div.card-head', null, el('h3', null, 'Against goal')),
         el('div', { html: barRows({
@@ -99,8 +99,8 @@ function caloriesTab({ dayEntries, weekEntries, week, goal }) {
         el('span.swatch', { style: `background:${SLOT_COLORS[i]}` }),
         el('span', null, SLOT_LABEL[slot]))))),
     el('div.card.stat-row', null,
-      stat('Total', `${fmt.kcal(weekKcal)} kcal`),
-      stat('Average / logged day', daysLogged ? `${fmt.kcal(weekKcal / daysLogged)} kcal` : '—'),
+      stat('Total', `${fmt.energy(weekKcal)}`),
+      stat('Average / logged day', daysLogged ? `${fmt.energy(weekKcal / daysLogged)}` : '—'),
       stat('Days logged', `${daysLogged} / 7`)));
 }
 
@@ -109,13 +109,14 @@ function macrosTab({ dayEntries, weekEntries, week, goal }) {
   if (state.span === 'day') {
     const totals = dayTotals(dayEntries);
     const energy = macroEnergy(totals.nutrients);
+    const shown = (k) => (k === 'carbs' ? shownCarbs(totals.nutrients) : totals.nutrients[k] ?? 0);
     const bars = ['carbs', 'protein', 'fat', 'fiber', 'sugars'].filter((k) => goal.macros[k] || totals.nutrients[k])
       .map((k) => ({
-        label: k[0].toUpperCase() + k.slice(1),
-        value: totals.nutrients[k] ?? 0,
+        label: k === 'carbs' ? carbsLabel() : k[0].toUpperCase() + k.slice(1),
+        value: shown(k),
         goal: goal.macros[k] ?? null,
         color: MACRO_COLORS[k],
-        text: goal.macros[k] ? `${Math.round(totals.nutrients[k] ?? 0)} / ${goal.macros[k]} g` : `${Math.round(totals.nutrients[k] ?? 0)} g`,
+        text: goal.macros[k] ? `${Math.round(shown(k))} / ${goal.macros[k]} g` : `${Math.round(shown(k))} g`,
       }));
     return el('div.stack', null,
       el('div.card', null,
@@ -179,8 +180,8 @@ function nutrientsTab({ dayEntries, weekEntries, profile }) {
         el('span.tag', null, state.span === 'day' ? 'vs daily goal' : 'vs 7× daily goal')),
       nutrientGoalTable(totals, meta, (key, m) => nutrientGoal(key, m, profile), { days })),
     el('p.muted.tiny', null,
-      'Calories and macros use the goals you set in Settings. '
-      + 'Every other nutrient uses the FDA Daily Value.'));
+      'Calories and macros use the goals you set in Settings, and so does any nutrient '
+      + 'you gave your own goal there. The rest use the FDA Daily Value.'));
 }
 
 // ---------------------------------------------------------------------------

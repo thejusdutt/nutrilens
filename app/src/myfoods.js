@@ -79,7 +79,7 @@ function itemRow(f, { subtitle, onEdit, onDelete }) {
       onclick: () => openFoodDetail({ foodId: f.id, date: diaryDate(), slot: suggestSlot() }),
     },
     el('b', null, f.name),
-    el('span.muted', null, [subtitle, `${fmt.kcal(kcalFor(f, serving.grams))} kcal / ${serving.label}`].filter(Boolean).join(' · '))),
+    el('span.muted', null, [subtitle, `${fmt.energy(kcalFor(f, serving.grams))} / ${serving.label}`].filter(Boolean).join(' · '))),
     onEdit && el('button.icon-btn.small', { title: 'Edit', 'aria-label': `Edit ${f.name}`, onclick: onEdit }, iconEl('edit', { size: 15 })),
     onDelete && el('button.icon-btn.small', {
       title: 'Delete', 'aria-label': `Delete ${f.name}`,

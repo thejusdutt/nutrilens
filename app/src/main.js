@@ -12,14 +12,17 @@ import { renderPlate, openAddDish, portionControl, REGION_COLORS } from './plate
 import { makeEntry, normalizeEntry, toCSV } from '@nutrilens/diary';
 import { saveMeal, listMeals, dateKey, exportBackup, restoreBackup } from './db.js';
 import {
-  getProfile, setProfile, dailyGoal, suggestSlot, macroPctSum, macroKcal,
+  getProfile, setProfile, dailyGoal, suggestSlot, macroPctSum, macroKcal, mealWord, mealName, mealGoals,
   ACTIVITY, RATE,
 } from './goals.js';
 import {
   $, el, fill, fmt, show, view, toast, emit, on, openSheet, closeSheet,
   restoreSheetDepth, MACRO_COLORS,
+  EU, WU, HU, toEnergyUnit, fromEnergyUnit, toWeightUnit, fromWeightUnit, toHeightUnit, fromHeightUnit,
 } from './ui.js';
-import { initFoods, food as foodById, search as searchFoods, nutrients as nutrientsFor } from './foods.js';
+import {
+  initFoods, food as foodById, search as searchFoods, nutrients as nutrientsFor, nutrientMeta,
+} from './foods.js';
 import { fillNutritionCard } from './nutrients-ui.js';
 import { renderToday, diaryDate, setDiaryDate, openAddMenu, initTodayActions } from './today.js';
 import { renderNutrition } from './nutrition-view.js';
@@ -658,7 +661,7 @@ function renderNutritionCard() {
   const nodes = CARD_NODES();
   nodes.title.textContent = 'Nutrition';
   fillNutritionCard(nodes, r.nutrients, {
-    kcalRange: kcal && !manual && kcal.low !== kcal.high ? `(${Math.round(kcal.low)}–${Math.round(kcal.high)})` : '',
+    kcalRange: kcal && !manual && kcal.low !== kcal.high ? `(${fmt.kcal(kcal.low)}–${fmt.kcal(kcal.high)})` : '',
     confText: state.candidates[0]?.sources?.manual ? 'manual' : `${level} confidence · ${(conf * 100).toFixed(0)}%`,
     confWarn: confidenceNeedsReview(conf),
   });
@@ -816,7 +819,7 @@ function reestimateItem(it) {
   }).grams;
 }
 
-const itemKcal = (it) => `${Math.round((foodById(it.id).per100g.kcal ?? 0) * it.grams / 100)} kcal`;
+const itemKcal = (it) => fmt.energy((foodById(it.id).per100g.kcal ?? 0) * it.grams / 100);
 
 function renderMealNutrition() {
   const meal = state.meal;
@@ -827,6 +830,7 @@ function renderMealNutrition() {
   // The summary carries the number people came for, above the detail. It
   // updates on every portion tap, so it has to be cheap to redraw.
   $('plate-kcal').textContent = fmt.kcal(v('kcal'));
+  document.querySelector('.plate-kcal-unit').textContent = EU();
   $('meal-count').textContent = `${meal.items.length} item${meal.items.length > 1 ? 's' : ''}`;
   const macros = [['Protein', 'protein'], ['Carbs', 'carbs'], ['Fat', 'fat']];
   fill($('plate-macros'), macros.map(([label, key]) => el('span.plate-macro', { style: `--macro: ${MACRO_COLORS[key]}` },
@@ -858,7 +862,7 @@ $('btn-save').onclick = async () => {
         nutrients: r.nutrients, source: 'photo', thumb: i === 0 ? thumb : null, ts: Date.now() + i,
       }));
     }
-    toast(`${state.meal.items.length} items added to ${slot}`);
+    toast(`${state.meal.items.length} items added to ${mealWord(slot)}`);
   } else {
     const id = state.selectedId;
     const grams = currentGrams();
@@ -869,7 +873,7 @@ $('btn-save').onclick = async () => {
       servingLabel: state.servingLabel ?? 'measured portion', servingGrams: grams, servings: 1,
       nutrients: r.nutrients, source: 'photo', thumb, ts: Date.now(),
     }));
-    toast(`${f.name} added to ${slot}`);
+    toast(`${f.name} added to ${mealWord(slot)}`);
   }
   state.saveDate = date;
   emit('diary', { date });
@@ -904,7 +908,7 @@ async function renderRecent() {
     }
     return el('button.recent-card', {
       onclick: () => goTo('diary', { history: 'replace' }),
-    }, img, el('div.meta', null, el('b', null, m.foodName), el('span.muted', null, `${m.kcal} kcal · ${Math.round(m.grams)} g`)));
+    }, img, el('div.meta', null, el('b', null, m.foodName), el('span.muted', null, `${fmt.energy(m.kcal)} · ${Math.round(m.grams)} g`)));
   }));
 }
 
@@ -923,17 +927,50 @@ const PROFILE_FIELDS = ['p-sex', 'p-age', 'p-height', 'p-weight', 'p-start-weigh
   'p-activity', 'p-rate', 'p-custom', 'p-water', 'p-steps', 'p-credit',
   'p-carbs', 'p-protein', 'p-fat', 'p-carbs-g', 'p-protein-g', 'p-fat-g'];
 
+/** Settings labels name their unit; keep them in step with the unit settings. */
+function refreshUnitLabels() {
+  const setLabel = (id, text) => {
+    const label = document.querySelector(`label[for="${id}"]`);
+    const node = label && [...label.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+    if (node) node.textContent = `${text} `;
+  };
+  setLabel('p-height', `Height (${HU()})`);
+  setLabel('p-weight', `Weight (${WU()})`);
+  setLabel('p-start-weight', `Starting weight (${WU()})`);
+  setLabel('p-goal-weight', `Goal weight (${WU()})`);
+  setLabel('p-custom', `Calorie override (${EU()})`);
+  // Bounds follow the unit, or a valid pound or kJ figure would be refused.
+  const w = WU() === 'lb' ? ['60', '660'] : ['30', '300'];
+  for (const id of ['p-weight', 'p-start-weight', 'p-goal-weight']) { $(id).min = w[0]; $(id).max = w[1]; }
+  [$('p-height').min, $('p-height').max] = HU() === 'in' ? ['47', '91'] : ['120', '230'];
+  [$('p-custom').min, $('p-custom').max, $('p-custom').step] = EU() === 'kJ' ? ['4000', '25000', '50'] : ['1000', '6000', '10'];
+  for (const opt of $('save-slot').options) opt.textContent = mealName(opt.value);
+}
+
+const round1 = (v) => Math.round(v * 10) / 10;
+
 function loadProfileForm() {
   const p = getProfile();
+  refreshUnitLabels();
+  $('u-weight').value = p.units.weight;
+  $('u-height').value = p.units.height;
+  $('u-energy').value = p.units.energy;
+  $('p-netcarbs').checked = !!p.netCarbs;
   $('p-sex').value = p.sex;
   $('p-age').value = p.age;
-  $('p-height').value = p.heightCm;
-  $('p-weight').value = p.weightKg;
-  $('p-start-weight').value = p.startWeightKg ?? '';
-  $('p-goal-weight').value = p.goalWeightKg ?? '';
+  $('p-height').value = HU() === 'in' ? round1(toHeightUnit(p.heightCm)) : Math.round(p.heightCm);
+  $('p-weight').value = round1(toWeightUnit(p.weightKg));
+  $('p-start-weight').value = p.startWeightKg != null ? round1(toWeightUnit(p.startWeightKg)) : '';
+  $('p-goal-weight').value = p.goalWeightKg != null ? round1(toWeightUnit(p.goalWeightKg)) : '';
   $('p-activity').value = String(p.activity);
   $('p-rate').value = String(p.rateKgWeek);
-  $('p-custom').value = p.customKcal ?? '';
+  $('p-custom').value = p.customKcal != null ? Math.round(toEnergyUnit(p.customKcal)) : '';
+  for (const slot of ['breakfast', 'lunch', 'dinner', 'snacks']) {
+    $(`m-name-${slot}`).value = p.mealNames[slot] ?? '';
+    $(`m-pct-${slot}`).value = p.mealPct[slot] ?? '';
+  }
+  renderMealSummary();
+  loadNutrientGoalFields();
   $('p-water').value = p.waterGoal;
   $('p-steps').value = p.stepGoal;
   $('p-credit').checked = p.creditExercise;
@@ -962,31 +999,33 @@ function renderGoalSummary() {
   const p = getProfile();
   const g = dailyGoal(p);
   const notes = [];
-  if (g.floored) notes.push(`raised to the ${1200} kcal minimum`);
+  if (g.floored) notes.push(`raised to the ${fmt.energy(1200)} minimum`);
   if (p.macroMode === 'percent' && macroPctSum(p) !== 100) notes.push('macro percentages must add up to 100');
   if (p.macroMode === 'grams') {
     const implied = macroKcal(g.macros);
-    if (Math.abs(implied - g.kcal) > 50) notes.push(`these grams are ${implied.toLocaleString()} kcal, not ${g.kcal.toLocaleString()}`);
+    if (Math.abs(implied - g.kcal) > 50) notes.push(`these grams are ${fmt.energy(implied)}, not ${fmt.energy(g.kcal)}`);
   }
   fill($('goal-summary'),
-    el('span', null, `Maintenance ≈ ${g.tdee.toLocaleString()} kcal · daily goal `),
-    el('b', null, g.kcal.toLocaleString()),
-    el('span', null, ` kcal (${g.source === 'custom' ? 'manual override' : 'computed'}) · targets C ${g.macros.carbs} g / P ${g.macros.protein} g / F ${g.macros.fat} g`),
+    el('span', null, `Maintenance ≈ ${fmt.energy(g.tdee)} · daily goal `),
+    el('b', null, fmt.kcal(g.kcal)),
+    el('span', null, ` ${EU()} (${g.source === 'custom' ? 'manual override' : 'computed'}) · targets C ${g.macros.carbs} g / P ${g.macros.protein} g / F ${g.macros.fat} g`),
     notes.length ? el('span.warn-text', null, ` — ${notes.join(' · ')}`) : null);
 }
 
 function saveProfileForm() {
   const num = (id) => (($(id).value ?? '') === '' ? null : Number($(id).value));
+  // Typed in the shown units; stored metric and in kcal.
+  const kg = (id) => (num(id) == null ? null : Math.round(fromWeightUnit(num(id)) * 100) / 100);
   setProfile({
     sex: $('p-sex').value,
     age: num('p-age') ?? 30,
-    heightCm: num('p-height') ?? 170,
-    weightKg: num('p-weight') ?? 70,
-    startWeightKg: num('p-start-weight'),
-    goalWeightKg: num('p-goal-weight'),
+    heightCm: num('p-height') == null ? 170 : Math.round(fromHeightUnit(num('p-height')) * 10) / 10,
+    weightKg: kg('p-weight') ?? 70,
+    startWeightKg: kg('p-start-weight'),
+    goalWeightKg: kg('p-goal-weight'),
     activity: Number($('p-activity').value),
     rateKgWeek: Number($('p-rate').value),
-    customKcal: num('p-custom'),
+    customKcal: num('p-custom') == null ? null : Math.round(fromEnergyUnit(num('p-custom'))),
     waterGoal: Math.max(1, num('p-water') ?? 8),
     stepGoal: Math.max(1000, num('p-steps') ?? 10000),
     creditExercise: $('p-credit').checked,
@@ -997,6 +1036,73 @@ function saveProfileForm() {
   emit('profile');
 }
 for (const id of PROFILE_FIELDS) $(id).addEventListener('change', saveProfileForm);
+
+// Units: changing one re-reads every field in the new unit.
+for (const [id, key] of [['u-weight', 'weight'], ['u-height', 'height'], ['u-energy', 'energy']]) {
+  $(id).addEventListener('change', (e) => {
+    const p = getProfile();
+    setProfile({ units: { ...p.units, [key]: e.target.value } });
+    loadProfileForm();
+    emit('profile');
+    emit('diary');
+  });
+}
+$('p-netcarbs').addEventListener('change', (e) => { setProfile({ netCarbs: e.target.checked }); emit('profile'); });
+
+// Meals: names and shares of the day's calories.
+const SLOT_IDS = ['breakfast', 'lunch', 'dinner', 'snacks'];
+function renderMealSummary() {
+  const p = getProfile();
+  const pcts = SLOT_IDS.map((s) => Number(p.mealPct[s]) || 0);
+  const sum = pcts.reduce((a, b) => a + b, 0);
+  const goals = mealGoals(dailyGoal(p).kcal, p);
+  $('meal-summary').textContent = !goals ? 'No meal goals set.'
+    : `${SLOT_IDS.filter((s) => goals[s]).map((s) => `${mealName(s)} ${fmt.energy(goals[s])}`).join(' · ')}`
+      + (sum !== 100 ? ` — shares add up to ${sum}%, not 100%` : '');
+}
+for (const slot of SLOT_IDS) {
+  $(`m-name-${slot}`).addEventListener('change', () => {
+    const p = getProfile();
+    setProfile({ mealNames: { ...p.mealNames, [slot]: $(`m-name-${slot}`).value.trim() } });
+    refreshUnitLabels();
+    renderMealSummary();
+    emit('profile');
+  });
+  $(`m-pct-${slot}`).addEventListener('change', () => {
+    const p = getProfile();
+    const v = Number($(`m-pct-${slot}`).value);
+    const mealPct = { ...p.mealPct };
+    if (v > 0) mealPct[slot] = Math.min(100, v); else delete mealPct[slot];
+    setProfile({ mealPct });
+    renderMealSummary();
+    emit('profile');
+  });
+}
+
+// Nutrient goals: every tracked nutrient except the four set above.
+const NUTRIENT_GOAL_KEYS = ['fiber', 'sugars', 'satFat', 'sodium', 'cholesterol', 'potassium', 'calcium', 'iron', 'vitC', 'vitD'];
+function loadNutrientGoalFields() {
+  const host = $('nutrient-goal-fields');
+  const meta = nutrientMeta();
+  if (!Object.keys(meta).length) return; // data not loaded yet; the Settings renderer calls again
+  const p = getProfile();
+  fill(host, NUTRIENT_GOAL_KEYS.filter((k) => meta[k]).map((k) => {
+    const m = meta[k];
+    const input = el('input', {
+      id: `n-goal-${k}`, type: 'number', min: '0', step: 'any', inputmode: 'decimal',
+      placeholder: m.rdi != null ? String(m.rdi) : '—', value: p.nutrientGoals[k] ?? '',
+      onchange: (e) => {
+        const cur = getProfile();
+        const v = Number(e.target.value);
+        const nutrientGoals = { ...cur.nutrientGoals };
+        if (v > 0) nutrientGoals[k] = v; else delete nutrientGoals[k];
+        setProfile({ nutrientGoals });
+        emit('profile');
+      },
+    });
+    return el('label', { for: `n-goal-${k}` }, `${m.name} (${m.unit}) `, input);
+  }));
+}
 loadProfileForm();
 
 async function refreshStorageStatus() {

@@ -7,7 +7,7 @@
  * decimals below — because those strings are the app's contract with the user
  * and are asserted digit-for-digit by eval/nutrition-e2e.mjs.
  */
-import { el, fill, fmt } from './ui.js';
+import { el, fill, fmt, EU } from './ui.js';
 import { MACRO_COLORS } from './ui.js';
 
 /** Macro bars, in the order people read them. */
@@ -51,7 +51,10 @@ export function fillNutritionCard(nodes, nutrients, {
   // The photo flow already shows the total at the top of the plate card;
   // repeating it here just makes the reader check whether they match.
   if (nodes.hero) nodes.hero.hidden = !hero;
-  nodes.kcal.textContent = kcal ? Math.round(kcal.value) : '–';
+  nodes.kcal.textContent = kcal ? fmt.kcal(kcal.value) : '–';
+  // The unit beside the figure is static markup; keep it in step with the setting.
+  const unit = nodes.kcal.parentElement?.querySelector('.kcal-unit');
+  if (unit) unit.textContent = EU();
   if (nodes.range) nodes.range.textContent = kcalRange;
 
   fill(nodes.macros, MACRO_ORDER.filter((k) => nutrients[k]).map((k) => macroRow(nutrients[k], MACRO_COLORS[k])));
